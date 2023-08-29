@@ -3,11 +3,7 @@
   "description": "Modern collection of testing assertions and logging utilities for Solidity",
   "version": "0.6.0",
   "author": {
-    "name": "Paul Razvan Berg",
-    "url": "https://github.com/PaulRBerg"
-  },
-  "bugs": {
-    "url": "https://github.com/PaulRBerg/prb-test/issues"
+    "name": "Area 51",
   },
   "devDependencies": {
     "prettier": "^2.8.7",
@@ -17,7 +13,6 @@
     "src",
     "CHANGELOG.md"
   ],
-  "homepage": "https://github.com/PaulRBerg/prb-test#readme",
   "keywords": [
     "assertions",
     "blockchain",
@@ -33,7 +28,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/PaulRBerg/prb-test"
   },
   "scripts": {
     "clean": "rm -rf cache out",
