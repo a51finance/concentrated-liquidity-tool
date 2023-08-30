@@ -3,15 +3,17 @@ pragma solidity >=0.5.0;
 
 import "./SafeCastExtended.sol";
 
-import "v3-periphery/libraries/LiquidityAmounts.sol";
+import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "v3-core/contracts/libraries/FullMath.sol";
-import "v3-core/contracts/libraries/LowGasSafeMath.sol";
-import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 /// @title Liquidity and ticks functions
 /// @notice Provides functions for computing liquidity and ticks for token amounts and prices
-library UniswapPoolActions {
+library PoolActions {
     using LowGasSafeMath for uint256;
     using SafeCastExtended for uint256;
 
@@ -147,5 +149,13 @@ library UniswapPoolActions {
             amount0,
             amount1
         );
+    }
+
+    function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) internal pure {
+        require(tickLower < tickUpper, "TLU");
+        require(tickLower >= TickMath.MIN_TICK, "TLM");
+        require(tickUpper <= TickMath.MAX_TICK, "TUM");
+        require(tickLower % tickSpacing == 0, "TLI");
+        require(tickUpper % tickSpacing == 0, "TUI");
     }
 }
