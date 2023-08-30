@@ -8,13 +8,11 @@ import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 /// @title Liquidity and ticks functions
 /// @notice Provides functions for computing liquidity and ticks for token amounts and prices
 library PoolActions {
-    using LowGasSafeMath for uint256;
     using SafeCastExtended for uint256;
 
     function updatePosition(
@@ -25,7 +23,7 @@ library PoolActions {
         internal
         returns (uint128 liquidity)
     {
-        (liquidity,,) = pool.getPositionLiquidity(tickLower, tickUpper);
+        (liquidity,,) = getPositionLiquidity(pool, tickLower, tickUpper);
 
         if (liquidity > 0) {
             pool.burn(tickLower, tickUpper, 0);
@@ -41,14 +39,15 @@ library PoolActions {
         internal
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        (uint128 liquidity,,) = pool.getPositionLiquidity(tickLower, tickUpper);
+        (uint128 liquidity,,) = getPositionLiquidity(pool, tickLower, tickUpper);
+
         if (liquidity > 0) {
             (amount0, amount1) = pool.burn(tickLower, tickUpper, liquidity);
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
                     pool.collect(recipient, tickLower, tickUpper, type(uint128).max, type(uint128).max);
 
-                (fees0, fees1) = (collect0.sub(amount0), collect1.sub(amount1));
+                (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
             }
         }
     }
@@ -63,7 +62,7 @@ library PoolActions {
         internal
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint128 liquidity,,) = pool.getPositionLiquidity(tickLower, tickUpper);
+        (uint128 liquidity,,) = getPositionLiquidity(pool, tickLower, tickUpper);
 
         uint256 liquidityRemoved = FullMath.mulDiv(uint256(liquidity), userSharePercentage, 1e18);
 
@@ -84,7 +83,7 @@ library PoolActions {
         internal
         returns (uint256 amount0, uint256 amount1)
     {
-        uint128 liquidity = pool.getLiquidityForAmounts(amount0Desired, amount1Desired, tickLower, tickUpper);
+        uint128 liquidity = getLiquidityForAmounts(pool, amount0Desired, amount1Desired, tickLower, tickUpper);
 
         if (liquidity > 0) {
             (amount0, amount1) = pool.mint(address(this), tickLower, tickUpper, liquidity, abi.encode(address(this)));
@@ -92,7 +91,7 @@ library PoolActions {
     }
 
     function swapToken(IUniswapV3Pool pool, address recipient, bool zeroForOne, int256 amountSpecified) internal {
-        (uint160 sqrtPriceX96,,) = pool.getSqrtRatioX96AndTick();
+        (uint160 sqrtPriceX96,,) = getSqrtRatioX96AndTick(pool);
 
         uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (1e5 / 2)) / 1e6;
 
@@ -149,6 +148,14 @@ library PoolActions {
             amount0,
             amount1
         );
+    }
+
+    function getSqrtRatioX96AndTick(IUniswapV3Pool pool)
+        internal
+        view
+        returns (uint160 _sqrtRatioX96, int24 _tick, uint16 observationCardinality)
+    {
+        (_sqrtRatioX96, _tick,, observationCardinality,,,) = pool.slot0();
     }
 
     function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) internal pure {
