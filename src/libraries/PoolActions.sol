@@ -81,7 +81,7 @@ library PoolActions {
         uint256 amount1Desired
     )
         internal
-        returns (uint256 amount0, uint256 amount1)
+        returns (uint256 liquidity, uint256 amount0, uint256 amount1)
     {
         uint128 liquidity = getLiquidityForAmounts(pool, amount0Desired, amount1Desired, tickLower, tickUpper);
 
