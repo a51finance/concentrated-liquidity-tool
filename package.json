@@ -1,9 +1,10 @@
 {
-  "name": "area",
-  "description": "Concentrated Liquidity Tool",
+  "name": "@Unipilot/concentrated-liquidity-tool",
+  "description": "contracts for managing the liquidity on any concentrated AMM",
   "version": "1.0.0",
   "author": {
-    "name": "Mudassir"
+    "name": "Unipilot",
+    "url": "https://github.com/Unipilot"
   },
   "devDependencies": {
     "prettier": "^3.0.0",
