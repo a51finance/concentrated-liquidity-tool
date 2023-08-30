@@ -5,9 +5,9 @@ import "./interfaces/ICLTVault.sol";
 
 import "./libraries/PoolActions.sol";
 
-import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract CLTVault is ICLTVault, ERC721 {
     using PoolActions for IUniswapV3Pool;
@@ -49,9 +49,9 @@ contract CLTVault is ICLTVault, ERC721 {
         external
     {
         // checks
-        pool.checkRange(tickLower, tickUpper, tickSpacing);
+        PoolActions.checkRange(tickLower, tickUpper, tickSpacing);
 
-        (,, uint256 fees0, uint256 fees1) = pool.burnUserLiquidity(tickLower, tickUpper, userShare, address(this));
+        pool.burnUserLiquidity(tickLower, tickUpper, userShare, address(this));
 
         // deduct any fees if required for protocol
 
