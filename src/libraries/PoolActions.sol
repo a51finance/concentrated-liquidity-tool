@@ -153,9 +153,9 @@ library PoolActions {
     function getSqrtRatioX96AndTick(IUniswapV3Pool pool)
         internal
         view
-        returns (uint160 _sqrtRatioX96, int24 _tick, uint16 observationCardinality)
+        returns (uint160 sqrtRatioX96, int24 tick, uint16 observationCardinality)
     {
-        (_sqrtRatioX96, _tick,, observationCardinality,,,) = pool.slot0();
+        (sqrtRatioX96, tick,, observationCardinality,,,) = pool.slot0();
     }
 
     function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) internal pure {
