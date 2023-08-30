@@ -7,11 +7,11 @@ import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import "./libraries/LiquidityAmounts.sol";
-import "./libraries/TickMath.sol";
-
+import "./libraries/PoolActions.sol";
 
 contract CLTVault is ICLTVault, ERC721 {
+    using PoolActions for IUniswapV3Pool;
+
     struct Position {
         int24 tickLower;
         int24 tickUpper;
@@ -43,7 +43,10 @@ contract CLTVault is ICLTVault, ERC721 {
         checkDeadline(params.deadline)
         returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
     {
-        (liquidity, amount0, amount1) = addLiquidity(params);
+        (liquidity, amount0, amount1) =
+            pool.mintLiquidity(params.tickLower, params.tickUpper, params.amount0Desired, params.amount1Desired);
+        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage check");
+
         _mint(params.recipient, (tokenId = _nextId++));
 
         positions[tokenId] =
@@ -55,25 +58,4 @@ contract CLTVault is ICLTVault, ERC721 {
     function withdraw() external { }
     function claim() external { }
     function shiftLiquidity() external { }
-
-    function addLiquidity(DepositParams memory params)
-        internal
-        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
-    {
-        // compute the liquidity amount
-        {
-            (uint160 sqrtPriceX96,,,,,,) = pool.slot0();
-            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(params.tickLower);
-            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(params.tickUpper);
-
-            liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, params.amount0Desired, params.amount1Desired
-            );
-        }
-
-        (amount0, amount1) =
-            pool.mint(params.recipient, params.tickLower, params.tickUpper, liquidity, abi.encode(msg.sender));
-
-        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "Price slippage check");
-    }
 }
