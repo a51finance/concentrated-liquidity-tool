@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
-contract CLTVault { }
+import "./interfaces/ICLTVault.sol";
+
+contract CLTVault is ICLTVault { }

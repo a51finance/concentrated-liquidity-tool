@@ -1,9 +1,9 @@
 {
-  "name": "Area 51",
+  "name": "area",
   "description": "Concentrated Liquidity Tool",
   "version": "1.0.0",
   "author": {
-    "name": "Mudassir",
+    "name": "Mudassir"
   },
   "devDependencies": {
     "prettier": "^3.0.0",
