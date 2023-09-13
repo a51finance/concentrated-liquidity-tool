@@ -81,9 +81,9 @@ library PoolActions {
         uint256 amount1Desired
     )
         internal
-        returns (uint256 liquidity, uint256 amount0, uint256 amount1)
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
-        uint128 liquidity = getLiquidityForAmounts(pool, amount0Desired, amount1Desired, tickLower, tickUpper);
+        liquidity = getLiquidityForAmounts(pool, amount0Desired, amount1Desired, tickLower, tickUpper);
 
         if (liquidity > 0) {
             (amount0, amount1) = pool.mint(address(this), tickLower, tickUpper, liquidity, abi.encode(address(this)));
