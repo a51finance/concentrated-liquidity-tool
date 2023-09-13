@@ -1,13 +1,17 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.19;
 
-interface ICLTVault {
-    struct DepositParams {
-        address token0;
-        address token1;
-        uint24 fee;
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+
+interface ICLTBase {
+    struct PoolKey {
+        IUniswapV3Pool pool;
         int24 tickLower;
         int24 tickUpper;
+    }
+
+    struct DepositParams {
+        PoolKey key;
         uint256 amount0Desired;
         uint256 amount1Desired;
         uint256 amount0Min;
@@ -15,6 +19,23 @@ interface ICLTVault {
         address recipient;
         uint256 deadline;
     }
+
+    struct ShiftLiquidityParams {
+        PoolKey key;
+        bool zeroForOne;
+        uint256 amount0;
+        uint256 amount1;
+        uint256 userShare;
+        int256 swapAmount;
+    }
+
+    struct ClaimFeesParams {
+        PoolKey key;
+        address recipient;
+    }
+
+    error InvalidCaller();
+    error TransactionTooAged();
 
     function deposit(DepositParams calldata params)
         external
