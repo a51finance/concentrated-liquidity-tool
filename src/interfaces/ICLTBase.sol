@@ -20,6 +20,12 @@ interface ICLTBase {
         uint256 deadline;
     }
 
+    struct WithdrawParams {
+        PoolKey key;
+        address recipient;
+        uint256 userSharePercentage;
+    }
+
     struct ShiftLiquidityParams {
         PoolKey key;
         bool zeroForOne;
