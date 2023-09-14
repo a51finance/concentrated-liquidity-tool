@@ -2,6 +2,8 @@
 pragma solidity >=0.5.0;
 
 import "./SafeCastExtended.sol";
+import "../interfaces/ICLTBase.sol";
+import "../interfaces/ICLTPayments.sol";
 
 import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
@@ -15,37 +17,28 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 library PoolActions {
     using SafeCastExtended for uint256;
 
-    function updatePosition(
-        IUniswapV3Pool pool,
-        int24 tickLower,
-        int24 tickUpper
-    )
-        internal
-        returns (uint128 liquidity)
-    {
-        (liquidity,,) = getPositionLiquidity(pool, tickLower, tickUpper);
+    function updatePosition(ICLTBase.PoolKey calldata key) internal returns (uint128 liquidity) {
+        (liquidity,,) = getPositionLiquidity(key);
 
         if (liquidity > 0) {
-            pool.burn(tickLower, tickUpper, 0);
+            key.pool.burn(key.tickLower, key.tickUpper, 0);
         }
     }
 
     function burnLiquidity(
-        IUniswapV3Pool pool,
-        int24 tickLower,
-        int24 tickUpper,
+        ICLTBase.PoolKey calldata key,
         address recipient
     )
         internal
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        (uint128 liquidity,,) = getPositionLiquidity(pool, tickLower, tickUpper);
+        (uint128 liquidity,,) = getPositionLiquidity(key);
 
         if (liquidity > 0) {
-            (amount0, amount1) = pool.burn(tickLower, tickUpper, liquidity);
+            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
-                    pool.collect(recipient, tickLower, tickUpper, type(uint128).max, type(uint128).max);
+                    key.pool.collect(recipient, key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
 
                 (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
             }
@@ -53,40 +46,51 @@ library PoolActions {
     }
 
     function burnUserLiquidity(
-        IUniswapV3Pool pool,
-        int24 tickLower,
-        int24 tickUpper,
+        ICLTBase.PoolKey calldata key,
         uint256 userSharePercentage,
         address recipient
     )
         internal
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint128 liquidity,,) = getPositionLiquidity(pool, tickLower, tickUpper);
+        (uint128 liquidity,,) = getPositionLiquidity(key);
 
         uint256 liquidityRemoved = FullMath.mulDiv(uint256(liquidity), userSharePercentage, 1e18);
 
-        (amount0, amount1) = pool.burn(tickLower, tickUpper, liquidityRemoved.toUint128());
+        (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
 
         if (amount0 > 0 || amount1 > 0) {
-            (amount0, amount0) = pool.collect(recipient, tickLower, tickUpper, amount0.toUint128(), amount1.toUint128());
+            (amount0, amount0) =
+                key.pool.collect(recipient, key.tickLower, key.tickUpper, amount0.toUint128(), amount1.toUint128());
         }
     }
 
     function mintLiquidity(
-        IUniswapV3Pool pool,
-        int24 tickLower,
-        int24 tickUpper,
+        ICLTBase.PoolKey calldata key,
         uint256 amount0Desired,
-        uint256 amount1Desired
+        uint256 amount1Desired,
+        address payer
     )
         internal
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
-        liquidity = getLiquidityForAmounts(pool, amount0Desired, amount1Desired, tickLower, tickUpper);
+        liquidity = getLiquidityForAmounts(key.pool, amount0Desired, amount1Desired, key.tickLower, key.tickUpper);
 
         if (liquidity > 0) {
-            (amount0, amount1) = pool.mint(address(this), tickLower, tickUpper, liquidity, abi.encode(address(this)));
+            (amount0, amount1) = key.pool.mint(
+                address(this),
+                key.tickLower,
+                key.tickUpper,
+                liquidity,
+                abi.encode(
+                    ICLTPayments.MintCallbackData({
+                        token0: key.pool.token0(),
+                        token1: key.pool.token1(),
+                        fee: key.pool.fee(),
+                        payer: payer
+                    })
+                )
+            );
         }
     }
 
@@ -102,30 +106,25 @@ library PoolActions {
     }
 
     function collectPendingFees(
-        IUniswapV3Pool pool,
-        address recipient,
-        int24 tickLower,
-        int24 tickUpper
+        ICLTBase.PoolKey calldata key,
+        address recipient
     )
         internal
         returns (uint256 collect0, uint256 collect1)
     {
-        updatePosition(pool, tickLower, tickUpper);
+        updatePosition(key);
 
-        (collect0, collect1) = pool.collect(recipient, tickLower, tickUpper, type(uint128).max, type(uint128).max);
+        (collect0, collect1) =
+            key.pool.collect(recipient, key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
     }
 
-    function getPositionLiquidity(
-        IUniswapV3Pool pool,
-        int24 _tickLower,
-        int24 _tickUpper
-    )
+    function getPositionLiquidity(ICLTBase.PoolKey calldata key)
         internal
         view
         returns (uint128 liquidity, uint128 tokensOwed0, uint128 tokensOwed1)
     {
-        bytes32 positionKey = PositionKey.compute(address(this), _tickLower, _tickUpper);
-        (liquidity,,, tokensOwed0, tokensOwed1) = pool.positions(positionKey);
+        bytes32 positionKey = PositionKey.compute(address(this), key.tickLower, key.tickUpper);
+        (liquidity,,, tokensOwed0, tokensOwed1) = key.pool.positions(positionKey);
     }
 
     function getLiquidityForAmounts(
