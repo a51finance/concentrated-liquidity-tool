@@ -2,6 +2,9 @@
 pragma solidity >=0.5.0;
 
 import "./SafeCastExtended.sol";
+
+import { StrategyKey } from "../base/Structs.sol";
+
 import "../interfaces/ICLTBase.sol";
 import "../interfaces/ICLTPayments.sol";
 
@@ -17,7 +20,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 library PoolActions {
     using SafeCastExtended for uint256;
 
-    function updatePosition(ICLTBase.PoolKey calldata key) internal returns (uint128 liquidity) {
+    function updatePosition(StrategyKey calldata key) internal returns (uint128 liquidity) {
         (liquidity,,) = getPositionLiquidity(key);
 
         if (liquidity > 0) {
@@ -26,7 +29,7 @@ library PoolActions {
     }
 
     function burnLiquidity(
-        ICLTBase.PoolKey calldata key,
+        StrategyKey memory key,
         address recipient
     )
         internal
@@ -46,7 +49,7 @@ library PoolActions {
     }
 
     function burnUserLiquidity(
-        ICLTBase.PoolKey calldata key,
+        StrategyKey calldata key,
         uint256 userSharePercentage,
         address recipient
     )
@@ -66,7 +69,7 @@ library PoolActions {
     }
 
     function mintLiquidity(
-        ICLTBase.PoolKey calldata key,
+        StrategyKey memory key,
         uint256 amount0Desired,
         uint256 amount1Desired,
         address payer
@@ -106,7 +109,7 @@ library PoolActions {
     }
 
     function collectPendingFees(
-        ICLTBase.PoolKey calldata key,
+        StrategyKey calldata key,
         address recipient
     )
         internal
@@ -118,7 +121,7 @@ library PoolActions {
             key.pool.collect(recipient, key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
     }
 
-    function getPositionLiquidity(ICLTBase.PoolKey calldata key)
+    function getPositionLiquidity(StrategyKey memory key)
         internal
         view
         returns (uint128 liquidity, uint128 tokensOwed0, uint128 tokensOwed1)
