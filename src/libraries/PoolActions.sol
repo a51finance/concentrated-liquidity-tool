@@ -20,7 +20,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 library PoolActions {
     using SafeCastExtended for uint256;
 
-    function updatePosition(StrategyKey calldata key) internal returns (uint128 liquidity) {
+    function updatePosition(StrategyKey memory key) internal returns (uint128 liquidity) {
         (liquidity,,) = getPositionLiquidity(key);
 
         if (liquidity > 0) {
@@ -149,6 +149,29 @@ library PoolActions {
             TickMath.getSqrtRatioAtTick(_tickUpper),
             amount0,
             amount1
+        );
+    }
+
+    /// @dev Wrapper around `LiquidityAmounts.getAmountsForLiquidity()`.
+    /// @param pool Uniswap V3 pool
+    /// @param liquidity  The liquidity being valued
+    /// @param _tickLower The lower tick of the range
+    /// @param _tickUpper The upper tick of the range
+    /// @return amounts of token0 and token1 that corresponds to liquidity
+    function getAmountsForLiquidity(
+        IUniswapV3Pool pool,
+        uint128 liquidity,
+        int24 _tickLower,
+        int24 _tickUpper
+    )
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        (uint160 sqrtRatioX96,,,,,,) = pool.slot0();
+
+        return LiquidityAmounts.getAmountsForLiquidity(
+            sqrtRatioX96, TickMath.getSqrtRatioAtTick(_tickLower), TickMath.getSqrtRatioAtTick(_tickUpper), liquidity
         );
     }
 
