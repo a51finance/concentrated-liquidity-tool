@@ -42,15 +42,22 @@ struct ClaimFeesParams {
 }
 
 struct PositionActions {
-    uint64[] modes;
+    uint8 mode;
     uint64[] exitStrategy;
     uint64[] rebasePreference;
     uint64[] liquidityDistribution;
 }
 
+struct ActionsData {
+    bytes32[] exitStrategyData;
+    bytes32[] rebasePreferenceData;
+    bytes32[] liquidityDistributionData;
+}
+
 struct StrategyData {
     StrategyKey key;
-    bytes32 positionActions;
+    bytes32 actions;
+    bytes32 actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
     bool isCompound;
     uint256 balance0;
     uint256 balance1;

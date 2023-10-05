@@ -7,6 +7,7 @@ import "./base/CLTPayments.sol";
 
 import "./libraries/Position.sol";
 import "./libraries/PoolActions.sol";
+import "./libraries/LiquidityShares.sol";
 
 import "@solmate/auth/Owned.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -46,38 +47,61 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         CLTPayments(_factory, _weth9)
     { }
 
-    function createStrategy(PositionActions calldata actions, StrategyKey calldata key, bool isCompound) external {
+    function createStrategy(
+        StrategyKey calldata key,
+        ActionsData calldata data,
+        PositionActions calldata actions,
+        bool isCompound
+    )
+        external
+    {
         // add some checks here for inputs
         bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
 
+        bytes32 actionsDataHash = keccak256(abi.encode(data));
         bytes32 positionActionsHash = keccak256(abi.encode(actions));
 
         strategies[strategyID] = StrategyData({
             key: key,
-            positionActions: positionActionsHash,
+            actions: positionActionsHash,
+            actionsData: actionsDataHash,
             isCompound: isCompound,
             balance0: 0,
             balance1: 0,
             totalShares: 0
         });
 
-        emit StrategyCreated(strategyID, positionActionsHash, key, isCompound);
+        emit StrategyCreated(strategyID, positionActionsHash, actionsDataHash, key, isCompound);
     }
 
     function deposit(DepositParams calldata params)
         external
         payable
         override
-        returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
+        returns (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1)
     {
         StrategyData storage strategy = strategies[params.strategyId];
 
-        (liquidity, amount0, amount1) =
-            PoolActions.mintLiquidity(strategy.key, params.amount0Desired, params.amount1Desired, msg.sender);
+        (liquidity, amount0, amount1) = LiquidityShares.computeLiquidityShare(
+            strategy.key,
+            strategy.isCompound,
+            params.amount0Desired,
+            params.amount1Desired,
+            strategy.balance0,
+            strategy.balance1,
+            strategy.totalShares
+        );
 
-        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "HOW");
+        (, uint256 amount0Added, uint256 amount1Added) =
+            PoolActions.mintLiquidity(strategy.key, amount0, amount1, msg.sender);
+
+        // add liquidity frontrun check here
 
         _mint(params.recipient, (tokenId = _nextId++));
+
+        // if check for compound only
+        strategy.balance0 = amount0 - amount0Added;
+        strategy.balance1 = amount1 - amount1Added;
 
         positions[tokenId] = Position.Data({
             strategyId: params.strategyId,
@@ -105,8 +129,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
         StrategyData storage strategy = strategies[params.strategyId];
 
-        (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1) =
-            PoolActions.burnLiquidity(strategy.key, address(this));
+        (uint256 amount0, uint256 amount1,,) = PoolActions.burnLiquidity(strategy.key, address(this));
 
         // deduct any fees if required for protocol
 
