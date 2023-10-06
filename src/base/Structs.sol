@@ -23,6 +23,7 @@ struct DepositParams {
 struct WithdrawParams {
     StrategyKey key;
     address recipient;
+    uint256 tokenId;
     uint256 userSharePercentage;
 }
 
@@ -39,6 +40,7 @@ struct ShiftLiquidityParams {
 struct ClaimFeesParams {
     StrategyKey key;
     address recipient;
+    uint256 tokenId;
 }
 
 struct PositionActions {
@@ -62,4 +64,5 @@ struct StrategyData {
     uint256 balance0;
     uint256 balance1;
     uint256 totalShares;
+    uint128 uniswapLiquidity;
 }

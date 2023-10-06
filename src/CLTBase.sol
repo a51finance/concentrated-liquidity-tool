@@ -35,6 +35,11 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
     mapping(uint256 => Position.Data) private positions;
 
+    modifier isAuthorizedForToken(uint256 tokenId) {
+        require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
+        _;
+    }
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -68,7 +73,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             isCompound: isCompound,
             balance0: 0,
             balance1: 0,
-            totalShares: 0
+            totalShares: 0,
+            uniswapLiquidity: 0
         });
 
         emit StrategyCreated(strategyID, positionActionsHash, actionsDataHash, key, isCompound);
@@ -78,11 +84,11 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         external
         payable
         override
-        returns (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1)
+        returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
         StrategyData storage strategy = strategies[params.strategyId];
 
-        (liquidity, amount0, amount1) = LiquidityShares.computeLiquidityShare(
+        (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
             strategy.key,
             strategy.isCompound,
             params.amount0Desired,
@@ -92,7 +98,14 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             strategy.totalShares
         );
 
-        (, uint256 amount0Added, uint256 amount1Added) =
+        // bug we need to track the liquidity amounts of all users in a single strategy & that value will be used in
+        // shifting of liquidity for each strategy
+        // ideally in child pattern there's only one position for that contract at a time
+        // (TL, TU, Owner) => total uniswapLiquidity added by the contract
+        // but here multiple positions could be open at a time for same ticks so if we do
+        // (TL, TU, Owner) => uniswapLiquidity: it will pull all other strategies liquidity which is having the same
+        // ticks that are not meant to be pulled.
+        (uint128 liquidityAdded, uint256 amount0Added, uint256 amount1Added) =
             PoolActions.mintLiquidity(strategy.key, amount0, amount1, msg.sender);
 
         // add liquidity frontrun check here
@@ -103,23 +116,27 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         strategy.balance0 = amount0 - amount0Added;
         strategy.balance1 = amount1 - amount1Added;
 
+        strategy.totalShares += share;
+        strategy.uniswapLiquidity += liquidityAdded;
+
         positions[tokenId] = Position.Data({
             strategyId: params.strategyId,
-            liquidityShare: liquidity,
+            liquidityShare: share,
             feeGrowthInside0LastX128: 0,
             feeGrowthInside1LastX128: 0,
             tokensOwed0: 0,
             tokensOwed1: 0
         });
 
-        emit Deposit(params.strategyId, tokenId, liquidity, amount0, amount1);
+        emit Deposit(params.strategyId, tokenId, share, amount0Added, amount1Added);
     }
 
-    function withdraw(WithdrawParams calldata params) external {
+    function withdraw(WithdrawParams calldata params) external isAuthorizedForToken(params.tokenId) {
+        // add liquidity share for compounders while non compounders can withdraw all liquidity
         PoolActions.burnUserLiquidity(params.key, params.userSharePercentage, params.recipient);
     }
 
-    function claim(ClaimFeesParams calldata params) external {
+    function claim(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
         PoolActions.collectPendingFees(params.key, params.recipient);
     }
 
@@ -129,7 +146,9 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
         StrategyData storage strategy = strategies[params.strategyId];
 
-        (uint256 amount0, uint256 amount1,,) = PoolActions.burnLiquidity(strategy.key, address(this));
+        // only burn this strategy liquidity not others
+        (uint256 amount0, uint256 amount1,,) =
+            PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity, address(this));
 
         // deduct any fees if required for protocol
 

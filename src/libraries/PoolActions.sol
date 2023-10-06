@@ -30,15 +30,18 @@ library PoolActions {
 
     function burnLiquidity(
         StrategyKey memory key,
+        uint128 strategyliquidity,
         address recipient
     )
         internal
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
         (uint128 liquidity,,) = getPositionLiquidity(key);
+        // bug we can't use above liquidity value it will pull all other strategies liquidity aswell
 
-        if (liquidity > 0) {
-            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
+        if (strategyliquidity > 0) {
+            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, strategyliquidity);
+
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
                     key.pool.collect(recipient, key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
@@ -77,7 +80,7 @@ library PoolActions {
         internal
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
-        liquidity = getLiquidityForAmounts(key.pool, amount0Desired, amount1Desired, key.tickLower, key.tickUpper);
+        liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
 
         if (liquidity > 0) {
             (amount0, amount1) = key.pool.mint(
@@ -131,47 +134,40 @@ library PoolActions {
     }
 
     function getLiquidityForAmounts(
-        IUniswapV3Pool pool,
+        StrategyKey memory key,
         uint256 amount0,
-        uint256 amount1,
-        int24 _tickLower,
-        int24 _tickUpper
+        uint256 amount1
     )
         internal
         view
         returns (uint128)
     {
-        (uint160 sqrtRatioX96,,,,,,) = pool.slot0();
+        (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
 
         return LiquidityAmounts.getLiquidityForAmounts(
             sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(_tickLower),
-            TickMath.getSqrtRatioAtTick(_tickUpper),
+            TickMath.getSqrtRatioAtTick(key.tickLower),
+            TickMath.getSqrtRatioAtTick(key.tickUpper),
             amount0,
             amount1
         );
     }
 
-    /// @dev Wrapper around `LiquidityAmounts.getAmountsForLiquidity()`.
-    /// @param pool Uniswap V3 pool
-    /// @param liquidity  The liquidity being valued
-    /// @param _tickLower The lower tick of the range
-    /// @param _tickUpper The upper tick of the range
-    /// @return amounts of token0 and token1 that corresponds to liquidity
     function getAmountsForLiquidity(
-        IUniswapV3Pool pool,
-        uint128 liquidity,
-        int24 _tickLower,
-        int24 _tickUpper
+        StrategyKey memory key,
+        uint128 liquidity
     )
         internal
         view
         returns (uint256, uint256)
     {
-        (uint160 sqrtRatioX96,,,,,,) = pool.slot0();
+        (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
 
         return LiquidityAmounts.getAmountsForLiquidity(
-            sqrtRatioX96, TickMath.getSqrtRatioAtTick(_tickLower), TickMath.getSqrtRatioAtTick(_tickUpper), liquidity
+            sqrtRatioX96,
+            TickMath.getSqrtRatioAtTick(key.tickLower),
+            TickMath.getSqrtRatioAtTick(key.tickUpper),
+            liquidity
         );
     }
 

@@ -13,8 +13,7 @@ library LiquidityShares {
         if (liquidity > 0) {
             (liquidity, earnable0, earnable1) = PoolActions.getPositionLiquidity(key);
 
-            (burnable0, burnable1) =
-                PoolActions.getAmountsForLiquidity(key.pool, liquidity, key.tickLower, key.tickUpper);
+            (burnable0, burnable1) = PoolActions.getAmountsForLiquidity(key, liquidity);
         }
     }
 
@@ -39,6 +38,12 @@ library LiquidityShares {
             // If total supply > 0, pool can't be empty
             assert(totalSupply == 0 || reserve0 != 0 || reserve1 != 0);
             (shares, amount0, amount1) = calculateShare(amount0Max, amount1Max, reserve0, reserve1, totalSupply);
+        } else {
+            (uint128 liquidity) = PoolActions.getLiquidityForAmounts(key, amount0Max, amount1Max);
+
+            (amount0, amount1) = PoolActions.getAmountsForLiquidity(key, liquidity);
+
+            shares = uint256(liquidity);
         }
     }
 
