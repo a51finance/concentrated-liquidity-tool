@@ -21,7 +21,7 @@ library PoolActions {
     using SafeCastExtended for uint256;
 
     function updatePosition(StrategyKey memory key) internal returns (uint128 liquidity) {
-        (liquidity,,) = getPositionLiquidity(key);
+        (liquidity,,,,) = getPositionLiquidity(key);
 
         if (liquidity > 0) {
             key.pool.burn(key.tickLower, key.tickUpper, 0);
@@ -36,7 +36,7 @@ library PoolActions {
         internal
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        (uint128 liquidity,,) = getPositionLiquidity(key);
+        (uint128 liquidity,,,,) = getPositionLiquidity(key);
         // bug we can't use above liquidity value it will pull all other strategies liquidity aswell
 
         if (strategyliquidity > 0) {
@@ -59,7 +59,7 @@ library PoolActions {
         internal
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint128 liquidity,,) = getPositionLiquidity(key);
+        (uint128 liquidity,,,,) = getPositionLiquidity(key);
 
         uint256 liquidityRemoved = FullMath.mulDiv(uint256(liquidity), userSharePercentage, 1e18);
 
@@ -74,8 +74,7 @@ library PoolActions {
     function mintLiquidity(
         StrategyKey memory key,
         uint256 amount0Desired,
-        uint256 amount1Desired,
-        address payer
+        uint256 amount1Desired
     )
         internal
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
@@ -93,7 +92,7 @@ library PoolActions {
                         token0: key.pool.token0(),
                         token1: key.pool.token1(),
                         fee: key.pool.fee(),
-                        payer: payer
+                        payer: address(this)
                     })
                 )
             );
@@ -127,10 +126,17 @@ library PoolActions {
     function getPositionLiquidity(StrategyKey memory key)
         internal
         view
-        returns (uint128 liquidity, uint128 tokensOwed0, uint128 tokensOwed1)
+        returns (
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        )
     {
         bytes32 positionKey = PositionKey.compute(address(this), key.tickLower, key.tickUpper);
-        (liquidity,,, tokensOwed0, tokensOwed1) = key.pool.positions(positionKey);
+        (liquidity, feeGrowthInside0LastX128, feeGrowthInside1LastX128, tokensOwed0, tokensOwed1) =
+            key.pool.positions(positionKey);
     }
 
     function getLiquidityForAmounts(
