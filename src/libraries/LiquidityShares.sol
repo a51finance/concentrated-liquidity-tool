@@ -4,22 +4,30 @@ pragma solidity >=0.5.0;
 import "./PoolActions.sol";
 
 library LiquidityShares {
-    function getReserves(StrategyKey memory key)
+    function getReserves(
+        StrategyKey memory key,
+        uint128 liquidity
+    )
         internal
-        returns (uint256 burnable0, uint256 burnable1, uint256 earnable0, uint256 earnable1, uint128 liquidity)
+        returns (uint256 reserves0, uint256 reserves1)
     {
         PoolActions.updatePosition(key);
 
+        // check only for this strategy uniswap liquidity
         if (liquidity > 0) {
-            (liquidity, earnable0, earnable1) = PoolActions.getPositionLiquidity(key);
+            (,,, uint256 earnable0, uint256 earnable1) = PoolActions.getPositionLiquidity(key);
 
-            (burnable0, burnable1) = PoolActions.getAmountsForLiquidity(key, liquidity);
+            (uint256 burnable0, uint256 burnable1) = PoolActions.getAmountsForLiquidity(key, liquidity);
+
+            reserves0 = burnable0 + earnable0;
+            reserves1 = burnable1 + earnable1;
         }
     }
 
     function computeLiquidityShare(
         StrategyKey memory key,
         bool isCompound,
+        uint128 strategyliquidity,
         uint256 amount0Max,
         uint256 amount1Max,
         uint256 balance0,
@@ -27,18 +35,24 @@ library LiquidityShares {
         uint256 totalSupply
     )
         internal
-        returns (uint256 shares, uint256 amount0, uint256 amount1)
+        returns (
+            uint256 shares,
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128
+        )
     {
         if (isCompound) {
-            (uint256 res0, uint256 res1, uint256 fee0, uint256 fee1,) = getReserves(key);
-
-            uint256 reserve0 = res0 + fee0 + balance0;
-            uint256 reserve1 = res1 + fee1 + balance1;
+            (uint256 reserve0, uint256 reserve1) = getReserves(key, strategyliquidity);
 
             // If total supply > 0, pool can't be empty
             assert(totalSupply == 0 || reserve0 != 0 || reserve1 != 0);
-            (shares, amount0, amount1) = calculateShare(amount0Max, amount1Max, reserve0, reserve1, totalSupply);
+            (shares, amount0, amount1) =
+                calculateShare(amount0Max, amount1Max, reserve0 + balance0, reserve1 + balance1, totalSupply);
         } else {
+            (, feeGrowthInside0LastX128, feeGrowthInside1LastX128,,) = PoolActions.getPositionLiquidity(key);
+
             (uint128 liquidity) = PoolActions.getLiquidityForAmounts(key, amount0Max, amount1Max);
 
             (amount0, amount1) = PoolActions.getAmountsForLiquidity(key, liquidity);
