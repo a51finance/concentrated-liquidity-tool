@@ -7,6 +7,7 @@ import "./base/CLTPayments.sol";
 
 import "./libraries/Position.sol";
 import "./libraries/PoolActions.sol";
+import "./libraries/FixedPoint128.sol";
 import "./libraries/LiquidityShares.sol";
 
 import "@solmate/auth/Owned.sol";
@@ -15,7 +16,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
+    using Position for StrategyData;
+
     uint256 private _nextId = 1;
+    uint256 public constant MIN_INITIAL_SHARES = 1e3;
 
     // keccak256("MODE")
     bytes32 public constant MODE = 0x25d202ee31c346b8c1099dc1a469d77ca5ac14ed43336c881902290b83e0a13a;
@@ -86,52 +90,63 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         override
         returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
-        StrategyData storage strategy = strategies[params.strategyId];
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
 
-        (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
-            strategy.key,
-            strategy.isCompound,
-            params.amount0Desired,
-            params.amount1Desired,
-            strategy.balance0,
-            strategy.balance1,
-            strategy.totalShares
-        );
-
-        // bug we need to track the liquidity amounts of all users in a single strategy & that value will be used in
-        // shifting of liquidity for each strategy
-        // ideally in child pattern there's only one position for that contract at a time
-        // (TL, TU, Owner) => total uniswapLiquidity added by the contract
-        // but here multiple positions could be open at a time for same ticks so if we do
-        // (TL, TU, Owner) => uniswapLiquidity: it will pull all other strategies liquidity which is having the same
-        // ticks that are not meant to be pulled.
-        (uint128 liquidityAdded, uint256 amount0Added, uint256 amount1Added) =
-            PoolActions.mintLiquidity(strategy.key, amount0, amount1, msg.sender);
-
-        // add liquidity frontrun check here
+        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
+            _deposit(params.strategyId, params.amount0Desired, params.amount1Desired);
 
         _mint(params.recipient, (tokenId = _nextId++));
-
-        // if check for compound only
-        strategy.balance0 = amount0 - amount0Added;
-        strategy.balance1 = amount1 - amount1Added;
-
-        strategy.totalShares += share;
-        strategy.uniswapLiquidity += liquidityAdded;
 
         positions[tokenId] = Position.Data({
             strategyId: params.strategyId,
             liquidityShare: share,
-            feeGrowthInside0LastX128: 0,
-            feeGrowthInside1LastX128: 0,
+            feeGrowthInside0LastX128: feeGrowthInside0LastX128,
+            feeGrowthInside1LastX128: feeGrowthInside1LastX128,
             tokensOwed0: 0,
             tokensOwed1: 0
         });
 
-        emit Deposit(params.strategyId, tokenId, share, amount0Added, amount1Added);
+        emit Deposit(params.strategyId, tokenId, share, amount0, amount1);
     }
 
-    function withdraw(WithdrawParams calldata params) external isAuthorizedForToken(params.tokenId) {
+    function updatePositionLiquidity(UpdatePositionParams calldata params)
+        external
+        returns (uint256 share, uint256 amount0, uint256 amount1)
+    {
+        Position.Data storage position = positions[params.tokenId];
+
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+
+        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
+            _deposit(position.strategyId, params.amount0Desired, params.amount1Desired);
+
+        if (strategies[position.strategyId].isCompound) {
+            position.tokensOwed0 += uint128(
+                FullMath.mulDiv(
+                    feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128,
+                    position.liquidityShare,
+                    FixedPoint128.Q128
+                )
+            );
+
+            position.tokensOwed1 += uint128(
+                FullMath.mulDiv(
+                    feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128,
+                    position.liquidityShare,
+                    FixedPoint128.Q128
+                )
+            );
+
+            position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
+            position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
+        }
+
+        position.liquidityShare += share;
+    }
+
+    function withdraw(WithdrawParams calldata params) external override isAuthorizedForToken(params.tokenId) {
         // add liquidity share for compounders while non compounders can withdraw all liquidity
         PoolActions.burnUserLiquidity(params.key, params.userSharePercentage, params.recipient);
     }
@@ -140,7 +155,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         PoolActions.collectPendingFees(params.key, params.recipient);
     }
 
-    function shiftLiquidity(ShiftLiquidityParams calldata params) external {
+    function shiftLiquidity(ShiftLiquidityParams calldata params) external override {
         // checks
         PoolActions.checkRange(params.key.tickLower, params.key.tickUpper, params.key.pool.tickSpacing());
 
@@ -158,7 +173,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         }
 
         // custom amount0 or amount1 should be added for next time
-        PoolActions.mintLiquidity(params.key, amount0, amount1, address(this));
+        PoolActions.mintLiquidity(params.key, amount0, amount1);
 
         // update state { this state will be reflected to all users having this strategyID }
         strategy.key = params.key;
@@ -171,5 +186,56 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         ) revert InvalidModule(moduleKey);
 
         modules[moduleKey] = newModule;
+    }
+
+    function _deposit(
+        bytes32 strategyId,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    )
+        private
+        returns (
+            uint256 share,
+            uint256 amount0,
+            uint256 amount1,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128
+        )
+    {
+        StrategyData storage strategy = strategies[strategyId];
+
+        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) = LiquidityShares
+            .computeLiquidityShare(
+            strategy.key,
+            strategy.isCompound,
+            strategy.uniswapLiquidity,
+            amount0Desired,
+            amount1Desired,
+            strategy.balance0,
+            strategy.balance1,
+            strategy.totalShares
+        );
+
+        // liquidity frontrun checks here
+        if (share == 0) revert InvalidShare();
+
+        if (strategy.totalShares == 0) {
+            if (share < MIN_INITIAL_SHARES) revert InvalidShare();
+        }
+
+        pay(strategy.key.pool.token0(), msg.sender, address(this), amount0);
+        pay(strategy.key.pool.token1(), msg.sender, address(this), amount1);
+
+        // bug we need to track the liquidity amounts of all users in a single strategy & that value will be used in
+        // shifting of liquidity for each strategy
+        // ideally in child pattern there's only one position for that contract at a time
+        // (TL, TU, Owner) => total uniswapLiquidity added by the contract
+        // but here multiple positions could be open at a time for same ticks so if we do
+        // (TL, TU, Owner) => uniswapLiquidity: it will pull all other strategies liquidity which is having the same
+        // ticks that are not meant to be pulled.
+        (uint128 liquidityAdded, uint256 amount0Added, uint256 amount1Added) =
+            PoolActions.mintLiquidity(strategy.key, amount0, amount1);
+
+        strategy.update(liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
     }
 }

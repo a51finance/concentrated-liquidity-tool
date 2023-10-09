@@ -20,6 +20,12 @@ struct DepositParams {
     address recipient;
 }
 
+struct UpdatePositionParams {
+    uint256 tokenId;
+    uint256 amount0Desired;
+    uint256 amount1Desired;
+}
+
 struct WithdrawParams {
     StrategyKey key;
     address recipient;

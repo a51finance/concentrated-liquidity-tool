@@ -6,6 +6,7 @@ import "../base/Structs.sol";
 interface ICLTBase {
     error InvalidCaller();
     error TransactionTooAged();
+    error InvalidShare();
     error InvalidModule(bytes32 module);
 
     event Deposit(bytes32 strategyId, uint256 indexed tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
@@ -18,4 +19,8 @@ interface ICLTBase {
         external
         payable
         returns (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
+
+    function shiftLiquidity(ShiftLiquidityParams calldata params) external;
+
+    function withdraw(WithdrawParams calldata params) external;
 }
