@@ -25,10 +25,10 @@ abstract contract CLTPayments is ICLTPayments {
         require(msg.sender == computedPool, "WHO");
 
         if (amount0Owed > 0) {
-            pay(decodedData.token0, decodedData.payer, msg.sender, amount0Owed);
+            TransferHelper.safeTransfer(decodedData.token0, msg.sender, amount0Owed);
         }
         if (amount1Owed > 0) {
-            pay(decodedData.token1, decodedData.payer, msg.sender, amount1Owed);
+            TransferHelper.safeTransfer(decodedData.token1, msg.sender, amount1Owed);
         }
     }
 
