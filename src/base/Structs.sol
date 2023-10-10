@@ -64,8 +64,8 @@ struct ActionsData {
 
 struct StrategyData {
     StrategyKey key;
-    bytes32 actions;
-    bytes32 actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
+    bytes actions;
+    bytes actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
     bool isCompound;
     uint256 balance0;
     uint256 balance1;

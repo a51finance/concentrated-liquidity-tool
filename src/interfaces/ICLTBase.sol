@@ -12,7 +12,7 @@ interface ICLTBase {
     event Deposit(bytes32 strategyId, uint256 indexed tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
 
     event StrategyCreated(
-        bytes32 strategyId, bytes32 positionActions, bytes32 actionsData, StrategyKey key, bool isCompound
+        bytes32 strategyId, bytes positionActions, bytes actionsData, StrategyKey key, bool isCompound
     );
 
     function deposit(DepositParams calldata params)

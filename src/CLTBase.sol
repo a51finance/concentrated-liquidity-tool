@@ -67,8 +67,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         // add some checks here for inputs
         bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
 
-        bytes32 actionsDataHash = keccak256(abi.encode(data));
-        bytes32 positionActionsHash = keccak256(abi.encode(actions));
+        bytes memory actionsDataHash = abi.encode(data);
+        bytes memory positionActionsHash = abi.encode(actions);
 
         strategies[strategyID] = StrategyData({
             key: key,
@@ -122,7 +122,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
             _deposit(position.strategyId, params.amount0Desired, params.amount1Desired);
 
-        if (strategies[position.strategyId].isCompound) {
+        if (!strategies[position.strategyId].isCompound) {
             position.tokensOwed0 += uint128(
                 FullMath.mulDiv(
                     feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128,
@@ -152,6 +152,10 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
     }
 
     function claim(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
+        Position.Data storage position = positions[params.tokenId];
+
+        if (!strategies[position.strategyId].isCompound) revert();
+
         PoolActions.collectPendingFees(params.key, params.recipient);
     }
 
