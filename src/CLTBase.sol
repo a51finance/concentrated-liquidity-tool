@@ -165,22 +165,37 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
         StrategyData storage strategy = strategies[params.strategyId];
 
+        uint256 amount0;
+        uint256 amount1;
+
         // only burn this strategy liquidity not others
-        (uint256 amount0, uint256 amount1,,) =
-            PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity, address(this));
+        (amount0, amount1,,) = PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity);
 
         // deduct any fees if required for protocol
 
-        // no swapping required for now
-        if (params.swapAmount != 0) {
-            PoolActions.swapToken(params.key.pool, address(this), params.zeroForOne, params.swapAmount);
+        if (strategy.isCompound) {
+            amount0 += strategy.balance0;
+            amount1 += strategy.balance1;
         }
 
-        // custom amount0 or amount1 should be added for next time
-        PoolActions.mintLiquidity(params.key, amount0, amount1);
+        if (params.swapAmount != 0) {
+            (int256 amount0Swapped, int256 amount1Swapped) =
+                PoolActions.swapToken(params.key.pool, params.zeroForOne, params.swapAmount);
+            (amount0, amount1) = PoolActions.amountsDirection(
+                params.zeroForOne, amount0, amount1, uint256(amount0Swapped), uint256(amount1Swapped)
+            );
+        }
+
+        uint128 liquidity;
+        uint256 amount0Added;
+        uint256 amount1Added;
+
+        if (params.shouldMint) {
+            (liquidity, amount0Added, amount1Added) = PoolActions.mintLiquidity(params.key, amount0, amount1);
+        }
 
         // update state { this state will be reflected to all users having this strategyID }
-        strategy.key = params.key;
+        strategy.updateStrategy(params.key, liquidity, amount0 - amount0Added, amount1 - amount1Added);
     }
 
     function addModule(bytes32 moduleKey, uint64[] calldata newModule) external onlyOwner {

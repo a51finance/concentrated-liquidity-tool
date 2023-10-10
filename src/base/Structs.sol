@@ -36,10 +36,8 @@ struct WithdrawParams {
 struct ShiftLiquidityParams {
     StrategyKey key; // new ticks will be given this time
     bytes32 strategyId;
+    bool shouldMint;
     bool zeroForOne;
-    uint256 amount0;
-    uint256 amount1;
-    uint256 userShare;
     int256 swapAmount;
 }
 

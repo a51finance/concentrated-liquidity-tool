@@ -37,4 +37,21 @@ library Position {
             self.uniswapLiquidity += liquidityAdded;
         }
     }
+
+    function updateStrategy(
+        StrategyData storage self,
+        StrategyKey memory key,
+        uint128 liquidity,
+        uint256 balance0,
+        uint256 balance1
+    )
+        internal
+    {
+        self.key = key;
+
+        self.balance0 = balance0;
+        self.balance1 = balance1;
+
+        self.uniswapLiquidity = liquidity;
+    }
 }
