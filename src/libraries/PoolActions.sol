@@ -30,8 +30,7 @@ library PoolActions {
 
     function burnLiquidity(
         StrategyKey memory key,
-        uint128 strategyliquidity,
-        address recipient
+        uint128 strategyliquidity
     )
         internal
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
@@ -44,7 +43,7 @@ library PoolActions {
 
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
-                    key.pool.collect(recipient, key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
+                    key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
 
                 (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
             }
@@ -81,25 +80,31 @@ library PoolActions {
     {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
 
-        if (liquidity > 0) {
-            (amount0, amount1) = key.pool.mint(
-                address(this),
-                key.tickLower,
-                key.tickUpper,
-                liquidity,
-                abi.encode(
-                    ICLTPayments.MintCallbackData({
-                        token0: key.pool.token0(),
-                        token1: key.pool.token1(),
-                        fee: key.pool.fee(),
-                        payer: address(this)
-                    })
-                )
-            );
-        }
+        (amount0, amount1) = key.pool.mint(
+            address(this),
+            key.tickLower,
+            key.tickUpper,
+            liquidity,
+            abi.encode(
+                ICLTPayments.MintCallbackData({
+                    token0: key.pool.token0(),
+                    token1: key.pool.token1(),
+                    fee: key.pool.fee(),
+                    payer: address(this)
+                })
+            )
+        );
     }
 
-    function swapToken(IUniswapV3Pool pool, address recipient, bool zeroForOne, int256 amountSpecified) internal {
+    function swapToken(
+        IUniswapV3Pool pool,
+        bool zeroForOne,
+        int256 amountSpecified
+    )
+        internal
+        returns (int256 amount0, int256 amount1)
+    {
+        // manually specify sqrtPrice limit from bot
         (uint160 sqrtPriceX96,,) = getSqrtRatioX96AndTick(pool);
 
         uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (1e5 / 2)) / 1e6;
@@ -107,7 +112,8 @@ library PoolActions {
         uint160 sqrtPriceLimitX96 =
             zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact;
 
-        pool.swap(recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, abi.encode(zeroForOne));
+        (amount0, amount1) =
+            pool.swap(address(this), zeroForOne, amountSpecified, sqrtPriceLimitX96, abi.encode(zeroForOne));
     }
 
     function collectPendingFees(
@@ -183,6 +189,22 @@ library PoolActions {
         returns (uint160 sqrtRatioX96, int24 tick, uint16 observationCardinality)
     {
         (sqrtRatioX96, tick,, observationCardinality,,,) = pool.slot0();
+    }
+
+    function amountsDirection(
+        bool zeroForOne,
+        uint256 amount0Recieved,
+        uint256 amount1Recieved,
+        uint256 amount0,
+        uint256 amount1
+    )
+        internal
+        pure
+        returns (uint256 reserves0, uint256 reserves1)
+    {
+        (reserves0, reserves1) = zeroForOne
+            ? (amount0Recieved - amount0, amount1Recieved + amount1)
+            : (amount0Recieved + amount0, amount1Recieved - amount1);
     }
 
     function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) internal pure {
