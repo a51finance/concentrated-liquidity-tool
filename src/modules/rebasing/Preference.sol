@@ -6,9 +6,9 @@ import "../../interfaces/modules/IPreference.sol";
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
 contract RebasePreference is Owned, IPreference {
-    mapping(address => bool) public operators;
-    CLTBase cltBase;
-    bytes32[] queue;
+    mapping(address operator => bool eligible) public operators;
+    CLTBase private cltBase;
+    bytes32[] private queue;
 
     modifier isOperator() {
         if (operators[msg.sender] == false) {
