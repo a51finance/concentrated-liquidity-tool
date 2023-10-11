@@ -5,7 +5,7 @@ import "../../CLTBase.sol";
 import "../../interfaces/modules/IPreference.sol";
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
-contract RebasePreference is Owned, IRebasePreference {
+contract RebasePreference is Owned, IPreference {
     mapping(address => bool) public operators;
     CLTBase cltBase;
     bytes32[] queue;
@@ -26,10 +26,10 @@ contract RebasePreference is Owned, IRebasePreference {
             (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,,,) =
                 cltBase.strategies(strategyIDs[i]);
             PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
-            if (positionActionData.rebaseStrategy.length > 0) {
+            if (positionActionData.rebasePreference.length > 0) {
                 ActionsData memory data = abi.decode(actionsData, (ActionsData));
                 RebasePereferenceParams memory rebaseActionData =
-                    abi.decode(data.rebaseStrategyData[0], (RebasePereferenceParams));
+                    abi.decode(data.rebasePreferenceData[0], (RebasePereferenceParams));
                 int24 tick = getTwap(address(key.pool));
                 if (tick > rebaseActionData.upperPreference || tick < rebaseActionData.lowerPreference) {
                     queue.push(strategyIDs[i]);
@@ -48,9 +48,18 @@ contract RebasePreference is Owned, IRebasePreference {
          * check ticks are floored
          * update the states
          */
+
+        RebasePereferenceParams storage preferencePrams;
         (int24 newLowerPreference, int24 newUpperPreference) = getNewPreference(key.pool, actionsData);
 
-        // CLTBase.shiftLiquidity();
+        ShiftLiquidityParams memory params;
+        params.key = key;
+        params.strategyId = strategyID;
+        params.shouldMint = false;
+        params.zeroForOne = false;
+        params.swapAmount = 0;
+
+        cltBase.shiftLiquidity(params);
     }
 
     function toggleOperator(address operatorAddress) external onlyOwner {
