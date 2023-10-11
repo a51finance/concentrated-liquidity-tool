@@ -67,12 +67,22 @@ contract RebasePreference is Owned, IRebasePreference {
     {
         ActionsData memory data = abi.decode(actionsData, (ActionsData));
         RebasePereferenceParams memory rebaseActionData =
-            abi.decode(data.rebaseStrategyData[0], (RebasePereferenceParams));
+            abi.decode(data.rebasePreferenceData[0], (RebasePereferenceParams));
         (, int24 tick,,,,,) = pool.slot0();
 
         // need to check this logic
-        newLowerPreference = (tick * rebaseActionData.lowerPercentage) / 100;
-        newUpperPreference = (tick * rebaseActionData.upperPercentage) / 100;
+        int24 tickSpacing = pool.tickSpacing();
+
+        newLowerPreference =
+            (((tick * rebaseActionData.lowerPercentage) / 100) / int24(tickSpacing)) * int24(tickSpacing);
+        newUpperPreference =
+            (((tick * rebaseActionData.lowerPercentage) / 100) / int24(tickSpacing)) * int24(tickSpacing);
+
+        require(newLowerPreference % tickSpacing == 0, "TLI");
+        require(newUpperPreference % tickSpacing == 0, "TUI");
+
+        rebaseActionData.lowerPreference = newLowerPreference;
+        rebaseActionData.upperPreference = newUpperPreference;
     }
 
     function getTwap(address _pool) public view returns (int24 tick) {
