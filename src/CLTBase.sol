@@ -151,12 +151,45 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         PoolActions.burnUserLiquidity(params.key, params.userSharePercentage, params.recipient);
     }
 
-    function claim(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
+    function claimFee(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
         Position.Data storage position = positions[params.tokenId];
 
+        if (position.liquidityShare == 0) revert NoLiquidity();
         if (strategies[position.strategyId].isCompound) revert onlyNonCompounders();
 
-        PoolActions.collectPendingFees(params.key, params.recipient);
+        (uint128 tokensOwed0, uint128 tokensOwed1) = (position.tokensOwed0, position.tokensOwed1);
+
+        PoolActions.updatePosition(params.key);
+
+        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128,,) =
+            PoolActions.getPositionLiquidity(params.key);
+
+        tokensOwed0 += uint128(
+            FullMath.mulDiv(
+                feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128,
+                position.liquidityShare,
+                FixedPoint128.Q128
+            )
+        );
+
+        tokensOwed1 += uint128(
+            FullMath.mulDiv(
+                feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128,
+                position.liquidityShare,
+                FixedPoint128.Q128
+            )
+        );
+
+        position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
+        position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
+
+        (uint256 amount0Collected, uint256 amount1Collected) =
+            PoolActions.collectPendingFees(params.key, tokensOwed0, tokensOwed1, params.recipient);
+
+        position.tokensOwed0 = 0;
+        position.tokensOwed1 = 0;
+
+        emit Collect(params.tokenId, params.recipient, amount0Collected, amount1Collected);
     }
 
     function shiftLiquidity(ShiftLiquidityParams calldata params) external override {
@@ -181,6 +214,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         if (params.swapAmount != 0) {
             (int256 amount0Swapped, int256 amount1Swapped) =
                 PoolActions.swapToken(params.key.pool, params.zeroForOne, params.swapAmount);
+
             (amount0, amount1) = PoolActions.amountsDirection(
                 params.zeroForOne, amount0, amount1, uint256(amount0Swapped), uint256(amount1Swapped)
             );

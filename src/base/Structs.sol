@@ -55,9 +55,9 @@ struct PositionActions {
 }
 
 struct ActionsData {
-    bytes32[] exitStrategyData;
-    bytes32[] rebasePreferenceData;
-    bytes32[] liquidityDistributionData;
+    bytes[] exitStrategyData;
+    bytes[] rebasePreferenceData;
+    bytes[] liquidityDistributionData;
 }
 
 struct StrategyData {

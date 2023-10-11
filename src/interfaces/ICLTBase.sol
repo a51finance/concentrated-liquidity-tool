@@ -4,12 +4,14 @@ pragma solidity >=0.8.19;
 import "../base/Structs.sol";
 
 interface ICLTBase {
-    error onlyNonCompounders();
-    error InvalidCaller();
-    error TransactionTooAged();
+    error NoLiquidity();
     error InvalidShare();
+    error InvalidCaller();
+    error onlyNonCompounders();
+    error TransactionTooAged();
     error InvalidModule(bytes32 module);
 
+    event Collect(uint256 tokenId, address recipient, uint256 amount0Collected, uint256 amount1Collected);
     event Deposit(bytes32 strategyId, uint256 indexed tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
 
     event StrategyCreated(
@@ -21,7 +23,9 @@ interface ICLTBase {
         payable
         returns (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
 
-    function shiftLiquidity(ShiftLiquidityParams calldata params) external;
-
     function withdraw(WithdrawParams calldata params) external;
+
+    function claimFee(ClaimFeesParams calldata params) external;
+
+    function shiftLiquidity(ShiftLiquidityParams calldata params) external;
 }

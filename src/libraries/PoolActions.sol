@@ -118,15 +118,14 @@ library PoolActions {
 
     function collectPendingFees(
         StrategyKey calldata key,
+        uint128 tokensOwed0,
+        uint128 tokensOwed1,
         address recipient
     )
         internal
         returns (uint256 collect0, uint256 collect1)
     {
-        updatePosition(key);
-
-        (collect0, collect1) =
-            key.pool.collect(recipient, key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
+        (collect0, collect1) = key.pool.collect(recipient, key.tickLower, key.tickUpper, tokensOwed0, tokensOwed1);
     }
 
     function getPositionLiquidity(StrategyKey memory key)

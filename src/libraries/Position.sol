@@ -9,8 +9,8 @@ library Position {
         uint256 liquidityShare;
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
-        uint256 tokensOwed0;
-        uint256 tokensOwed1;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
     }
 
     function update(
