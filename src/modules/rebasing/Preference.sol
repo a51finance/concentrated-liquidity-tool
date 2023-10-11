@@ -2,9 +2,7 @@
 pragma solidity >=0.8.19;
 
 import "../../CLTBase.sol";
-import "../../interfaces/modules/IRebasePreference.sol";
-
-import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import "../../interfaces/modules/IPreference.sol";
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
 contract RebasePreference is Owned, IRebasePreference {
