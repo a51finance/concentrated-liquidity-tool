@@ -49,8 +49,7 @@ contract RebasePreference is Owned, IPreference {
          * update the states
          */
 
-        RebasePereferenceParams storage preferencePrams;
-        (int24 newLowerPreference, int24 newUpperPreference) = getNewPreference(key.pool, actionsData);
+        getNewPreference(key.pool, actionsData);
 
         ShiftLiquidityParams memory params;
         params.key = key;
@@ -66,14 +65,7 @@ contract RebasePreference is Owned, IPreference {
         operators[operatorAddress] = !operators[operatorAddress];
     }
 
-    function getNewPreference(
-        IUniswapV3Pool pool,
-        bytes memory actionsData
-    )
-        internal
-        view
-        returns (int24 newLowerPreference, int24 newUpperPreference)
-    {
+    function getNewPreference(IUniswapV3Pool pool, bytes memory actionsData) internal view {
         ActionsData memory data = abi.decode(actionsData, (ActionsData));
         RebasePereferenceParams memory rebaseActionData =
             abi.decode(data.rebasePreferenceData[0], (RebasePereferenceParams));
