@@ -74,9 +74,9 @@ contract RebasePreference is Owned, IPreference {
         // need to check this logic
         int24 tickSpacing = pool.tickSpacing();
 
-        newLowerPreference =
+        int24 newLowerPreference =
             (((tick * rebaseActionData.lowerPercentage) / 100) / int24(tickSpacing)) * int24(tickSpacing);
-        newUpperPreference =
+        int24 newUpperPreference =
             (((tick * rebaseActionData.lowerPercentage) / 100) / int24(tickSpacing)) * int24(tickSpacing);
 
         require(newLowerPreference % tickSpacing == 0, "TLI");
