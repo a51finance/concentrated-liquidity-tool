@@ -4,6 +4,7 @@ pragma solidity >=0.8.19;
 import "../base/Structs.sol";
 
 interface ICLTBase {
+    error onlyNonCompounders();
     error InvalidCaller();
     error TransactionTooAged();
     error InvalidShare();

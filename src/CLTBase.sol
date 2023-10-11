@@ -33,11 +33,11 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
     // keccak256("LIQUIDITY_DISTRIBUTION")
     bytes32 public constant LIQUIDITY_DISTRIBUTION = 0xeabe6f62bd74d002b0267a6aaacb5212bb162f4f87ee1c4a80ac0d2698f8a505;
 
-    mapping(bytes32 => uint64[]) private modules;
+    mapping(bytes32 => uint64[]) public modules;
 
-    mapping(bytes32 => StrategyData) private strategies;
+    mapping(bytes32 => StrategyData) public strategies;
 
-    mapping(uint256 => Position.Data) private positions;
+    mapping(uint256 => Position.Data) public positions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
@@ -154,7 +154,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
     function claim(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
         Position.Data storage position = positions[params.tokenId];
 
-        if (!strategies[position.strategyId].isCompound) revert();
+        if (strategies[position.strategyId].isCompound) revert onlyNonCompounders();
 
         PoolActions.collectPendingFees(params.key, params.recipient);
     }
