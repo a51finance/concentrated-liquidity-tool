@@ -8,6 +8,6 @@ struct RebasePereferenceParams {
     int8 lowerPercentage;
 }
 
-interface IRebasePreference {
+interface IPreference {
     error InvalidCaller();
 }
