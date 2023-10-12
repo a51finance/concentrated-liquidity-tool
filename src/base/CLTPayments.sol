@@ -50,6 +50,15 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
+    function transferFunds(bool refundAsETH, address recipient, address token, uint256 amount) internal {
+        if (refundAsETH && token == WETH9) {
+            IWETH9(WETH9).withdraw(amount);
+            TransferHelper.safeTransferETH(recipient, amount);
+        } else {
+            TransferHelper.safeTransfer(token, recipient, amount);
+        }
+    }
+
     function refundETH() external payable {
         if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
     }
