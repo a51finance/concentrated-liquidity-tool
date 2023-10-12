@@ -25,7 +25,7 @@ interface ICLTBase {
 
     function withdraw(WithdrawParams calldata params) external;
 
-    function claimFee(ClaimFeesParams calldata params) external;
+    function claimPositionFee(ClaimFeesParams calldata params) external;
 
     function shiftLiquidity(ShiftLiquidityParams calldata params) external;
 }

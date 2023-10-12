@@ -28,9 +28,10 @@ struct UpdatePositionParams {
 
 struct WithdrawParams {
     StrategyKey key;
-    address recipient;
     uint256 tokenId;
-    uint256 userSharePercentage;
+    uint256 liquidity;
+    address recipient;
+    bool refundAsETH;
 }
 
 struct ShiftLiquidityParams {

@@ -147,11 +147,40 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
     }
 
     function withdraw(WithdrawParams calldata params) external override isAuthorizedForToken(params.tokenId) {
+        Position.Data storage position = positions[params.tokenId];
+        StrategyData storage strategy = strategies[position.strategyId];
+
+        uint256 positionLiquidity = position.liquidityShare;
+
+        if (positionLiquidity == 0) revert NoLiquidity();
+        if (positionLiquidity < params.liquidity) revert InvalidShare();
+
+        uint256 liquidityShare = FullMath.mulDiv(params.liquidity, 1e18, strategy.totalShares);
+
         // add liquidity share for compounders while non compounders can withdraw all liquidity
-        PoolActions.burnUserLiquidity(params.key, params.userSharePercentage, params.recipient);
+        (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1) =
+            PoolActions.burnUserLiquidity(params.key, strategy.uniswapLiquidity, liquidityShare);
+
+        // transfer fees of protocol
+
+        // calculate user's total no of tokens [0,1]
+        amount0 += FullMath.mulDiv(strategy.balance0 + fees0, params.liquidity, strategy.totalShares);
+        amount1 += FullMath.mulDiv(strategy.balance1 + fees1, params.liquidity, strategy.totalShares);
+
+        if (amount0 > 0) {
+            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
+        }
+
+        if (amount1 > 0) {
+            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
+        }
+
+        position.liquidityShare = positionLiquidity - params.liquidity;
+
+        // update state.balance[0, 1] again after compounding fee from balance and collected fee
     }
 
-    function claimFee(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
+    function claimPositionFee(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
         Position.Data storage position = positions[params.tokenId];
 
         if (position.liquidityShare == 0) revert NoLiquidity();
@@ -197,6 +226,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         PoolActions.checkRange(params.key.tickLower, params.key.tickUpper, params.key.pool.tickSpacing());
 
         StrategyData storage strategy = strategies[params.strategyId];
+
+        // some checks here for key.ticks validation according to new position
 
         uint256 amount0;
         uint256 amount1;

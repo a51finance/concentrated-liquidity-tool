@@ -37,6 +37,7 @@ library PoolActions {
     {
         (uint128 liquidity,,,,) = getPositionLiquidity(key);
         // bug we can't use above liquidity value it will pull all other strategies liquidity aswell
+        // only use above we need to calculate share of any strategy
 
         if (strategyliquidity > 0) {
             (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, strategyliquidity);
@@ -52,21 +53,22 @@ library PoolActions {
 
     function burnUserLiquidity(
         StrategyKey calldata key,
-        uint256 userSharePercentage,
-        address recipient
+        uint128 strategyliquidity,
+        uint256 userSharePercentage
     )
         internal
-        returns (uint256 amount0, uint256 amount1)
+        returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        (uint128 liquidity,,,,) = getPositionLiquidity(key);
-
-        uint256 liquidityRemoved = FullMath.mulDiv(uint256(liquidity), userSharePercentage, 1e18);
+        uint256 liquidityRemoved = FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18);
 
         (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
 
+        // collect user liquidity + unclaimed fee both now
         if (amount0 > 0 || amount1 > 0) {
-            (amount0, amount0) =
-                key.pool.collect(recipient, key.tickLower, key.tickUpper, amount0.toUint128(), amount1.toUint128());
+            (uint256 collect0, uint256 collect1) =
+                key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
+
+            (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
         }
     }
 
