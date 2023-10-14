@@ -30,10 +30,11 @@ contract RebasePreference is Owned, IPreference {
             PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
             if (positionActionData.rebasePreference.length > 0) {
                 ActionsData memory data = abi.decode(actionsData, (ActionsData));
-                RebasePereferenceParams memory rebaseActionData =
-                    abi.decode(data.rebasePreferenceData[0], (RebasePereferenceParams));
+                (int24 upperPreference, int24 lowerPreference,,,,) =
+                    abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24, int8, int8));
+
                 int24 tick = getTwap(address(key.pool));
-                if (tick > rebaseActionData.upperPreference || tick < rebaseActionData.lowerPreference) {
+                if (tick > upperPreference || tick < lowerPreference) {
                     queue.push(strategyIDs[i]);
                 }
             }
@@ -82,7 +83,7 @@ contract RebasePreference is Owned, IPreference {
         require(newLowerPreference % tickSpacing == 0, "TLI");
         require(newUpperPreference % tickSpacing == 0, "TUI");
 
-        rebaseActionData.lowerPreference = newLowerPreference;
+        rebaseActionData.lowerPreference = newLowerPreference; // how can we update the bytes data from here.
         rebaseActionData.upperPreference = newUpperPreference;
     }
 
