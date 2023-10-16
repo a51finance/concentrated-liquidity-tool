@@ -85,8 +85,8 @@ contract RebasePreference is Owned, IPreference {
         pure
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
+        lowerPreferenceTick = key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = key.tickUpper + upperPreferenceDiff;
-        lowerPreferenceTick = key.tickLower + lowerPreferenceDiff;
     }
 
     function toggleOperator(address operatorAddress) external onlyOwner {
