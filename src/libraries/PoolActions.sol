@@ -52,7 +52,7 @@ library PoolActions {
     }
 
     function burnUserLiquidity(
-        StrategyKey calldata key,
+        StrategyKey storage key,
         uint128 strategyliquidity,
         uint256 userSharePercentage
     )

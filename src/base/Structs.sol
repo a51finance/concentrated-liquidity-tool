@@ -27,7 +27,6 @@ struct UpdatePositionParams {
 }
 
 struct WithdrawParams {
-    StrategyKey key;
     uint256 tokenId;
     uint256 liquidity;
     address recipient;

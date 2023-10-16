@@ -23,7 +23,7 @@ interface ICLTBase {
         payable
         returns (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
 
-    function withdraw(WithdrawParams calldata params) external;
+    function withdraw(WithdrawParams calldata params) external returns (uint256 amount0, uint256 amount1);
 
     function claimPositionFee(ClaimFeesParams calldata params) external;
 

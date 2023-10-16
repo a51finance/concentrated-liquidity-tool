@@ -9,6 +9,7 @@ import "./libraries/Position.sol";
 import "./libraries/PoolActions.sol";
 import "./libraries/FixedPoint128.sol";
 import "./libraries/LiquidityShares.sol";
+import "./libraries/SafeCastExtended.sol";
 
 import "@solmate/auth/Owned.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -17,6 +18,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
     using Position for StrategyData;
+    using SafeCastExtended for uint256;
 
     uint256 private _nextId = 1;
     uint256 public constant MIN_INITIAL_SHARES = 1e3;
@@ -146,7 +148,12 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         position.liquidityShare += share;
     }
 
-    function withdraw(WithdrawParams calldata params) external override isAuthorizedForToken(params.tokenId) {
+    function withdraw(WithdrawParams calldata params)
+        external
+        override
+        isAuthorizedForToken(params.tokenId)
+        returns (uint256 amount0, uint256 amount1)
+    {
         Position.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
@@ -155,15 +162,50 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         if (positionLiquidity == 0) revert NoLiquidity();
         if (positionLiquidity < params.liquidity) revert InvalidShare();
 
-        uint256 liquidityShare = FullMath.mulDiv(params.liquidity, 1e18, strategy.totalShares);
-
         // add liquidity share for compounders while non compounders can withdraw all liquidity
-        (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1) =
-            PoolActions.burnUserLiquidity(params.key, strategy.uniswapLiquidity, liquidityShare);
+        uint256 fees0;
+        uint256 fees1;
+
+        if (strategy.isCompound) {
+            uint256 liquidityShare = FullMath.mulDiv(params.liquidity, 1e18, strategy.totalShares);
+
+            (amount0, amount1, fees0, fees1) =
+                PoolActions.burnUserLiquidity(strategy.key, strategy.uniswapLiquidity, liquidityShare);
+        } else {
+            (amount0, amount1) =
+                strategy.key.pool.burn(strategy.key.tickLower, strategy.key.tickUpper, positionLiquidity.toUint128());
+
+            (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128,,) =
+                PoolActions.getPositionLiquidity(strategy.key);
+
+            amount0 += uint128(position.tokensOwed0)
+                + uint128(
+                    FullMath.mulDiv(
+                        feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128, positionLiquidity, FixedPoint128.Q128
+                    )
+                );
+
+            amount1 += uint128(position.tokensOwed1)
+                + uint128(
+                    FullMath.mulDiv(
+                        feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128, positionLiquidity, FixedPoint128.Q128
+                    )
+                );
+
+            position.tokensOwed0 = 0;
+            position.tokensOwed1 = 0;
+
+            position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
+            position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
+
+            strategy.key.pool.collect(
+                address(this), strategy.key.tickLower, strategy.key.tickUpper, amount0.toUint128(), amount1.toUint128()
+            );
+        }
 
         // transfer fees of protocol
 
-        // calculate user's total no of tokens [0,1]
+        // calculate user's total no of tokens [0,1], both handled Compounders, Non Compounders
         amount0 += FullMath.mulDiv(strategy.balance0 + fees0, params.liquidity, strategy.totalShares);
         amount1 += FullMath.mulDiv(strategy.balance1 + fees1, params.liquidity, strategy.totalShares);
 
@@ -175,9 +217,12 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
         }
 
+        // recheck for both scenerios
         position.liquidityShare = positionLiquidity - params.liquidity;
 
+        // mint additional fees for compounders
         // update state.balance[0, 1] again after compounding fee from balance and collected fee
+        // ✔ update feeGrowth for non compounders
     }
 
     function claimPositionFee(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
@@ -321,5 +366,9 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             PoolActions.mintLiquidity(strategy.key, amount0, amount1);
 
         strategy.update(liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
+    }
+
+    function validateInputData() private {
+        // fetch updated address of all modules and send data for validation
     }
 }
