@@ -322,8 +322,4 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
         strategy.update(liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
     }
-
-    function getStrategyId(address _address, uint256 nftId) public pure returns (bytes32 strategyID) {
-        strategyID = keccak256(abi.encode(_address, nftId));
-    }
 }
