@@ -4,11 +4,14 @@ pragma solidity >=0.8.19;
 import "../../CLTBase.sol";
 import "../../interfaces/modules/IPreference.sol";
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
+import "forge-std/console.sol";
 
 contract RebasePreference is Owned, IPreference {
     mapping(address operator => bool eligible) public operators;
-    CLTBase private cltBase;
-    bytes32[] private queue;
+
+    bytes32[] private _queue;
+    CLTBase private _cltBase;
+
     uint32 public twapDuration;
 
     modifier isOperator() {
@@ -18,36 +21,47 @@ contract RebasePreference is Owned, IPreference {
         _;
     }
 
-    constructor(address _cltBase, address _owner) Owned(_owner) {
-        cltBase = CLTBase(payable(_cltBase));
+    constructor(address __cltBase, address _owner) Owned(_owner) {
+        _cltBase = CLTBase(payable(__cltBase));
         twapDuration = 300;
     }
 
     function checkStrategies(bytes32[] memory strategyIDs) external returns (bytes32[] memory) {
         for (uint256 i = 0; i < strategyIDs.length; i++) {
             (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,,,) =
-                cltBase.strategies(strategyIDs[i]);
+                _cltBase.strategies(strategyIDs[i]);
+
             PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
+
             if (positionActionData.rebasePreference.length > 0) {
                 ActionsData memory data = abi.decode(actionsData, (ActionsData));
-                (int24 upperPreference, int24 lowerPreference,,,,) =
-                    abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24, int8, int8));
+
+                //     int24 lowerPreferenceDiff;
+                //     int24 upperPreferenceDiff;
+                //     int24 lowerTickDiff;
+                //     int24 upperTickDiff;
+
+                (int24 lowerPreferenceDiff, int24 upperPreferenceDiff,,) =
+                    abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24));
 
                 int24 tick = getTwap(address(key.pool));
-                if (tick > upperPreference || tick < lowerPreference) {
-                    queue.push(strategyIDs[i]);
+
+                (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
+                    _getPreferenceTicks(lowerPreferenceDiff, upperPreferenceDiff, key);
+
+                if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
+                    _queue.push(strategyIDs[i]);
                 }
             }
         }
-        return queue;
+        return _queue;
     }
 
     // The function will be called by the bot in loop
-    function executeStrategies(bytes32 strategyID) internal isOperator {
-        (StrategyKey memory key,, bytes memory actionsData,,,,,) = cltBase.strategies(strategyID);
+    function executeStrategies(bytes32 strategyID) external view isOperator {
+        (StrategyKey memory key,, bytes memory actionsData,,,,,) = _cltBase.strategies(strategyID);
 
-        getNewPreference(key.pool, actionsData);
-        (int24 tickLower, int24 tickUpper) = getTicks(key.pool, actionsData);
+        (int24 tickLower, int24 tickUpper) = _getTicks(key.pool, actionsData);
 
         key.tickLower = tickLower;
         key.tickUpper = tickUpper;
@@ -59,39 +73,31 @@ contract RebasePreference is Owned, IPreference {
         params.zeroForOne = false;
         params.swapAmount = 0;
 
-        cltBase.shiftLiquidity(params);
+        // _cltBase.shiftLiquidity(params);
+    }
+
+    function _getPreferenceTicks(
+        int24 lowerPreferenceDiff,
+        int24 upperPreferenceDiff,
+        StrategyKey memory key
+    )
+        internal
+        pure
+        returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
+    {
+        upperPreferenceTick = key.tickUpper + upperPreferenceDiff;
+        lowerPreferenceTick = key.tickLower + lowerPreferenceDiff;
     }
 
     function toggleOperator(address operatorAddress) external onlyOwner {
         operators[operatorAddress] = !operators[operatorAddress];
     }
 
-    function getNewPreference(IUniswapV3Pool pool, bytes memory actionsData) internal view {
-        ActionsData memory data = abi.decode(actionsData, (ActionsData));
-        RebasePereferenceParams memory rebaseActionData =
-            abi.decode(data.rebasePreferenceData[0], (RebasePereferenceParams));
-        (, int24 tick,,,,,) = pool.slot0();
-
-        // need to check this logic
-        int24 tickSpacing = pool.tickSpacing();
-
-        int24 newLowerPreference =
-            (((tick * rebaseActionData.lowerPercentage) / 100) / int24(tickSpacing)) * int24(tickSpacing);
-        int24 newUpperPreference =
-            (((tick * rebaseActionData.lowerPercentage) / 100) / int24(tickSpacing)) * int24(tickSpacing);
-
-        require(newLowerPreference % tickSpacing == 0, "TLI");
-        require(newUpperPreference % tickSpacing == 0, "TUI");
-
-        rebaseActionData.lowerPreference = newLowerPreference; // how can we update the bytes data from here.
-        rebaseActionData.upperPreference = newUpperPreference;
-    }
-
     function getTwap(address _pool) public view returns (int24 tick) {
         (tick,) = OracleLibrary.consult(_pool, twapDuration);
     }
 
-    function getTicks(
+    function _getTicks(
         IUniswapV3Pool _pool,
         bytes memory actionsData
     )
@@ -100,15 +106,17 @@ contract RebasePreference is Owned, IPreference {
         returns (int24 tickLower, int24 tickUpper)
     {
         ActionsData memory data = abi.decode(actionsData, (ActionsData));
-        RebasePereferenceParams memory rebaseActionData =
-            abi.decode(data.rebasePreferenceData[0], (RebasePereferenceParams));
+
+        (,, int24 lowerTickDiff, int24 upperTickDiff) =
+            abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24));
+
         (, int24 tick,,,,,) = _pool.slot0();
-        int24 tickFloor = floor(tick, _pool.tickSpacing());
-        tickLower = tickFloor - rebaseActionData.lowerBaseThreshold;
-        tickUpper = tickFloor + rebaseActionData.upperBaseThreshold;
+
+        tickLower = _floor(tick - lowerTickDiff, _pool.tickSpacing());
+        tickUpper = _floor(tick + upperTickDiff, _pool.tickSpacing());
     }
 
-    function floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
+    function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
         return compressed * tickSpacing;
