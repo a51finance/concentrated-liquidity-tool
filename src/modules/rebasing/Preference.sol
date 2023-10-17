@@ -48,7 +48,7 @@ contract RebasePreference is Owned, IPreference {
                 // check here if any of the transaction failed here or not
                 executeStrategies(_queue[ids]);
             }
-                }
+        }
 
         return _queue;
     }
@@ -79,15 +79,17 @@ contract RebasePreference is Owned, IPreference {
     }
 
     function executeStrategies(Data memory strategyData) internal view isOperator {
+        (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,,,) =
+            _cltBase.strategies(strategyData.strategyId);
 
-        (int24 tickLower, int24 tickUpper) = _getTicks(key.pool, actionsData);
+        (int24 tickLower, int24 tickUpper) = _getTicks(key, actions);
 
         key.tickLower = tickLower;
         key.tickUpper = tickUpper;
 
         ShiftLiquidityParams memory params;
         params.key = key;
-        params.strategyId = strategyID;
+        params.strategyId = strategyData.strategyId;
         params.shouldMint = true;
         params.zeroForOne = false;
         params.swapAmount = 0;
@@ -135,6 +137,48 @@ contract RebasePreference is Owned, IPreference {
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
     }
+
+    function _getTicks(
+        StrategyKey memory key,
+        bytes memory positionActions
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        PositionActions memory positionActionsData = abi.decode(positionActions, (PositionActions));
+        (tickLower, tickUpper) =
+            _generatePositionTicks(key.pool, positionActionsData.mode, key.tickLower, key.tickUpper);
+    }
+
+    function _generatePositionTicks(
+        IUniswapV3Pool _pool,
+        uint8 _mode,
+        int24 _tickLower,
+        int24 _tickUpper
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        (, int24 _tick,,,,,) = _pool.slot0();
+
+        _tick = _floor(_tick, _pool.tickSpacing());
+
+        int24 tickDifference = _tickUpper - _tickLower;
+
+        // dyanmic
+        if (_mode == 1) { }
+        // left
+        if (_mode == 2) {
+            tickUpper = _tick - (3 * _pool.tickSpacing());
+            tickLower = tickUpper - tickDifference;
+        }
+        // right
+        if (_mode == 3) {
+            tickUpper = _tick + (3 * _pool.tickSpacing());
+            tickUpper = tickUpper + tickDifference;
+        }
     }
 
     function toggleOperator(address operatorAddress) external onlyOwner {
@@ -145,25 +189,6 @@ contract RebasePreference is Owned, IPreference {
         (tick,) = OracleLibrary.consult(_pool, twapDuration);
     }
 
-    function _getTicks(
-        IUniswapV3Pool _pool,
-        bytes memory actionsData
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
-        ActionsData memory data = abi.decode(actionsData, (ActionsData));
-
-        (,, int24 lowerTickDiff, int24 upperTickDiff) =
-            abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24));
-
-        (, int24 tick,,,,,) = _pool.slot0();
-
-        tickLower = _floor(tick - lowerTickDiff, _pool.tickSpacing());
-        tickUpper = _floor(tick + upperTickDiff, _pool.tickSpacing());
-    }
-
     function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
@@ -172,5 +197,12 @@ contract RebasePreference is Owned, IPreference {
 
     function updateTwapDuration(uint24 _durationInSeconds) external {
         twapDuration = _durationInSeconds;
+    }
+
+    function updateLiquidityThreshold(uint256 _newThreshold) external {
+        if (_newThreshold <= 0) {
+            revert InvalidThreshold();
+        }
+        liquidityThreshold = _newThreshold;
     }
 }
