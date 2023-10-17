@@ -119,7 +119,7 @@ library PoolActions {
     }
 
     function collectPendingFees(
-        StrategyKey calldata key,
+        StrategyKey memory key,
         uint128 tokensOwed0,
         uint128 tokensOwed1,
         address recipient

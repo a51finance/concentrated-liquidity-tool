@@ -69,4 +69,6 @@ struct StrategyData {
     uint256 balance1;
     uint256 totalShares;
     uint128 uniswapLiquidity;
+    uint256 feeGrowthInside0LastX128;
+    uint256 feeGrowthInside1LastX128;
 }

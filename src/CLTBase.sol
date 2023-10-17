@@ -80,7 +80,9 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             balance0: 0,
             balance1: 0,
             totalShares: 0,
-            uniswapLiquidity: 0
+            uniswapLiquidity: 0,
+            feeGrowthInside0LastX128: 0,
+            feeGrowthInside1LastX128: 0
         });
 
         emit StrategyCreated(strategyID, positionActionsHash, actionsDataHash, key, isCompound);
@@ -92,6 +94,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         override
         returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
+        Position.updatePositionFee(strategies[params.strategyId]);
+
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
 
@@ -333,8 +337,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
     {
         StrategyData storage strategy = strategies[strategyId];
 
-        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) = LiquidityShares
-            .computeLiquidityShare(
+        (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
             strategy.key,
             strategy.isCompound,
             strategy.uniswapLiquidity,
@@ -366,6 +369,9 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             PoolActions.mintLiquidity(strategy.key, amount0, amount1);
 
         strategy.update(liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
+
+        feeGrowthInside0LastX128 = strategy.feeGrowthInside0LastX128;
+        feeGrowthInside1LastX128 = strategy.feeGrowthInside1LastX128;
     }
 
     function validateInputData() private {
