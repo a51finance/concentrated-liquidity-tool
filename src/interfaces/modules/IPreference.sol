@@ -3,4 +3,5 @@ pragma solidity >=0.8.19;
 
 interface IPreference {
     error InvalidCaller();
+    error InvalidThreshold();
 }
