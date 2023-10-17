@@ -4,7 +4,6 @@ pragma solidity >=0.8.19;
 import "../../CLTBase.sol";
 import "../../interfaces/modules/IPreference.sol";
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import "forge-std/console.sol";
 
 contract RebasePreference is Owned, IPreference {
     mapping(address operator => bool eligible) public operators;
@@ -28,29 +27,36 @@ contract RebasePreference is Owned, IPreference {
 
     function checkStrategies(bytes32[] memory strategyIDs) external returns (bytes32[] memory) {
         for (uint256 i = 0; i < strategyIDs.length; i++) {
-            (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,,,) =
+            (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,, uint256 totalShares,) =
                 _cltBase.strategies(strategyIDs[i]);
 
-            PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
+            // add checks here
 
-            if (positionActionData.rebasePreference.length > 0) {
-                ActionsData memory data = abi.decode(actionsData, (ActionsData));
+            // check wether the position has enough liquidity
+            if (totalShares > 0) {
+                PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
 
-                //     int24 lowerPreferenceDiff;
-                //     int24 upperPreferenceDiff;
-                //     int24 lowerTickDiff;
-                //     int24 upperTickDiff;
+                // make thi generalized
+                if (positionActionData.rebasePreference.length > 0) {
+                    ActionsData memory data = abi.decode(actionsData, (ActionsData));
 
-                (int24 lowerPreferenceDiff, int24 upperPreferenceDiff,,) =
-                    abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24));
+                    //     int24 lowerPreferenceDiff;
+                    //     int24 upperPreferenceDiff;
+                    //     int24 lowerTickDiff;
+                    //     int24 upperTickDiff;
 
-                int24 tick = getTwap(address(key.pool));
+                    // use tick wideness here
+                    (int24 lowerPreferenceDiff, int24 upperPreferenceDiff,,) =
+                        abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24));
 
-                (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
-                    _getPreferenceTicks(lowerPreferenceDiff, upperPreferenceDiff, key);
+                    int24 tick = getTwap(address(key.pool));
 
-                if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
-                    _queue.push(strategyIDs[i]);
+                    (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
+                        _getPreferenceTicks(lowerPreferenceDiff, upperPreferenceDiff, key);
+
+                    if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
+                        _queue.push(strategyIDs[i]);
+                    }
                 }
             }
         }

@@ -22,14 +22,6 @@ contract RebasingModulesTest is Test {
 
     StrategyKey public strategyKey;
 
-    // bytes[] public exitStrategyData;
-    // bytes[] public rebasePreferenceData;
-    // bytes[] public liquidityDistributionData;
-
-    // uint64[] public exitStrategy;
-    // uint64[] public rebasePreference = [1];
-    // uint64[] public liquidityDistribution;
-
     CLTBase public baseContract;
     RebasePreference public rebasePreferenceContrat;
     PositionActions public positionActionsData;
