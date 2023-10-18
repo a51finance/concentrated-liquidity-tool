@@ -56,7 +56,7 @@ library Position {
         self.balance0 = balance0;
         self.balance1 = balance1;
 
-        self.uniswapLiquidity = liquidity;
+        self.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
     }
 
     function updatePositionFee(StrategyData storage self) internal {

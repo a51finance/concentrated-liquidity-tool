@@ -12,7 +12,14 @@ interface ICLTBase {
     error InvalidModule(bytes32 module);
 
     event Collect(uint256 tokenId, address recipient, uint256 amount0Collected, uint256 amount1Collected);
-    event Deposit(bytes32 strategyId, uint256 indexed tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
+
+    event Deposit(
+        uint256 indexed tokenId, address indexed recipient, uint256 liquidity, uint256 amount0, uint256 amount1
+    );
+
+    event Withdraw(
+        uint256 indexed tokenId, address indexed recipient, uint256 liquidity, uint256 amount0, uint256 amount1
+    );
 
     event StrategyCreated(
         bytes32 strategyId, bytes positionActions, bytes actionsData, StrategyKey key, bool isCompound

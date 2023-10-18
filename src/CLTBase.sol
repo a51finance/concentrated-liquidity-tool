@@ -94,7 +94,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         override
         returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
-        Position.updatePositionFee(strategies[params.strategyId]);
+        StrategyData storage strategy = strategies[params.strategyId];
+        if (!strategy.isCompound && strategy.totalShares > 0) strategy.updatePositionFee();
 
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
@@ -113,7 +114,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             tokensOwed1: 0
         });
 
-        emit Deposit(params.strategyId, tokenId, share, amount0, amount1);
+        emit Deposit(tokenId, params.recipient, share, amount0, amount1);
     }
 
     function updatePositionLiquidity(UpdatePositionParams calldata params)
@@ -121,6 +122,9 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         returns (uint256 share, uint256 amount0, uint256 amount1)
     {
         Position.Data storage position = positions[params.tokenId];
+        StrategyData storage strategy = strategies[position.strategyId];
+
+        if (!strategy.isCompound) strategy.updatePositionFee();
 
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
@@ -165,53 +169,52 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
         if (positionLiquidity == 0) revert NoLiquidity();
         if (positionLiquidity < params.liquidity) revert InvalidShare();
+        if (!strategy.isCompound) strategy.updatePositionFee();
 
-        // add liquidity share for compounders while non compounders can withdraw all liquidity
         uint256 fees0;
         uint256 fees1;
 
-        if (strategy.isCompound) {
-            uint256 liquidityShare = FullMath.mulDiv(params.liquidity, 1e18, strategy.totalShares);
+        (amount0, amount1, fees0, fees1) = PoolActions.burnUserLiquidity(
+            strategy.key,
+            strategy.uniswapLiquidity,
+            strategy.isCompound ? FullMath.mulDiv(params.liquidity, 1e18, strategy.totalShares) : params.liquidity,
+            strategy.isCompound
+        );
 
-            (amount0, amount1, fees0, fees1) =
-                PoolActions.burnUserLiquidity(strategy.key, strategy.uniswapLiquidity, liquidityShare);
-        } else {
-            (amount0, amount1) =
-                strategy.key.pool.burn(strategy.key.tickLower, strategy.key.tickUpper, positionLiquidity.toUint128());
-
-            (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128,,) =
-                PoolActions.getPositionLiquidity(strategy.key);
-
+        if (!strategy.isCompound) {
             amount0 += uint128(position.tokensOwed0)
                 + uint128(
                     FullMath.mulDiv(
-                        feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128, positionLiquidity, FixedPoint128.Q128
+                        strategy.feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128,
+                        positionLiquidity,
+                        FixedPoint128.Q128
                     )
                 );
 
             amount1 += uint128(position.tokensOwed1)
                 + uint128(
                     FullMath.mulDiv(
-                        feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128, positionLiquidity, FixedPoint128.Q128
+                        strategy.feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128,
+                        positionLiquidity,
+                        FixedPoint128.Q128
                     )
                 );
 
             position.tokensOwed0 = 0;
             position.tokensOwed1 = 0;
 
-            position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
-            position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
-
-            strategy.key.pool.collect(
-                address(this), strategy.key.tickLower, strategy.key.tickUpper, amount0.toUint128(), amount1.toUint128()
-            );
+            position.feeGrowthInside0LastX128 = strategy.feeGrowthInside0LastX128;
+            position.feeGrowthInside1LastX128 = strategy.feeGrowthInside1LastX128;
         }
 
-        // transfer fees of protocol
+        uint256 balance0 = strategy.balance0 + fees0;
+        uint256 balance1 = strategy.balance1 + fees1;
 
-        // calculate user's total no of tokens [0,1], both handled Compounders, Non Compounders
-        amount0 += FullMath.mulDiv(strategy.balance0 + fees0, params.liquidity, strategy.totalShares);
-        amount1 += FullMath.mulDiv(strategy.balance1 + fees1, params.liquidity, strategy.totalShares);
+        uint256 userShare0 = FullMath.mulDiv(balance0, params.liquidity, strategy.totalShares);
+        uint256 userShare1 = FullMath.mulDiv(balance1, params.liquidity, strategy.totalShares);
+
+        amount0 += userShare0;
+        amount1 += userShare1;
 
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
@@ -221,26 +224,39 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
         }
 
-        // recheck for both scenerios
-        position.liquidityShare = positionLiquidity - params.liquidity;
+        balance0 -= userShare0;
+        balance1 -= userShare1;
 
-        // mint additional fees for compounders
-        // update state.balance[0, 1] again after compounding fee from balance and collected fee
+        emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
+
+        // mint liquidity here for compounders with balances || reuse userShare vars
+        if (strategy.isCompound) {
+            /// if opposite assets left?
+            (, userShare0, userShare1) = PoolActions.mintLiquidity(strategy.key, balance0, balance1);
+        }
+
+        // recheck for both scenerios
+        // ✔ mint additional fees for compounders
+        // ✔ update state.balance[0, 1] again after compounding fee from balance and collected fee
         // ✔ update feeGrowth for non compounders
+        strategy.balance0 = balance0 - userShare0;
+        strategy.balance1 = balance1 - userShare1;
+        position.liquidityShare = positionLiquidity - params.liquidity;
     }
 
     function claimPositionFee(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
         Position.Data storage position = positions[params.tokenId];
+        StrategyData storage strategy = strategies[position.strategyId];
 
+        if (strategy.isCompound) revert onlyNonCompounders();
         if (position.liquidityShare == 0) revert NoLiquidity();
-        if (strategies[position.strategyId].isCompound) revert onlyNonCompounders();
+
+        strategy.updatePositionFee();
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = (position.tokensOwed0, position.tokensOwed1);
 
-        PoolActions.updatePosition(params.key);
-
-        (, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128,,) =
-            PoolActions.getPositionLiquidity(params.key);
+        (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
+            (strategy.feeGrowthInside0LastX128, strategy.feeGrowthInside1LastX128);
 
         tokensOwed0 += uint128(
             FullMath.mulDiv(
@@ -261,13 +277,18 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
         position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
 
-        (uint256 amount0Collected, uint256 amount1Collected) =
-            PoolActions.collectPendingFees(params.key, tokensOwed0, tokensOwed1, params.recipient);
-
         position.tokensOwed0 = 0;
         position.tokensOwed1 = 0;
 
-        emit Collect(params.tokenId, params.recipient, amount0Collected, amount1Collected);
+        if (tokensOwed0 > 0) {
+            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), tokensOwed0);
+        }
+
+        if (tokensOwed1 > 0) {
+            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), tokensOwed1);
+        }
+
+        emit Collect(params.tokenId, params.recipient, tokensOwed0, tokensOwed1);
     }
 
     function shiftLiquidity(ShiftLiquidityParams calldata params) external override {
@@ -278,17 +299,17 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
         // some checks here for key.ticks validation according to new position
 
-        uint256 amount0;
-        uint256 amount1;
+        if (!strategy.isCompound) strategy.updatePositionFee();
 
         // only burn this strategy liquidity not others
-        (amount0, amount1,,) = PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity);
+        (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1) =
+            PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity);
 
         // deduct any fees if required for protocol
 
         if (strategy.isCompound) {
-            amount0 += strategy.balance0;
-            amount1 += strategy.balance1;
+            amount0 += fees0 + strategy.balance0;
+            amount1 += fees1 + strategy.balance1;
         }
 
         if (params.swapAmount != 0) {

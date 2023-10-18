@@ -42,9 +42,9 @@ struct ShiftLiquidityParams {
 }
 
 struct ClaimFeesParams {
-    StrategyKey key;
     address recipient;
     uint256 tokenId;
+    bool refundAsETH;
 }
 
 struct PositionActions {
