@@ -48,7 +48,7 @@ struct ClaimFeesParams {
 }
 
 struct PositionActions {
-    uint8 mode;
+    uint64 mode;
     uint64[] exitStrategy;
     uint64[] rebasePreference;
     uint64[] liquidityDistribution;

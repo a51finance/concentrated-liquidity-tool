@@ -67,6 +67,30 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         external
     {
         // add some checks here for inputs
+        if (actions.exitStrategy.length != data.exitStrategyData.length) revert InvalidInput();
+        if (actions.rebasePreference.length != data.rebasePreferenceData.length) revert InvalidInput();
+        if (actions.liquidityDistribution.length != data.liquidityDistributionData.length) revert InvalidInput();
+
+        if (actions.exitStrategy.length < 0 && actions.exitStrategy.length > length(modules[EXIT_STRATEGY])) {
+            revert InvalidInput();
+        }
+
+        if (actions.rebasePreference.length < 0 && actions.rebasePreference.length > length(modules[REBASE_PREFERENCE]))
+        {
+            revert InvalidInput();
+        }
+
+        if (
+            actions.liquidityDistribution.length < 0
+                && actions.exitStrategy.length > length(modules[LIQUIDITY_DISTRIBUTION])
+        ) {
+            revert InvalidInput();
+        }
+
+        if (actions.exitStrategy.length > 0) { }
+        if (actions.rebasePreference.length > 0) { }
+        if (actions.liquidityDistribution.length > 0) { }
+
         bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
 
         bytes memory actionsDataHash = abi.encode(data);
@@ -397,5 +421,9 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
     function validateInputData() private {
         // fetch updated address of all modules and send data for validation
+    }
+
+    function length(uint64[] storage self) private view returns (uint256 len) {
+        len = self.length;
     }
 }

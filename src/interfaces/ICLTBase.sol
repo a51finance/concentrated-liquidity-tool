@@ -5,6 +5,7 @@ import "../base/Structs.sol";
 
 interface ICLTBase {
     error NoLiquidity();
+    error InvalidInput();
     error InvalidShare();
     error InvalidCaller();
     error onlyNonCompounders();
