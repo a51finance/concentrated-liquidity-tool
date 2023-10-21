@@ -18,6 +18,8 @@ contract RebasePreference is Owned, IPreference {
 
     uint32 public twapDuration;
     uint256 liquidityThreshold = 1e3;
+    // add a setter function for this
+    int24 newTicksDifference = 3;
 
     modifier isOperator() {
         if (operators[msg.sender] == false) {
@@ -35,7 +37,7 @@ contract RebasePreference is Owned, IPreference {
         for (uint256 i = 0; i < strategyIDs.length; i++) {
             (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,, uint256 totalShares,) =
                 _cltBase.strategies(strategyIDs[i]);
-
+            // add some more check here whether liquidity is in range
             if (totalShares > liquidityThreshold) {
                 PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
                 processRebaseStrategies(key, actionsData, positionActionData, strategyIDs[i]);
@@ -45,7 +47,6 @@ contract RebasePreference is Owned, IPreference {
         if (shouldExecute) {
             for (uint256 ids = 0; ids <= _queue.length; ids++) {
                 // add checks here, incomplete now
-                // check here if any of the transaction failed here or not
                 executeStrategies(_queue[ids]);
             }
         }
@@ -79,6 +80,7 @@ contract RebasePreference is Owned, IPreference {
     }
 
     function executeStrategies(Data memory strategyData) internal view isOperator {
+        // need to generalize this function as well
         (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,,,) =
             _cltBase.strategies(strategyData.strategyId);
 
@@ -168,15 +170,22 @@ contract RebasePreference is Owned, IPreference {
         int24 tickDifference = _tickUpper - _tickLower;
 
         // dyanmic
-        if (_mode == 1) { }
+        if (_mode == 1) {
+            if (_tick > _tickUpper) {
+                tickLower = _tick + (newTicksDifference * _pool.tickSpacing());
+                tickUpper = tickUpper + tickDifference;
+            }
+            tickUpper = _tick - (newTicksDifference * _pool.tickSpacing());
+            tickLower = tickUpper - tickDifference;
+        }
         // left
         if (_mode == 2) {
-            tickUpper = _tick - (3 * _pool.tickSpacing());
+            tickUpper = _tick - (newTicksDifference * _pool.tickSpacing());
             tickLower = tickUpper - tickDifference;
         }
         // right
         if (_mode == 3) {
-            tickUpper = _tick + (3 * _pool.tickSpacing());
+            tickLower = _tick + (newTicksDifference * _pool.tickSpacing());
             tickUpper = tickUpper + tickDifference;
         }
     }
