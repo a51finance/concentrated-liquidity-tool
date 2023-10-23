@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import "./PoolActions.sol";
 import "../base/Structs.sol";
+import "../libraries/FixedPoint128.sol";
 
 library Position {
+    uint128 internal constant MAX_UINT128 = type(uint128).max;
+
     struct Data {
         bytes32 strategyId;
         uint256 liquidityShare;
@@ -52,6 +56,16 @@ library Position {
         self.balance0 = balance0;
         self.balance1 = balance1;
 
-        self.uniswapLiquidity = liquidity;
+        self.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
+    }
+
+    function updatePositionFee(StrategyData storage self) internal {
+        PoolActions.updatePosition(self.key);
+
+        (uint256 fees0, uint256 fees1) =
+            PoolActions.collectPendingFees(self.key, MAX_UINT128, MAX_UINT128, address(this));
+
+        self.feeGrowthInside0LastX128 += FullMath.mulDiv(fees0, FixedPoint128.Q128, self.uniswapLiquidity);
+        self.feeGrowthInside1LastX128 += FullMath.mulDiv(fees1, FixedPoint128.Q128, self.uniswapLiquidity);
     }
 }

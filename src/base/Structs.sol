@@ -42,16 +42,21 @@ struct ShiftLiquidityParams {
 }
 
 struct ClaimFeesParams {
-    StrategyKey key;
     address recipient;
     uint256 tokenId;
+    bool refundAsETH;
+}
+
+struct ModePackage {
+    uint256[] modeIDs;
+    address modesVault;
 }
 
 struct PositionActions {
-    uint8 mode;
-    uint64[] exitStrategy;
-    uint64[] rebasePreference;
-    uint64[] liquidityDistribution;
+    uint256 mode;
+    uint256[] exitStrategy;
+    uint256[] rebasePreference;
+    uint256[] liquidityDistribution;
 }
 
 struct ActionsData {
@@ -69,4 +74,6 @@ struct StrategyData {
     uint256 balance1;
     uint256 totalShares;
     uint128 uniswapLiquidity;
+    uint256 feeGrowthInside0LastX128;
+    uint256 feeGrowthInside1LastX128;
 }

@@ -54,12 +54,14 @@ library PoolActions {
     function burnUserLiquidity(
         StrategyKey storage key,
         uint128 strategyliquidity,
-        uint256 userSharePercentage
+        uint256 userSharePercentage,
+        bool isCompound
     )
         internal
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        uint256 liquidityRemoved = FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18);
+        uint256 liquidityRemoved =
+            isCompound ? FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18) : userSharePercentage;
 
         (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
 
@@ -119,7 +121,7 @@ library PoolActions {
     }
 
     function collectPendingFees(
-        StrategyKey calldata key,
+        StrategyKey memory key,
         uint128 tokensOwed0,
         uint128 tokensOwed1,
         address recipient

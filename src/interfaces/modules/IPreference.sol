@@ -10,4 +10,5 @@ interface IPreference {
         bytes32 strategyID;
         uint64[3] modes; // Array to hold multiple valid modes
     }
+    function checkInputData(bytes[] memory data) external;
 }
