@@ -2,6 +2,9 @@
 pragma solidity >=0.8.19;
 
 import "./interfaces/ICLTBase.sol";
+import "./interfaces/modules/IExitStrategy.sol";
+import "./interfaces/modules/IPreference.sol";
+import "./interfaces/modules/ILiquidityDistribution.sol";
 
 import "./base/CLTPayments.sol";
 
@@ -12,11 +15,13 @@ import "./libraries/LiquidityShares.sol";
 import "./libraries/SafeCastExtended.sol";
 
 import "@solmate/auth/Owned.sol";
+import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
+    using Arrays for uint256[];
     using Position for StrategyData;
     using SafeCastExtended for uint256;
 
@@ -35,7 +40,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
     // keccak256("LIQUIDITY_DISTRIBUTION")
     bytes32 public constant LIQUIDITY_DISTRIBUTION = 0xeabe6f62bd74d002b0267a6aaacb5212bb162f4f87ee1c4a80ac0d2698f8a505;
 
-    mapping(bytes32 => uint64[]) public modules;
+    mapping(bytes32 => ModePackage) public modules;
 
     mapping(bytes32 => StrategyData) public strategies;
 
@@ -71,25 +76,40 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         if (actions.rebasePreference.length != data.rebasePreferenceData.length) revert InvalidInput();
         if (actions.liquidityDistribution.length != data.liquidityDistributionData.length) revert InvalidInput();
 
-        if (actions.exitStrategy.length < 0 && actions.exitStrategy.length > length(modules[EXIT_STRATEGY])) {
+        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
+
+        if (actions.exitStrategy.length < 0 && actions.exitStrategy.length > length(modules[EXIT_STRATEGY].modeIDs)) {
             revert InvalidInput();
         }
 
-        if (actions.rebasePreference.length < 0 && actions.rebasePreference.length > length(modules[REBASE_PREFERENCE]))
-        {
+        if (
+            actions.rebasePreference.length < 0
+                && actions.rebasePreference.length > length(modules[REBASE_PREFERENCE].modeIDs)
+        ) {
             revert InvalidInput();
         }
 
         if (
             actions.liquidityDistribution.length < 0
-                && actions.exitStrategy.length > length(modules[LIQUIDITY_DISTRIBUTION])
+                && actions.exitStrategy.length > length(modules[LIQUIDITY_DISTRIBUTION].modeIDs)
         ) {
             revert InvalidInput();
         }
 
-        if (actions.exitStrategy.length > 0) { }
-        if (actions.rebasePreference.length > 0) { }
-        if (actions.liquidityDistribution.length > 0) { }
+        if (actions.exitStrategy.length > 0) {
+            _checkModeIds(EXIT_STRATEGY, actions.exitStrategy);
+            _validateInputData(EXIT_STRATEGY, data.exitStrategyData);
+        }
+
+        if (actions.rebasePreference.length > 0) {
+            _checkModeIds(REBASE_PREFERENCE, actions.rebasePreference);
+            _validateInputData(REBASE_PREFERENCE, data.rebasePreferenceData);
+        }
+
+        if (actions.liquidityDistribution.length > 0) {
+            _checkModeIds(LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
+            _validateInputData(LIQUIDITY_DISTRIBUTION, data.liquidityDistributionData);
+        }
 
         bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
 
@@ -357,13 +377,14 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         strategy.updateStrategy(params.key, liquidity, amount0 - amount0Added, amount1 - amount1Added);
     }
 
-    function addModule(bytes32 moduleKey, uint64[] calldata newModule) external onlyOwner {
+    function addModule(bytes32 moduleKey, address modeVault, uint64[] calldata newModule) external onlyOwner {
         if (
             moduleKey != MODE || moduleKey != REBASE_PREFERENCE || moduleKey != EXIT_STRATEGY
                 || moduleKey != LIQUIDITY_DISTRIBUTION
         ) revert InvalidModule(moduleKey);
 
-        modules[moduleKey] = newModule;
+        modules[moduleKey].modeIDs = newModule;
+        modules[moduleKey].modesVault = modeVault;
     }
 
     function _deposit(
@@ -419,11 +440,35 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         feeGrowthInside1LastX128 = strategy.feeGrowthInside1LastX128;
     }
 
-    function validateInputData() private {
-        // fetch updated address of all modules and send data for validation
+    function _validateInputData(bytes32 mode, bytes[] memory data) private {
+        address vault = modules[mode].modesVault;
+
+        if (mode == REBASE_PREFERENCE) {
+            IPreference(vault).checkInputData(data);
+        }
+
+        if (mode == EXIT_STRATEGY) {
+            IExitStrategy(vault).checkInputData(data);
+        }
+
+        if (mode == LIQUIDITY_DISTRIBUTION) {
+            IPreference(vault).checkInputData(data);
+        } else {
+            revert InvalidModule(mode);
+        }
     }
 
-    function length(uint64[] storage self) private view returns (uint256 len) {
+    function length(uint256[] storage self) private view returns (uint256 len) {
         len = self.length;
+    }
+
+    function unsafeAccess(bytes32 mode, uint256 pos) private view returns (uint256) {
+        return modules[mode].modeIDs.unsafeAccess(pos).value;
+    }
+
+    function _checkModeIds(bytes32 mode, uint256[] memory array) private view {
+        for (uint256 i = 0; i < array.length; i++) {
+            if (array[i] != unsafeAccess(mode, i)) revert InvalidInput();
+        }
     }
 }
