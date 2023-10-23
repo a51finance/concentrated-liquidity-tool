@@ -8,12 +8,7 @@ import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 contract RebasePreference is Owned, IPreference {
     mapping(address operator => bool eligible) public operators;
 
-    struct Data {
-        bytes32 strategyId;
-        uint64 actionId;
-    }
-
-    Data[] private _queue;
+    // Data[] private _queue;
     CLTBase private _cltBase;
 
     uint32 public twapDuration;
@@ -33,70 +28,69 @@ contract RebasePreference is Owned, IPreference {
         twapDuration = 300;
     }
 
-    function checkStrategies(bytes32[] memory strategyIDs, bool shouldExecute) external returns (Data[] memory) {
+    function executeStrategies(bytes32[] memory strategyIDs) external view isOperator {
+        StrategyData[] memory _queue = checkAndProcessStrategies(strategyIDs);
+    }
+
+    function checkAndProcessStrategies(bytes32[] memory strategyIDs) internal view returns (StrategyData[] memory) {
+        StrategyData[] memory _queue = new StrategyData[](strategyIDs.length);
+        uint256 validEntries = 0;
+
         for (uint256 i = 0; i < strategyIDs.length; i++) {
-            (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,, uint256 totalShares,) =
-                _cltBase.strategies(strategyIDs[i]);
-            // add some more check here whether liquidity is in range
-            if (totalShares > liquidityThreshold) {
-                PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
-                processRebaseStrategies(key, actionsData, positionActionData, strategyIDs[i]);
+            StrategyData memory data = getStrategyData(strategyIDs[i]);
+            if (data.strategyID != bytes32(0)) {
+                _queue[validEntries++] = data;
             }
         }
-
-        if (shouldExecute) {
-            for (uint256 ids = 0; ids <= _queue.length; ids++) {
-                // add checks here, incomplete now
-                executeStrategies(_queue[ids]);
-            }
-        }
-
         return _queue;
     }
 
-    function processRebaseStrategies(
-        StrategyKey memory key,
-        bytes memory actionsData,
-        PositionActions memory positionActionData,
-        bytes32 strategyID
-    )
-        internal
-    {
-        for (
-            uint256 rebalanceModules = 0;
-            rebalanceModules < positionActionData.rebasePreference.length;
-            rebalanceModules++
-        ) {
-            uint256 preference = positionActionData.rebasePreference[rebalanceModules];
+    function getStrategyData(bytes32 strategyID) internal view returns (StrategyData memory) {
+        (StrategyKey memory key, bytes memory actions,,,,, uint256 totalShares,) = _cltBase.strategies(strategyID);
 
-            if (preference == 1 && _checkRebasePreferenceStrategies(key, actionsData)) {
-                _queue.push(Data(strategyID, 1));
-            } else if (preference == 2 && _checkRebaseTimePreferenceStrategies()) {
-                _queue.push(Data(strategyID, 2));
-            } else if (preference == 3 && _checkRebaseInactivityStrategies()) {
-                _queue.push(Data(strategyID, 3));
+        if (totalShares <= liquidityThreshold) {
+            return StrategyData(bytes32(0), [uint64(0), uint64(0), uint64(0)]);
+        }
+
+        PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
+        if (positionActionData.rebasePreference.length > 3) {
+            revert InvalidModesLength();
+        }
+
+        StrategyData memory data;
+        uint256 count = 0;
+        for (uint256 i = 0; i < positionActionData.rebasePreference.length; i++) {
+            uint64 preference = positionActionData.rebasePreference[i];
+            if (shouldAddToQueue(preference, key, actions)) {
+                data.modes[count++] = preference;
             }
         }
+
+        if (count == 0) {
+            return StrategyData(bytes32(0), [uint64(0), uint64(0), uint64(0)]);
+        }
+
+        data.strategyID = strategyID;
+        return data;
     }
 
-    function executeStrategies(Data memory strategyData) internal view isOperator {
-        // need to generalize this function as well
-        (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,,,) =
-            _cltBase.strategies(strategyData.strategyId);
-
-        (int24 tickLower, int24 tickUpper) = _getTicks(key, actions);
-
-        key.tickLower = tickLower;
-        key.tickUpper = tickUpper;
-
-        ShiftLiquidityParams memory params;
-        params.key = key;
-        params.strategyId = strategyData.strategyId;
-        params.shouldMint = true;
-        params.zeroForOne = false;
-        params.swapAmount = 0;
-
-        // _cltBase.shiftLiquidity(params);
+    function shouldAddToQueue(
+        uint64 preference,
+        StrategyKey memory key,
+        bytes memory actions
+    )
+        internal
+        view
+        returns (bool)
+    {
+        if (preference == 1) {
+            return _checkRebasePreferenceStrategies(key, actions);
+        } else if (preference == 2) {
+            return _checkRebaseTimePreferenceStrategies();
+        } else if (preference == 3) {
+            return _checkRebaseInactivityStrategies();
+        }
+        return false;
     }
 
     function _checkRebasePreferenceStrategies(
@@ -123,8 +117,8 @@ contract RebasePreference is Owned, IPreference {
         return false;
     }
 
-    function _checkRebaseTimePreferenceStrategies() internal returns (bool) { }
-    function _checkRebaseInactivityStrategies() internal returns (bool) { }
+    function _checkRebaseTimePreferenceStrategies() internal view returns (bool) { }
+    function _checkRebaseInactivityStrategies() internal view returns (bool) { }
 
     function _getPreferenceTicks(
         StrategyKey memory _key,
@@ -138,56 +132,6 @@ contract RebasePreference is Owned, IPreference {
         // need to check alot of scenarios for this logic
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
-    }
-
-    function _getTicks(
-        StrategyKey memory key,
-        bytes memory positionActions
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
-        PositionActions memory positionActionsData = abi.decode(positionActions, (PositionActions));
-        (tickLower, tickUpper) =
-            _generatePositionTicks(key.pool, positionActionsData.mode, key.tickLower, key.tickUpper);
-    }
-
-    function _generatePositionTicks(
-        IUniswapV3Pool _pool,
-        uint8 _mode,
-        int24 _tickLower,
-        int24 _tickUpper
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
-        (, int24 _tick,,,,,) = _pool.slot0();
-
-        _tick = _floor(_tick, _pool.tickSpacing());
-
-        int24 tickDifference = _tickUpper - _tickLower;
-
-        // dyanmic
-        if (_mode == 1) {
-            if (_tick > _tickUpper) {
-                tickLower = _tick + (newTicksDifference * _pool.tickSpacing());
-                tickUpper = tickUpper + tickDifference;
-            }
-            tickUpper = _tick - (newTicksDifference * _pool.tickSpacing());
-            tickLower = tickUpper - tickDifference;
-        }
-        // left
-        if (_mode == 2) {
-            tickUpper = _tick - (newTicksDifference * _pool.tickSpacing());
-            tickLower = tickUpper - tickDifference;
-        }
-        // right
-        if (_mode == 3) {
-            tickLower = _tick + (newTicksDifference * _pool.tickSpacing());
-            tickUpper = tickUpper + tickDifference;
-        }
     }
 
     function toggleOperator(address operatorAddress) external onlyOwner {
