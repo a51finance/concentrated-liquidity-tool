@@ -47,11 +47,16 @@ struct ClaimFeesParams {
     bool refundAsETH;
 }
 
+struct ModePackage {
+    uint256[] modeIDs;
+    address modesVault;
+}
+
 struct PositionActions {
-    uint64 mode;
-    uint64[] exitStrategy;
-    uint64[] rebasePreference;
-    uint64[] liquidityDistribution;
+    uint256 mode;
+    uint256[] exitStrategy;
+    uint256[] rebasePreference;
+    uint256[] liquidityDistribution;
 }
 
 struct ActionsData {
