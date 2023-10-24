@@ -4,15 +4,15 @@ pragma solidity >=0.8.19;
 import "../../CLTBase.sol";
 import "../../interfaces/modules/IPreference.sol";
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import "forge-std/console.sol";
 
 contract RebasePreference is Owned, IPreference {
     mapping(address operator => bool eligible) public operators;
 
-    bytes32[] private _queue;
     CLTBase private _cltBase;
 
     uint32 public twapDuration;
+    uint256 public liquidityThreshold = 1e3;
+    uint256 public maxTimePeriod;
 
     modifier isOperator() {
         if (operators[msg.sender] == false) {
@@ -23,70 +23,183 @@ contract RebasePreference is Owned, IPreference {
 
     constructor(address __cltBase, address _owner) Owned(_owner) {
         _cltBase = CLTBase(payable(__cltBase));
-        twapDuration = 300;
+        twapDuration = 10_800;
+        maxTimePeriod = 31_536_000;
     }
 
-    function checkStrategies(bytes32[] memory strategyIDs) external returns (bytes32[] memory) {
+    function executeStrategies(bytes32[] memory strategyIDs) external view isOperator {
+        checkInputData(strategyIDs);
+
+        StrategyData[] memory _queue = checkAndProcessStrategies(strategyIDs);
+
+        for (uint256 i = 0; i < _queue.length; i++) {
+            ShiftLiquidityParams memory params;
+            StrategyKey memory key;
+            params.strategyId = _queue[i];
+            params.shouldMint = false;
+            params.swapAmount = false;
+
+            for (uint256 j = 0; j < _queue[i].modes.length; j++) {
+                (int24 tickLower, int24 tickUpper) = getTicksForMode(_queue[i].modes[j]);
+
+                key.tickLower = tickLower;
+                key.tickUpper = tickUpper;
+                params.key = key;
+                _cltBase.shiftLiquidity(params);
+            }
+        }
+    }
+
+    function getTicksForMode(uint256 mode) internal view returns (int24, int24) {
+        if (mode == 1) {
+            // Call the mode 1 contract to get the ticks
+            // return (tickLower, tickUpper);
+        } else if (mode == 2) {
+            // Call the mode 2 contract to get the ticks
+            // return (tickLower, tickUpper);
+        } else if (mode == 3) {
+            // Call the mode 3 contract to get the ticks
+            // return (tickLower, tickUpper);
+        }
+        revert InvalidMode();
+    }
+
+    function checkAndProcessStrategies(bytes32[] memory strategyIDs) internal view returns (StrategyData[] memory) {
+        StrategyData[] memory _queue = new StrategyData[](strategyIDs.length);
+        uint256 validEntries = 0;
+
         for (uint256 i = 0; i < strategyIDs.length; i++) {
-            (StrategyKey memory key, bytes memory actions, bytes memory actionsData,,,,,) =
-                _cltBase.strategies(strategyIDs[i]);
-
-            PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
-
-            if (positionActionData.rebasePreference.length > 0) {
-                ActionsData memory data = abi.decode(actionsData, (ActionsData));
-
-                //     int24 lowerPreferenceDiff;
-                //     int24 upperPreferenceDiff;
-                //     int24 lowerTickDiff;
-                //     int24 upperTickDiff;
-
-                (int24 lowerPreferenceDiff, int24 upperPreferenceDiff,,) =
-                    abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24));
-
-                int24 tick = getTwap(address(key.pool));
-
-                (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
-                    _getPreferenceTicks(lowerPreferenceDiff, upperPreferenceDiff, key);
-
-                if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
-                    _queue.push(strategyIDs[i]);
-                }
+            StrategyData memory data = getStrategyData(strategyIDs[i]);
+            if (data.strategyID != bytes32(0)) {
+                _queue[validEntries++] = data;
             }
         }
         return _queue;
     }
 
-    // The function will be called by the bot in loop
-    function executeStrategies(bytes32 strategyID) external view isOperator {
-        (StrategyKey memory key,, bytes memory actionsData,,,,,) = _cltBase.strategies(strategyID);
+    function getStrategyData(bytes32 strategyID) internal view returns (StrategyData memory) {
+        (StrategyKey memory key, bytes memory actions,,,,, uint256 totalShares,) = _cltBase.strategies(strategyID);
 
-        (int24 tickLower, int24 tickUpper) = _getTicks(key.pool, actionsData);
+        if (totalShares <= liquidityThreshold) {
+            return StrategyData(bytes32(0), [uint64(0), uint64(0), uint64(0)]);
+        }
 
-        key.tickLower = tickLower;
-        key.tickUpper = tickUpper;
+        PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
+        if (positionActionData.rebasePreference.length > 2) {
+            revert InvalidModesLength();
+        }
 
-        ShiftLiquidityParams memory params;
-        params.key = key;
-        params.strategyId = strategyID;
-        params.shouldMint = true;
-        params.zeroForOne = false;
-        params.swapAmount = 0;
+        StrategyData memory data;
+        uint256 count = 0;
+        for (uint256 i = 0; i < positionActionData.rebasePreference.length; i++) {
+            uint64 preference = positionActionData.rebasePreference[i];
+            if (shouldAddToQueue(preference, key, actions)) {
+                data.modes[count++] = preference;
+            }
+        }
 
-        // _cltBase.shiftLiquidity(params);
+        if (count == 0) {
+            return StrategyData(bytes32(0), [uint64(0), uint64(0), uint64(0)]);
+        }
+
+        data.strategyID = strategyID;
+        return data;
+    }
+
+    function shouldAddToQueue(
+        uint64 preference,
+        StrategyKey memory key,
+        bytes memory actions
+    )
+        internal
+        view
+        returns (bool)
+    {
+        if (preference == 1) {
+            return _checkRebasePreferenceStrategies(key, actions);
+        } else if (preference == 2) {
+            return _checkRebaseTimePreferenceStrategies(actions);
+        } else if (preference == 3) {
+            return _checkRebaseInactivityStrategies();
+        }
+        return false;
+    }
+
+    function _checkRebasePreferenceStrategies(
+        StrategyKey memory key,
+        bytes memory actionsData
+    )
+        internal
+        view
+        returns (bool)
+    {
+        ActionsData memory data = abi.decode(actionsData, (ActionsData));
+
+        // rebase preference data will be encode with int24 and int24 types
+        (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) =
+            abi.decode(data.rebasePreferenceData[0], (int24, int24));
+
+        (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
+            _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
+
+        int24 tick = getTwap(address(key.pool));
+
+        if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
+            return true;
+        }
+        return false;
+    }
+
+    function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) internal view returns (bool) {
+        ActionsData memory data = abi.decode(actionsData, (ActionsData));
+        // rebase preference data will be encode with uint256
+        (uint256 timePreference) = abi.decode(data.rebasePreferenceData[1], (uint256));
+        if (timePreference < block.timestamp && timePreference >= maxTimePeriod) {
+            revert timePreferenceConstraint();
+        }
+        return true;
+    }
+
+    function _checkRebaseInactivityStrategies() internal view returns (bool) { }
+
+    function checkInputData(bytes32[] memory data, uint64 mode) public returns (bool) {
+        // check array length
+        if (data.length == 0) {
+            revert StrategyIdsCannotBeEmpty();
+        }
+        // check 0 strategyId
+        for (uint256 i = 0; i < data.length; i++) {
+            if (data[i] == bytes32(0)) {
+                revert StrategyIdCannotBeZero();
+            }
+            // check duplicacy
+            for (uint256 j = i + 1; j < data.length; j++) {
+                if (data[i] == data[j]) {
+                    revert DuplicateStrategyId(data[i]);
+                }
+            }
+        }
+
+        if (mode == 2) {
+            if (timePreference < block.timestamp) revert timePreferenceConstraint();
+            if (timePreference == block.timestamp) revert timePreferenceConstraint();
+        }
+
+        return true;
     }
 
     function _getPreferenceTicks(
+        StrategyKey memory _key,
         int24 lowerPreferenceDiff,
-        int24 upperPreferenceDiff,
-        StrategyKey memory key
+        int24 upperPreferenceDiff
     )
         internal
         pure
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
-        lowerPreferenceTick = key.tickLower - lowerPreferenceDiff;
-        upperPreferenceTick = key.tickUpper + upperPreferenceDiff;
+        // need to check alot of scenarios for this logic
+        lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
+        upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
     }
 
     function toggleOperator(address operatorAddress) external onlyOwner {
@@ -97,25 +210,6 @@ contract RebasePreference is Owned, IPreference {
         (tick,) = OracleLibrary.consult(_pool, twapDuration);
     }
 
-    function _getTicks(
-        IUniswapV3Pool _pool,
-        bytes memory actionsData
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
-        ActionsData memory data = abi.decode(actionsData, (ActionsData));
-
-        (,, int24 lowerTickDiff, int24 upperTickDiff) =
-            abi.decode(data.rebasePreferenceData[0], (int24, int24, int24, int24));
-
-        (, int24 tick,,,,,) = _pool.slot0();
-
-        tickLower = _floor(tick - lowerTickDiff, _pool.tickSpacing());
-        tickUpper = _floor(tick + upperTickDiff, _pool.tickSpacing());
-    }
-
     function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
@@ -124,5 +218,12 @@ contract RebasePreference is Owned, IPreference {
 
     function updateTwapDuration(uint24 _durationInSeconds) external {
         twapDuration = _durationInSeconds;
+    }
+
+    function updateLiquidityThreshold(uint256 _newThreshold) external {
+        if (_newThreshold <= 0) {
+            revert InvalidThreshold();
+        }
+        liquidityThreshold = _newThreshold;
     }
 }
