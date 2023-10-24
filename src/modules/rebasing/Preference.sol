@@ -120,6 +120,26 @@ contract RebasePreference is Owned, IPreference {
     function _checkRebaseTimePreferenceStrategies() internal view returns (bool) { }
     function _checkRebaseInactivityStrategies() internal view returns (bool) { }
 
+    function checkInputData(bytes32[] memory data) public returns (bool) {
+        if (data.length == 0) {
+            revert StrategyIdsCannotBeEmpty();
+        }
+
+        for (uint256 i = 0; i < data.length; i++) {
+            if (data[i] == bytes32(0)) {
+                revert StrategyIdCannotBeZero();
+            }
+
+            for (uint256 j = i + 1; j < data.length; j++) {
+                if (data[i] == data[j]) {
+                    revert DuplicateStrategyId(data[i]);
+                }
+            }
+        }
+
+        return true;
+    }
+
     function _getPreferenceTicks(
         StrategyKey memory _key,
         int24 lowerPreferenceDiff,
