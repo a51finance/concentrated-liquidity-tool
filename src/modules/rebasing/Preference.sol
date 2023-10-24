@@ -11,9 +11,8 @@ contract RebasePreference is Owned, IPreference {
     CLTBase private _cltBase;
 
     uint32 public twapDuration;
-    uint256 liquidityThreshold = 1e3;
-    // add a setter function for this
-    int24 newTicksDifference = 3;
+    uint256 public liquidityThreshold = 1e3;
+    uint256 public maxTimePeriod;
 
     modifier isOperator() {
         if (operators[msg.sender] == false) {
@@ -24,7 +23,8 @@ contract RebasePreference is Owned, IPreference {
 
     constructor(address __cltBase, address _owner) Owned(_owner) {
         _cltBase = CLTBase(payable(__cltBase));
-        twapDuration = 300;
+        twapDuration = 10_800;
+        maxTimePeriod = 31_536_000;
     }
 
     function executeStrategies(bytes32[] memory strategyIDs) external view isOperator {
@@ -85,7 +85,7 @@ contract RebasePreference is Owned, IPreference {
         }
 
         PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
-        if (positionActionData.rebasePreference.length > 3) {
+        if (positionActionData.rebasePreference.length > 2) {
             revert InvalidModesLength();
         }
 
@@ -118,7 +118,7 @@ contract RebasePreference is Owned, IPreference {
         if (preference == 1) {
             return _checkRebasePreferenceStrategies(key, actions);
         } else if (preference == 2) {
-            return _checkRebaseTimePreferenceStrategies();
+            return _checkRebaseTimePreferenceStrategies(actions);
         } else if (preference == 3) {
             return _checkRebaseInactivityStrategies();
         }
@@ -135,6 +135,7 @@ contract RebasePreference is Owned, IPreference {
     {
         ActionsData memory data = abi.decode(actionsData, (ActionsData));
 
+        // rebase preference data will be encode with int24 and int24 types
         (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) =
             abi.decode(data.rebasePreferenceData[0], (int24, int24));
 
@@ -149,7 +150,16 @@ contract RebasePreference is Owned, IPreference {
         return false;
     }
 
-    function _checkRebaseTimePreferenceStrategies() internal view returns (bool) { }
+    function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) internal view returns (bool) {
+        ActionsData memory data = abi.decode(actionsData, (ActionsData));
+        // rebase preference data will be encode with uint256
+        (uint256 timePreference) = abi.decode(data.rebasePreferenceData[1], (uint256));
+        if (timePreference < block.timestamp && timePreference >= maxTimePeriod) {
+            revert timePreferenceConstraint();
+        }
+        return true;
+    }
+
     function _checkRebaseInactivityStrategies() internal view returns (bool) { }
 
     function checkInputData(bytes32[] memory data) public returns (bool) {
