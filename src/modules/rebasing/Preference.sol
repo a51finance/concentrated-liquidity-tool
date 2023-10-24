@@ -2,10 +2,10 @@
 pragma solidity >=0.8.19;
 
 import "../../CLTBase.sol";
+import "../../base/ModeTicksCalculation.sol";
 import "../../interfaces/modules/IPreference.sol";
-import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
-contract RebasePreference is Owned, IPreference {
+contract RebaseModule is Owned, ModeTicksCalculation, IPreference {
     mapping(address operator => bool eligible) public operators;
 
     CLTBase private _cltBase;
@@ -23,7 +23,6 @@ contract RebasePreference is Owned, IPreference {
 
     constructor(address __cltBase, address _owner) Owned(_owner) {
         _cltBase = CLTBase(payable(__cltBase));
-        twapDuration = 10_800;
         maxTimePeriod = 31_536_000;
     }
 
@@ -82,15 +81,16 @@ contract RebasePreference is Owned, IPreference {
         }
 
         PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
-        if (positionActionData.rebasePreference.length > 2) {
+        ActionsData memory actionsData = abi.decode(actions, (ActionsData));
+        if (positionActionData.rebaseStrategy.length > 2) {
             revert InvalidModesLength();
         }
 
         StrategyData memory data;
         uint256 count = 0;
-        for (uint256 i = 0; i < positionActionData.rebasePreference.length; i++) {
-            uint64 preference = positionActionData.rebasePreference[i];
-            if (shouldAddToQueue(preference, key, actions)) {
+        for (uint256 i = 0; i < positionActionData.rebaseStrategy.length; i++) {
+            uint64 preference = positionActionData.rebaseStrategy[i];
+            if (shouldAddToQueue(preference, key, actionsData)) {
                 data.modes[count++] = preference;
             }
         }
@@ -106,18 +106,18 @@ contract RebasePreference is Owned, IPreference {
     function shouldAddToQueue(
         uint64 preference,
         StrategyKey memory key,
-        bytes memory actions
+        bytes memory actionsData
     )
         internal
         view
         returns (bool)
     {
         if (preference == 1) {
-            return _checkRebasePreferenceStrategies(key, actions);
+            return _checkRebasePreferenceStrategies(key, actionsactionsData);
         } else if (preference == 2) {
-            return _checkRebaseTimePreferenceStrategies(actions);
+            return _checkRebaseTimePreferenceStrategies(actionsData);
         } else if (preference == 3) {
-            return _checkRebaseInactivityStrategies();
+            return _checkRebaseInactivityStrategies(actionsData);
         }
         return false;
     }
@@ -130,11 +130,9 @@ contract RebasePreference is Owned, IPreference {
         view
         returns (bool)
     {
-        ActionsData memory data = abi.decode(actionsData, (ActionsData));
-
         // rebase preference data will be encode with int24 and int24 types
         (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) =
-            abi.decode(data.rebasePreferenceData[0], (int24, int24));
+            abi.decode(actionsData.rebaseStrategyData[0], (int24, int24));
 
         (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
             _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
@@ -148,16 +146,20 @@ contract RebasePreference is Owned, IPreference {
     }
 
     function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) internal view returns (bool) {
-        ActionsData memory data = abi.decode(actionsData, (ActionsData));
         // rebase preference data will be encode with uint256
-        (uint256 timePreference) = abi.decode(data.rebasePreferenceData[1], (uint256));
-        if (timePreference < block.timestamp && timePreference >= maxTimePeriod) {
+        (uint256 timePreference) = abi.decode(actionsData.rebaseStrategyData[1], (uint256));
+        // How can we use these checks at the time of strategy creation?
+        if (timePreference < block.timestamp || timePreference >= maxTimePeriod || timePreference == 0) {
             revert timePreferenceConstraint();
         }
         return true;
     }
 
-    function _checkRebaseInactivityStrategies() internal view returns (bool) { }
+    function _checkRebaseInactivityStrategies(bytes memory actionsData) internal view returns (bool) {
+        // rebase preference data will be encode with uint256
+        (uint256 inActivityThreshold) = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
+        // need to confirm few things before moving forward for this.
+    }
 
     function checkInputData(bytes32[] memory data, uint64 mode) public returns (bool) {
         // check array length
@@ -175,11 +177,6 @@ contract RebasePreference is Owned, IPreference {
                     revert DuplicateStrategyId(data[i]);
                 }
             }
-        }
-
-        if (mode == 2) {
-            if (timePreference < block.timestamp) revert timePreferenceConstraint();
-            if (timePreference == block.timestamp) revert timePreferenceConstraint();
         }
 
         return true;
@@ -203,18 +200,10 @@ contract RebasePreference is Owned, IPreference {
         operators[operatorAddress] = !operators[operatorAddress];
     }
 
-    function getTwap(address _pool) public view returns (int24 tick) {
-        (tick,) = OracleLibrary.consult(_pool, twapDuration);
-    }
-
     function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
         return compressed * tickSpacing;
-    }
-
-    function updateTwapDuration(uint24 _durationInSeconds) external {
-        twapDuration = _durationInSeconds;
     }
 
     function updateLiquidityThreshold(uint256 _newThreshold) external {
