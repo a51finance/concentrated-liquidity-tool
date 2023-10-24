@@ -8,7 +8,6 @@ import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 contract RebasePreference is Owned, IPreference {
     mapping(address operator => bool eligible) public operators;
 
-    // Data[] private _queue;
     CLTBase private _cltBase;
 
     uint32 public twapDuration;
@@ -29,7 +28,40 @@ contract RebasePreference is Owned, IPreference {
     }
 
     function executeStrategies(bytes32[] memory strategyIDs) external view isOperator {
+        checkInputData(strategyIDs);
+
         StrategyData[] memory _queue = checkAndProcessStrategies(strategyIDs);
+
+        for (uint256 i = 0; i < _queue.length; i++) {
+            ShiftLiquidityParams memory params;
+            StrategyKey memory key;
+            params.strategyId = _queue[i];
+            params.shouldMint = false;
+            params.swapAmount = false;
+
+            for (uint256 j = 0; j < _queue[i].modes.length; j++) {
+                (int24 tickLower, int24 tickUpper) = getTicksForMode(_queue[i].modes[j]);
+
+                key.tickLower = tickLower;
+                key.tickUpper = tickUpper;
+                params.key = key;
+                _cltBase.shiftLiquidity(params);
+            }
+        }
+    }
+
+    function getTicksForMode(uint256 mode) internal view returns (int24, int24) {
+        if (mode == 1) {
+            // Call the mode 1 contract to get the ticks
+            // return (tickLower, tickUpper);
+        } else if (mode == 2) {
+            // Call the mode 2 contract to get the ticks
+            // return (tickLower, tickUpper);
+        } else if (mode == 3) {
+            // Call the mode 3 contract to get the ticks
+            // return (tickLower, tickUpper);
+        }
+        revert InvalidMode();
     }
 
     function checkAndProcessStrategies(bytes32[] memory strategyIDs) internal view returns (StrategyData[] memory) {
