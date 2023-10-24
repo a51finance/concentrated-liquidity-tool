@@ -162,21 +162,27 @@ contract RebasePreference is Owned, IPreference {
 
     function _checkRebaseInactivityStrategies() internal view returns (bool) { }
 
-    function checkInputData(bytes32[] memory data) public returns (bool) {
+    function checkInputData(bytes32[] memory data, uint64 mode) public returns (bool) {
+        // check array length
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }
-
+        // check 0 strategyId
         for (uint256 i = 0; i < data.length; i++) {
             if (data[i] == bytes32(0)) {
                 revert StrategyIdCannotBeZero();
             }
-
+            // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {
                 if (data[i] == data[j]) {
                     revert DuplicateStrategyId(data[i]);
                 }
             }
+        }
+
+        if (mode == 2) {
+            if (timePreference < block.timestamp) revert timePreferenceConstraint();
+            if (timePreference == block.timestamp) revert timePreferenceConstraint();
         }
 
         return true;
