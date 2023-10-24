@@ -50,16 +50,13 @@ contract RebasePreference is Owned, IPreference {
         }
     }
 
-    function getTicksForMode(uint256 mode) internal view returns (int24, int24) {
+    function getTicksForMode(uint256 mode) internal view returns (int24 tickLower, int24 tickUpper) {
         if (mode == 1) {
-            // Call the mode 1 contract to get the ticks
-            // return (tickLower, tickUpper);
+            (tickLower, tickUpper) = shiftLeft(key, positionWidth);
         } else if (mode == 2) {
-            // Call the mode 2 contract to get the ticks
-            // return (tickLower, tickUpper);
+            (tickLower, tickUpper) = shiftRight(key, positionWidth);
         } else if (mode == 3) {
-            // Call the mode 3 contract to get the ticks
-            // return (tickLower, tickUpper);
+            // (tickLower, tickUpper) = shiftBothSide(key, positionWidth);
         }
         revert InvalidMode();
     }
