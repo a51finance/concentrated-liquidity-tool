@@ -55,13 +55,13 @@ struct ModePackage {
 struct PositionActions {
     uint256 mode;
     uint256[] exitStrategy;
-    uint256[] rebasePreference;
+    uint256[] rebaseStrategy;
     uint256[] liquidityDistribution;
 }
 
 struct ActionsData {
     bytes[] exitStrategyData;
-    bytes[] rebasePreferenceData;
+    bytes[] rebaseStrategyData;
     bytes[] liquidityDistributionData;
 }
 
