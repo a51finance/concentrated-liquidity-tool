@@ -45,8 +45,11 @@ contract RebaseModule is Owned, ModeTicksCalculation, IPreference {
                 key.tickUpper = tickUpper;
                 params.key = key;
                 _cltBase.shiftLiquidity(params);
+                // need to update rebase number for specific strategy
             }
         }
+
+        emit Executed(_queue);
     }
 
     function getTicksForMode(uint256 mode) internal view returns (int24 tickLower, int24 tickUpper) {
@@ -74,7 +77,19 @@ contract RebaseModule is Owned, ModeTicksCalculation, IPreference {
     }
 
     function getStrategyData(bytes32 strategyID) internal view returns (StrategyData memory) {
-        (StrategyKey memory key, bytes memory actions,,,,, uint256 totalShares,) = _cltBase.strategies(strategyID);
+        (
+            StrategyKey memory key,
+            bytes memory actions,
+            ,
+            ,
+            bool isRebaseActive,
+            uint256 inActivityThreshold,
+            ,
+            ,
+            uint256 totalShares,
+            ,
+            ,
+        ) = _cltBase.strategies(strategyID);
 
         if (totalShares <= liquidityThreshold) {
             return StrategyData(bytes32(0), [uint64(0), uint64(0), uint64(0)]);
@@ -82,6 +97,12 @@ contract RebaseModule is Owned, ModeTicksCalculation, IPreference {
 
         PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
         ActionsData memory actionsData = abi.decode(actions, (ActionsData));
+
+        //  we should check here the rebase threshold
+        if (isRebaseActive && inActivityThreshold > 0 && _checkRebaseInactivityStrategies(actionsData)) {
+            return StrategyData(bytes32(0), [uint64(0), uint64(0), uint64(0)]);
+        }
+
         if (positionActionData.rebaseStrategy.length > 2) {
             revert InvalidModesLength();
         }
@@ -155,10 +176,22 @@ contract RebaseModule is Owned, ModeTicksCalculation, IPreference {
         return true;
     }
 
+    // Return true if they match
     function _checkRebaseInactivityStrategies(bytes memory actionsData) internal view returns (bool) {
-        // rebase preference data will be encode with uint256
-        (uint256 inActivityThreshold) = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
-        // need to confirm few things before moving forward for this.
+        (,,,, bool isRebaseActive, uint256 inActivityThreshold,,,,,,) = _cltBase.strategies(strategyID);
+
+        if (!isRebaseActive) {
+            StrategyData storage strategiesData = _cltBase.strategies(strategyID);
+            strategiesData.isRebaseActive = true;
+        }
+
+        (uint256 preferredInActivity) = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
+
+        if (inActivityThreshold == preferredInActivity) {
+            return true;
+        }
+
+        return false;
     }
 
     function checkInputData(bytes32[] memory data, uint64 mode) public returns (bool) {
