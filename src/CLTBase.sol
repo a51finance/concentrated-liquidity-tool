@@ -122,6 +122,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             actions: positionActionsHash,
             actionsData: actionsDataHash,
             isCompound: isCompound,
+            isRebaseActive: false,
+            inActivityThreshold: 0,
             balance0: 0,
             balance1: 0,
             totalShares: 0,
