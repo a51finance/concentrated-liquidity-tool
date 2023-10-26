@@ -32,6 +32,7 @@ interface ICLTBase {
             StrategyKey memory key,
             bytes memory actions,
             bytes memory actionsData,
+            bytes memory actionStatus,
             bool isCompound,
             uint256 balance0,
             uint256 balance1,
