@@ -9,14 +9,15 @@ interface IPreference {
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();
     error DuplicateStrategyId(bytes32 strategyId);
-    error timePreferenceConstraint();
+    error TimePreferenceConstraint();
+    error BothTicksCannotBeZero();
 
     struct StrategyData {
         bytes32 strategyID;
-        uint64[3] modes; // Array to hold multiple valid modes
+        uint256[3] modes; // Array to hold multiple valid modes
     }
 
     function checkInputData(bytes[] memory data) external;
 
-    event Executed(bytes32[] strategyIds);
+    event Executed(StrategyData[] strategyIds);
 }

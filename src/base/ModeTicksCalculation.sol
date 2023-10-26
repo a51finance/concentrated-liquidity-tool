@@ -8,16 +8,11 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 abstract contract ModeTicksCalculation {
     uint32 twapDuration = 300;
 
-    function shiftLeft(
-        StrategyKey memory key,
-        int24 positionWidth // given by the user i.e. no of ticks
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
+    function shiftLeft(StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
+
+        int24 positionWidth = abs(key.tickUpper - key.tickLower);
 
         if (currentTick < key.tickLower) {
             (, currentTick,,,,,) = key.pool.slot0();
@@ -29,16 +24,10 @@ abstract contract ModeTicksCalculation {
         }
     }
 
-    function shiftRight(
-        StrategyKey memory key,
-        int24 positionWidth
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
+    function shiftRight(StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
+        int24 positionWidth = abs(key.tickUpper - key.tickLower);
 
         if (currentTick > key.tickUpper) {
             (, currentTick,,,,,) = key.pool.slot0();
@@ -50,14 +39,7 @@ abstract contract ModeTicksCalculation {
         }
     }
 
-    function shiftBothSide(
-        StrategyKey memory key,
-        int24 positionWidth
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    { }
+    function shiftBothSide(StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) { }
 
     function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
         (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
@@ -73,5 +55,12 @@ abstract contract ModeTicksCalculation {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
         return compressed * tickSpacing;
+    }
+
+    function abs(int24 x) public pure returns (int24) {
+        if (x < 0) {
+            return -x;
+        }
+        return x;
     }
 }
