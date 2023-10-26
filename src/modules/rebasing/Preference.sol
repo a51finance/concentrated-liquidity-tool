@@ -24,7 +24,7 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
 
         for (uint256 i = 0; i < _queue.length; i++) {
             ShiftLiquidityParams memory params;
-            (StrategyKey memory key,,,,,,,,,,,) = _cltBase.strategies(_queue[i].strategyID);
+            (StrategyKey memory key,,,,,,,,,,) = _cltBase.strategies(_queue[i].strategyID);
 
             params.strategyId = _queue[i].strategyID;
             params.shouldMint = false;
@@ -36,7 +36,8 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
                 key.tickLower = tickLower;
                 key.tickUpper = tickUpper;
                 params.key = key;
-                // _cltBase.shiftLiquidity(params);
+
+                _cltBase.shiftLiquidity(params);
                 // need to update rebase number for specific strategy
             }
         }
@@ -62,7 +63,7 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
         return (tickLower = 0, tickUpper = 0);
     }
 
-    function checkAndProcessStrategies(bytes32[] memory strategyIDs) internal returns (StrategyData[] memory) {
+    function checkAndProcessStrategies(bytes32[] memory strategyIDs) internal view returns (StrategyData[] memory) {
         StrategyData[] memory _queue = new StrategyData[](strategyIDs.length);
         uint256 validEntries = 0;
 
@@ -75,20 +76,9 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
         return _queue;
     }
 
-    function getStrategyData(bytes32 strategyID) internal returns (StrategyData memory) {
-        (
-            StrategyKey memory key,
-            bytes memory actions,
-            ,
-            ,
-            bool isRebaseActive,
-            uint256 inActivityThreshold,
-            ,
-            ,
-            uint256 totalShares,
-            ,
-            ,
-        ) = _cltBase.strategies(strategyID);
+    function getStrategyData(bytes32 strategyID) internal view returns (StrategyData memory) {
+        (StrategyKey memory key, bytes memory actions,,,, uint256 rebaseCount,, uint256 totalShares,,,) =
+            _cltBase.strategies(strategyID);
 
         if (totalShares <= liquidityThreshold) {
             return StrategyData(bytes32(0), [uint256(0), uint256(0), uint256(0)]);
@@ -96,11 +86,6 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
 
         PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
         ActionsData memory actionsData = abi.decode(actions, (ActionsData));
-
-        //  we should check here the rebase threshold
-        if (isRebaseActive && inActivityThreshold > 0 && _checkRebaseInactivityStrategies(actionsData, strategyID)) {
-            return StrategyData(bytes32(0), [uint256(0), uint256(0), uint256(0)]);
-        }
 
         if (positionActionData.rebaseStrategy.length > 2) {
             revert InvalidModesLength();
@@ -110,8 +95,11 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
         uint256 count = 0;
         for (uint256 i = 0; i < positionActionData.rebaseStrategy.length; i++) {
             uint256 preference = positionActionData.rebaseStrategy[i];
-            if (shouldAddToQueue(preference, key, actionsData, strategyID)) {
-                data.modes[count++] = preference;
+
+            if (_checkRebaseInactivityStrategies(actionsData, rebaseCount)) {
+                if (shouldAddToQueue(preference, key, actionsData)) {
+                    data.modes[count++] = preference;
+                }
             }
         }
 
@@ -126,18 +114,16 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
     function shouldAddToQueue(
         uint256 preference,
         StrategyKey memory key,
-        ActionsData memory actionsData,
-        bytes32 strategyId
+        ActionsData memory actionsData
     )
         internal
+        view
         returns (bool)
     {
         if (preference == 1) {
             return _checkRebasePreferenceStrategies(key, actionsData);
         } else if (preference == 2) {
             return _checkRebaseTimePreferenceStrategies(actionsData);
-        } else if (preference == 3) {
-            return _checkRebaseInactivityStrategies(actionsData, strategyId);
         }
         return false;
     }
@@ -179,24 +165,19 @@ abstract contract RebaseModule is Owned, ModeTicksCalculation, AccessControl, IP
     // Return true if they match
     function _checkRebaseInactivityStrategies(
         ActionsData memory actionsData,
-        bytes32 strategyId
+        uint256 rebaseCount
     )
         internal
+        pure
         returns (bool)
     {
-        // (,,,, bool isRebaseActive, uint256 inActivityThreshold,,,,,,) = _cltBase.strategies(strategyId);
+        (uint256 preferredInActivity) = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
 
-        // if (!isRebaseActive) {
-        //     CLTBase.isRebaseActive = true;
-        // }
+        if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
+            return false;
+        }
 
-        // (uint256 preferredInActivity) = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
-
-        // if (inActivityThreshold == preferredInActivity) {
-        //     return true;
-        // }
-
-        return false;
+        return true;
     }
 
     function checkInputData(bytes32[] memory data) public pure returns (bool) {

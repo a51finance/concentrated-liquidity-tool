@@ -70,8 +70,7 @@ struct StrategyData {
     bytes actions;
     bytes actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
     bool isCompound;
-    bool isRebaseActive; // default value (false) to check whether this strategy has inactivity threshold or not
-    uint256 inActivityThreshold; // default value (0) to keep track of the number of rebases
+    uint256 rebaseCount; // default value (0) to keep track of the number of rebases
     uint256 balance0;
     uint256 balance1;
     uint256 totalShares;
