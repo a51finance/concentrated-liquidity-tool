@@ -7,6 +7,7 @@ import "./interfaces/modules/IPreference.sol";
 import "./interfaces/modules/ILiquidityDistribution.sol";
 
 import "./base/CLTPayments.sol";
+import "./base/AccessControl.sol";
 
 import "./libraries/Position.sol";
 import "./libraries/PoolActions.sol";
@@ -14,13 +15,12 @@ import "./libraries/FixedPoint128.sol";
 import "./libraries/LiquidityShares.sol";
 import "./libraries/SafeCastExtended.sol";
 
-import "@solmate/auth/Owned.sol";
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
+contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Arrays for uint256[];
     using Position for StrategyData;
     using SafeCastExtended for uint256;
@@ -42,9 +42,9 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
     mapping(bytes32 => ModePackage) public modules;
 
-    mapping(bytes32 => StrategyData) public strategies;
+    mapping(bytes32 => StrategyData) public override strategies;
 
-    mapping(uint256 => Position.Data) public positions;
+    mapping(uint256 => Position.Data) public override positions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
@@ -58,7 +58,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         address _weth9,
         IUniswapV3Factory _factory
     )
-        Owned(_owner)
+        AccessControl(_owner)
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
     { }
@@ -336,7 +336,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         emit Collect(params.tokenId, params.recipient, tokensOwed0, tokensOwed1);
     }
 
-    function shiftLiquidity(ShiftLiquidityParams calldata params) external override {
+    function shiftLiquidity(ShiftLiquidityParams calldata params) external override onlyOperator {
         // checks
         PoolActions.checkRange(params.key.tickLower, params.key.tickUpper, params.key.pool.tickSpacing());
 

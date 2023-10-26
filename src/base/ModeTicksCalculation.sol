@@ -25,7 +25,7 @@ abstract contract ModeTicksCalculation {
             currentTick = floorTick(currentTick, tickSpacing);
 
             tickLower = currentTick - tickSpacing;
-            tickUpper = tickLower - positionWidth;
+            tickUpper = floorTick(tickLower - positionWidth, tickSpacing);
         }
     }
 
@@ -46,11 +46,18 @@ abstract contract ModeTicksCalculation {
             currentTick = floorTick(currentTick, tickSpacing);
 
             tickUpper = currentTick - tickSpacing;
-            tickLower = tickUpper - positionWidth;
+            tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
         }
     }
 
-    function shiftBothSide() internal view { }
+    function shiftBothSide(
+        StrategyKey memory key,
+        int24 positionWidth
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    { }
 
     function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
         (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
