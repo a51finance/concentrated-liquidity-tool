@@ -64,7 +64,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     }
 
     function getStrategy(bytes32 strategyID) internal returns (StrategyKey memory key, bytes memory actions) {
-        (key, actions,,,,,,,,) = baseVault.strategies(strategyID);
+        (key, actions,,,,,,,,,) = baseVault.strategies(strategyID);
     }
 
     function updateStrategy(bytes32 strategyID, StrategyKey memory newKey) internal {
@@ -73,7 +73,8 @@ contract Modes is ModeTicksCalculation, AccessControl {
             strategyId: strategyID,
             shouldMint: true,
             zeroForOne: false,
-            swapAmount: 0
+            swapAmount: 0,
+            moduleStatus: ""
         });
 
         baseVault.shiftLiquidity(params);
