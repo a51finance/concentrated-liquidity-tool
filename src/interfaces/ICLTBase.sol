@@ -34,8 +34,6 @@ interface ICLTBase {
             bytes memory actionsData,
             bytes memory actionStatus,
             bool isCompound,
-            bool isRebaseActive,
-            uint256 inActivityThreshold,
             uint256 balance0,
             uint256 balance1,
             uint256 totalShares,

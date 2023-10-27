@@ -71,8 +71,7 @@ struct StrategyData {
     bytes actions;
     bytes actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
     bytes actionStatus;
-    bool isCompound;
-    uint256 rebaseCount; // default value (0) to keep track of the number of rebases
+    bool isCompound; // default value (0) to keep track of the number of rebases
     uint256 balance0;
     uint256 balance1;
     uint256 totalShares;
