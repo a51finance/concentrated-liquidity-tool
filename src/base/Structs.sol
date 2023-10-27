@@ -39,6 +39,7 @@ struct ShiftLiquidityParams {
     bool shouldMint;
     bool zeroForOne;
     int256 swapAmount;
+    bytes moduleStatus;
 }
 
 struct ClaimFeesParams {
@@ -69,6 +70,7 @@ struct StrategyData {
     StrategyKey key;
     bytes actions;
     bytes actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
+    bytes actionStatus;
     bool isCompound;
     uint256 rebaseCount; // default value (0) to keep track of the number of rebases
     uint256 balance0;

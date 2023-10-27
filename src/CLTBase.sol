@@ -42,9 +42,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     mapping(bytes32 => ModePackage) public modules;
 
-    mapping(bytes32 => StrategyData) public override strategies;
+    mapping(bytes32 => StrategyData) public strategies;
 
-    mapping(uint256 => Position.Data) public override positions;
+    mapping(uint256 => Position.Data) public positions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
@@ -121,6 +121,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             key: key,
             actions: positionActionsHash,
             actionsData: actionsDataHash,
+            actionStatus: "",
             isCompound: isCompound,
             rebaseCount: 0,
             balance0: 0,
@@ -376,7 +377,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         }
 
         // update state { this state will be reflected to all users having this strategyID }
-        strategy.updateStrategy(params.key, liquidity, amount0 - amount0Added, amount1 - amount1Added);
+        strategy.updateStrategy(
+            params.key, params.moduleStatus, liquidity, amount0 - amount0Added, amount1 - amount1Added
+        );
     }
 
     function addModule(bytes32 moduleKey, address modeVault, uint64[] calldata newModule) external onlyOwner {

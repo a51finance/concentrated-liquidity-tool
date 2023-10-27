@@ -45,6 +45,7 @@ library Position {
     function updateStrategy(
         StrategyData storage self,
         StrategyKey memory key,
+        bytes memory status,
         uint128 liquidity,
         uint256 balance0,
         uint256 balance1
@@ -56,6 +57,7 @@ library Position {
         self.balance0 = balance0;
         self.balance1 = balance1;
 
+        self.actionStatus = status;
         self.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
     }
 

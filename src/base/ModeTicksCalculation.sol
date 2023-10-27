@@ -39,7 +39,12 @@ abstract contract ModeTicksCalculation {
         }
     }
 
-    function shiftBothSide(StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) { }
+    function shiftBothSide(StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
+        int24 currentTick = getTwap(key.pool);
+
+        if (currentTick < key.tickLower) return shiftLeft(key);
+        if (currentTick > key.tickUpper) return shiftRight(key);
+    }
 
     function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
         (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
