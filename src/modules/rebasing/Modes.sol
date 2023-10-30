@@ -21,7 +21,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         PositionActions memory modules = abi.decode(actions, (PositionActions));
 
         if (modules.mode == 1) {
-            (tickLower, tickUpper) = shiftLeft(key, 10);
+            (tickLower, tickUpper) = shiftLeft(key);
 
             key = StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 
@@ -37,7 +37,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         PositionActions memory modules = abi.decode(actions, (PositionActions));
 
         if (modules.mode == 2) {
-            (tickLower, tickUpper) = shiftRight(key, 10);
+            (tickLower, tickUpper) = shiftRight(key);
 
             key = StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 
@@ -53,7 +53,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         PositionActions memory modules = abi.decode(actions, (PositionActions));
 
         if (modules.mode == 3) {
-            (tickLower, tickUpper) = shiftBothSide(key, 10);
+            (tickLower, tickUpper) = shiftBothSide(key);
 
             key = StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 

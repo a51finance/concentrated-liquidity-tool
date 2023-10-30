@@ -25,6 +25,7 @@
     "lint": "pnpm lint:sol && pnpm prettier:check",
     "lint:sol": "forge fmt --check && pnpm solhint {script,src,test}/**/*.sol",
     "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
-    "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore"
+    "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",
+    "deploy-alp-goerli":"source .env && forge script script/deploy.s.sol:DeployALP --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv"
   }
 }

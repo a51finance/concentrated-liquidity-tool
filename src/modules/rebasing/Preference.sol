@@ -126,11 +126,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         StrategyData memory data;
         uint256 count = 0;
         for (uint256 i = 0; i < positionActionData.rebaseStrategy.length; i++) {
-            uint256 preference = positionActionData.rebaseStrategy[i];
+            uint256 rebaseAction = positionActionData.rebaseStrategy[i];
 
             if (_checkRebaseInactivityStrategies(_actionsData, actionStatus)) {
-                if (shouldAddToQueue(preference, key, _actionsData)) {
-                    data.modes[count++] = preference;
+                if (shouldAddToQueue(rebaseAction, key, _actionsData)) {
+                    data.modes[count++] = rebaseAction;
                 }
             }
         }
@@ -145,12 +145,12 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
 
     /// @notice Determines if a strategy should be added to the queue.
     /// @dev Checks the preference and other strategy details.
-    /// @param preference The preference of the strategy.
+    /// @param rebaseAction The preference of the strategy.
     /// @param key Strategy key.
     /// @param actionsData Data related to strategy actions.
     /// @return bool indicating whether the strategy should be added to the queue.
     function shouldAddToQueue(
-        uint256 preference,
+        uint256 rebaseAction,
         StrategyKey memory key,
         ActionsData memory actionsData
     )
@@ -158,9 +158,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         view
         returns (bool)
     {
-        if (preference == 1) {
+        if (rebaseAction == 1) {
             return _checkRebasePreferenceStrategies(key, actionsData);
-        } else if (preference == 2) {
+        } else if (rebaseAction == 2) {
             return _checkRebaseTimePreferenceStrategies(actionsData);
         }
         return false;
@@ -339,7 +339,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Updates the liquidity threshold.
     /// @dev Reverts if the new threshold is less than or equal to zero.
     /// @param _newThreshold The new liquidity threshold value.
-    function updateLiquidityThreshold(uint256 _newThreshold) external {
+    function updateLiquidityThreshold(uint256 _newThreshold) external onlyOperator {
         if (_newThreshold <= 0) {
             revert InvalidThreshold();
         }
