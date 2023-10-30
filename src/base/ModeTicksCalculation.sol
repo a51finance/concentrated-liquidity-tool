@@ -62,7 +62,7 @@ abstract contract ModeTicksCalculation {
         return compressed * tickSpacing;
     }
 
-    function abs(int24 x) public pure returns (int24) {
+    function abs(int24 x) internal pure returns (int24) {
         if (x < 0) {
             return -x;
         }
