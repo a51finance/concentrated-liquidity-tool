@@ -17,8 +17,6 @@ import "./libraries/SafeCastExtended.sol";
 
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Arrays for uint256[];
@@ -456,7 +454,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         }
 
         if (mode == LIQUIDITY_DISTRIBUTION) {
-            IPreference(vault).checkInputData(data);
+            ILiquidityDistribution(vault).checkInputData(data);
         } else {
             revert InvalidModule(mode);
         }
