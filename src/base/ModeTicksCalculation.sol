@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
-import { StrategyKey } from "./Structs.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
@@ -9,7 +9,7 @@ abstract contract ModeTicksCalculation {
     uint32 twapDuration = 300;
 
     function shiftLeft(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         int24 positionWidth // given by the user i.e. no of ticks
     )
         internal
@@ -30,7 +30,7 @@ abstract contract ModeTicksCalculation {
     }
 
     function shiftRight(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         int24 positionWidth
     )
         internal
@@ -51,7 +51,7 @@ abstract contract ModeTicksCalculation {
     }
 
     function shiftBothSide(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         int24 positionWidth
     )
         internal

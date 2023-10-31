@@ -3,7 +3,7 @@ pragma solidity >=0.5.0;
 
 import "./SafeCastExtended.sol";
 
-import { StrategyKey } from "../base/Structs.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 import "../interfaces/ICLTBase.sol";
 import "../interfaces/ICLTPayments.sol";
@@ -20,7 +20,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 library PoolActions {
     using SafeCastExtended for uint256;
 
-    function updatePosition(StrategyKey memory key) internal returns (uint128 liquidity) {
+    function updatePosition(ICLTBase.StrategyKey memory key) internal returns (uint128 liquidity) {
         (liquidity,,,,) = getPositionLiquidity(key);
 
         if (liquidity > 0) {
@@ -29,7 +29,7 @@ library PoolActions {
     }
 
     function burnLiquidity(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         uint128 strategyliquidity
     )
         internal
@@ -52,7 +52,7 @@ library PoolActions {
     }
 
     function burnUserLiquidity(
-        StrategyKey storage key,
+        ICLTBase.StrategyKey storage key,
         uint128 strategyliquidity,
         uint256 userSharePercentage,
         bool isCompound
@@ -75,7 +75,7 @@ library PoolActions {
     }
 
     function mintLiquidity(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         uint256 amount0Desired,
         uint256 amount1Desired
     )
@@ -121,7 +121,7 @@ library PoolActions {
     }
 
     function collectPendingFees(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         uint128 tokensOwed0,
         uint128 tokensOwed1,
         address recipient
@@ -132,7 +132,7 @@ library PoolActions {
         (collect0, collect1) = key.pool.collect(recipient, key.tickLower, key.tickUpper, tokensOwed0, tokensOwed1);
     }
 
-    function getPositionLiquidity(StrategyKey memory key)
+    function getPositionLiquidity(ICLTBase.StrategyKey memory key)
         internal
         view
         returns (
@@ -149,7 +149,7 @@ library PoolActions {
     }
 
     function getLiquidityForAmounts(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         uint256 amount0,
         uint256 amount1
     )
@@ -169,7 +169,7 @@ library PoolActions {
     }
 
     function getAmountsForLiquidity(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         uint128 liquidity
     )
         internal

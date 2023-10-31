@@ -12,6 +12,69 @@ interface ICLTBase {
     error TransactionTooAged();
     error InvalidModule(bytes32 module);
 
+    /// @param pool The Uniswap V3 pool
+    /// @param tickLower The lower tick of the A51's LP position
+    /// @param tickUpper The upper tick of the A51's LP position
+    struct StrategyKey {
+        IUniswapV3Pool pool;
+        int24 tickLower;
+        int24 tickUpper;
+    }
+
+    /// @param modeIDs Array of ids for each the basic or advance strategy
+    /// @param modesVault Address of the base or adnvace mode vault
+    struct ModePackage {
+        uint256[] modeIDs;
+        address modesVault;
+    }
+
+    /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
+    /// @param exitStrategy Array of whitelistd ids for advance mode exit strategy selection
+    /// @param rebaseStrategy Array of whitelistd ids for advance mode rebase strategy selection
+    /// @param liquidityDistribution Array of whitelistd ids for advance mode liquidity distribution selection
+    struct PositionActions {
+        uint256 mode;
+        uint256[] exitStrategy;
+        uint256[] rebaseStrategy;
+        uint256[] liquidityDistribution;
+    }
+
+    /// @param exitStrategy Array of inputs as encoded data for exit strategies
+    /// @param rebaseStrategy Array of inputs as encoded data for rebase strategies
+    /// @param liquidityDistribution Array of inputs as encoded data for liquidity distribution strategies
+    struct ActionsData {
+        bytes[] exitStrategyData;
+        bytes[] rebaseStrategyData;
+        bytes[] liquidityDistributionData;
+    }
+
+    /// @param key A51 position's key details
+    /// @param actions Ids of all modes selected by the strategist encoded together in a single hash
+    /// @param actionsData Input values for the respective mode encoded in hash & all inputs are encoded together again
+    /// @param actionStatus The encoded data for each of the strategy to track any detail for futher actions
+    /// @param isCompound Bool weather the strategy has compunding activated or not
+    /// @param balance0 Amount of token0 left that are not added on AMM's position
+    /// @param balance1 Amount of token0 left that are not added on AMM's position
+    /// @param totalShares Total no of shares minted for this A51's strategy
+    /// @param uniswapLiquidity Total no of liquidity added on AMM for this strategy
+    /// @param feeGrowthInside0LastX128 The fee growth of token0 collected per unit of liquidity for
+    /// the entire life of the A51's position
+    /// @param feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
+    /// the entire life of the A51's position
+    struct StrategyData {
+        StrategyKey key;
+        bytes actions;
+        bytes actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
+        bytes actionStatus;
+        bool isCompound;
+        uint256 balance0;
+        uint256 balance1;
+        uint256 totalShares;
+        uint128 uniswapLiquidity;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+    }
+
     /// @notice Emitted when tokens are collected for a position NFT
     /// @param tokenId The ID of the token for which underlying tokens were collected
     /// @param recipient The address of the account that received the collected tokens
@@ -39,21 +102,30 @@ interface ICLTBase {
         uint256 indexed tokenId, address indexed recipient, uint256 liquidity, uint256 amount0, uint256 amount1
     );
 
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
-    /// @param strategyId a parameter just like in doxygen (must be followed by parameter name)
+    /// @notice Emitted when strategy is created
+    /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
+    /// @param positionActions It is a hash of a preimage composed by all modes IDs selected by the strategist
+    /// @param actionsData It is a hash of a preimage composed by all inputs of respective mode
+    /// @param key A51 position's key details associated with this strategy
+    /// @param isCompound Bool weather the strategy has compunding activated or not
     event StrategyCreated(
         bytes32 strategyId, bytes positionActions, bytes actionsData, StrategyKey key, bool isCompound
     );
 
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized
+    /// List of whitelisted IDs could be fetched by the modules function for each basic & advance mode.
+    /// If any ID is selected of any module it is mandatory to encode data for it then pass it to actions array
+    /// E.g: actions: [1, 3], it's should be: actionsData: [dataOfID1, dataOfID2]
+    /// otherwise it will revert
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
-    /// ......
+    /// @param data It is a hash of all inputs of respective modes
+    /// @param actions It is hash of all encoded data of whitelisted IDs which are being passed
+    /// @param isCompound Bool weather the strategy should have compunding activated or not
     function createStrategy(
         StrategyKey calldata key,
-        ActionsData calldata data,
         PositionActions calldata actions,
+        ActionsData calldata data,
         bool isCompound
     )
         external;
@@ -109,6 +181,20 @@ interface ICLTBase {
             uint128 tokensOwed1
         );
 
+    /// @param amount0Desired The desired amount of token0 to be spent,
+    /// @param amount1Desired The desired amount of token1 to be spent,
+    /// @param amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
+    /// @param amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
+    /// @param recipient account that should receive the shares in terms of A51's NFT
+    struct DepositParams {
+        bytes32 strategyId;
+        uint256 amount0Desired;
+        uint256 amount1Desired;
+        uint256 amount0Min;
+        uint256 amount1Min;
+        address recipient;
+    }
+
     /// @notice Creates a new position wrapped in a A51 NFT
     /// @param params The params necessary to mint a position, encoded as `MintParams` in calldata
     /// @return tokenId The ID of the token that represents the minted position
@@ -120,6 +206,15 @@ interface ICLTBase {
         payable
         returns (uint256 tokenId, uint256 liquidity, uint256 amount0, uint256 amount1);
 
+    /// @param params tokenId The ID of the token for which liquidity is being increased
+    /// @param amount0Desired The desired amount of token0 to be spent,
+    /// @param amount1Desired The desired amount of token1 to be spent,
+    struct UpdatePositionParams {
+        uint256 tokenId;
+        uint256 amount0Desired;
+        uint256 amount1Desired;
+    }
+
     /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
     /// @param params The params necessary to increase a position, encoded as `UpdatePositionParams` in calldata
     /// @dev This method can be used by by both compounding & non-compounding strategy positions
@@ -130,11 +225,31 @@ interface ICLTBase {
         external
         returns (uint256 share, uint256 amount0, uint256 amount1);
 
+    /// @param params tokenId The ID of the token for which liquidity is being decreased
+    /// @param liquidity amount The amount by which liquidity will be decreased,
+    /// @param recipient Recipient of tokens
+    /// @param refundAsETH whether to recieve in WETH or ETH (only valid for WETH/ALT pairs)
+    struct WithdrawParams {
+        uint256 tokenId;
+        uint256 liquidity;
+        address recipient;
+        bool refundAsETH;
+    }
+
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position
     /// @param params The params necessary to decrease a position, encoded as `WithdrawParams` in calldata
     /// @return amount0 Amount of token0 sent to recipient
     /// @return amount1 Amount of token1 sent to recipient
     function withdraw(WithdrawParams calldata params) external returns (uint256 amount0, uint256 amount1);
+
+    /// @param recipient Recipient of tokens
+    /// @param params tokenId The ID of the NFT for which tokens are being collected
+    /// @param refundAsETH whether to recieve in WETH or ETH (only valid for WETH/ALT pairs)
+    struct ClaimFeesParams {
+        address recipient;
+        uint256 tokenId;
+        bool refundAsETH;
+    }
 
     /// @notice Collects up to a maximum amount of fees owed to a specific position to the recipient
     /// @dev Only non-compounding strategy users can call this
@@ -142,7 +257,25 @@ interface ICLTBase {
     /// calldata
     function claimPositionFee(ClaimFeesParams calldata params) external;
 
-    /// @notice Explain to an end user what this does
+    /// @param key A51 new position's key with updated ticks
+    /// @param strategyId Id of A51's position for which ticks are being updated
+    /// @param shouldMint Bool weather liquidity should be added on AMM or hold in contract
+    /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
+    /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
+    /// exact
+    /// output (negative)
+    /// @param moduleStatus The encoded data for each of the strategy to track any detail for futher actions
+    struct ShiftLiquidityParams {
+        StrategyKey key;
+        bytes32 strategyId;
+        bool shouldMint;
+        bool zeroForOne;
+        int256 swapAmount;
+        bytes moduleStatus;
+    }
+
+    /// @notice Updates the strategy's liquidity accordingly w.r.t basic or advance module when it is activated
+    /// @dev Only called by the whitlisted bot or owner of strategy
     /// @param params The params necessary to update a position, encoded as `ShiftLiquidityParams` in calldata
     function shiftLiquidity(ShiftLiquidityParams calldata params) external;
 }

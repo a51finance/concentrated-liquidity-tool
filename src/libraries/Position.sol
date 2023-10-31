@@ -4,6 +4,7 @@ pragma solidity >=0.5.0;
 import "./PoolActions.sol";
 import "../base/Structs.sol";
 import "../libraries/FixedPoint128.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 library Position {
     uint128 internal constant MAX_UINT128 = type(uint128).max;
@@ -18,7 +19,7 @@ library Position {
     }
 
     function update(
-        StrategyData storage self,
+        ICLTBase.StrategyData storage self,
         uint128 liquidityAdded,
         uint256 share,
         uint256 amount0Desired,
@@ -43,8 +44,8 @@ library Position {
     }
 
     function updateStrategy(
-        StrategyData storage self,
-        StrategyKey memory key,
+        ICLTBase.StrategyData storage self,
+        ICLTBase.StrategyKey memory key,
         bytes memory status,
         uint128 liquidity,
         uint256 balance0,
@@ -61,7 +62,7 @@ library Position {
         self.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
     }
 
-    function updatePositionFee(StrategyData storage self) internal {
+    function updatePositionFee(ICLTBase.StrategyData storage self) internal {
         PoolActions.updatePosition(self.key);
 
         (uint256 fees0, uint256 fees1) =

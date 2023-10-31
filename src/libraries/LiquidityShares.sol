@@ -2,10 +2,11 @@
 pragma solidity >=0.5.0;
 
 import "./PoolActions.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 library LiquidityShares {
     function getReserves(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         uint128 liquidity
     )
         internal
@@ -25,7 +26,7 @@ library LiquidityShares {
     }
 
     function computeLiquidityShare(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         bool isCompound,
         uint128 strategyliquidity,
         uint256 amount0Max,
