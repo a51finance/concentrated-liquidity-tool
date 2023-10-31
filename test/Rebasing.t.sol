@@ -6,9 +6,9 @@ import "forge-std/console.sol";
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "../src/CLTBase.sol";
+import { CLTBase } from "../src/CLTBase.sol";
+import { RebaseModule } from "../src/modules/rebasing/RebaseModule.sol";
 import "../src/base/Structs.sol";
-import "../src/modules/rebasing/RebaseModule.sol";
 
 contract RebasingModulesTest is Test {
     Vm _hevm = Vm(HEVM_ADDRESS);
@@ -33,6 +33,16 @@ contract RebasingModulesTest is Test {
     function setUp() public {
         baseContract = new CLTBase("ALP TOKEN", "ALPT", owner,WETH9,uniswapV3FactoryContract);
         rebaseModuleContract = new RebaseModule(owner,address(baseContract));
+
+        uint64[] memory newModule = new uint64[](3);
+        newModule[0] = 1;
+        newModule[1] = 2;
+        newModule[2] = 3;
+
+        _hevm.prank(owner);
+        baseContract.addModule(
+            0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204, address(baseContract), newModule
+        );
     }
 
     function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
@@ -70,19 +80,9 @@ contract RebasingModulesTest is Test {
 
         positionActionsData.mode = 1;
         positionActionsData.exitStrategy = new uint256[](0);
-        positionActionsData.rebaseStrategy = [1, 0, 0];
+        positionActionsData.rebaseStrategy = [1];
         positionActionsData.liquidityDistribution = new uint256[](0);
 
-        uint64[] memory newModule = new uint64[](3);
-        newModule[0] = 1;
-        newModule[1] = 2;
-        newModule[2] = 3;
-
-        _hevm.prank(owner);
-        baseContract.addModule(
-            0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204, address(baseContract), newModule
-        );
-
-        // baseContract.createStrategy(strategyKey, actionsData, positionActionsData, true);
+        baseContract.createStrategy(strategyKey, actionsData, positionActionsData, true);
     }
 }

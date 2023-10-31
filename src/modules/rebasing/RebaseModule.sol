@@ -7,7 +7,10 @@ import "../../base/AccessControl.sol";
 import "../../interfaces/modules/IPreference.sol";
 import "../../interfaces/ICLTBase.sol";
 
-/// @title Rebase Module Contract
+/// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
+/// @author undefined_0x
+/// @notice Explain to an end user what this does
+/// @dev Explain to a developer any extra details
 contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Threshold for liquidity consideration
     uint256 public liquidityThreshold = 1e3;
@@ -215,6 +218,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         pure
         returns (bool)
     {
+        // actionsData.rebaseStrategyData[2] can generate error here if only one rebase action is selected
         uint256 preferredInActivity = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
         uint256 rebaseCount = abi.decode(actionStatus, (uint256));
         if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
