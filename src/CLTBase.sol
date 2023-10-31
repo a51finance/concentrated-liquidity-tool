@@ -69,28 +69,26 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     )
         external
     {
-        if (actions.exitStrategy.length != data.exitStrategyData.length) revert InvalidInput();
-
-        if (actions.rebaseStrategy.length != data.rebaseStrategyData.length) revert InvalidInput();
-
-        if (actions.liquidityDistribution.length != data.liquidityDistributionData.length) revert InvalidInput();
-
-        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
-
-        if (actions.exitStrategy.length < 0 && actions.exitStrategy.length > length(modules[EXIT_STRATEGY].modeIDs)) {
-            revert InvalidInput();
-        }
-
         if (
-            actions.rebaseStrategy.length < 0
-                && actions.rebaseStrategy.length > length(modules[REBASE_STRATEGY].modeIDs)
+            actions.exitStrategy.length != data.exitStrategyData.length
+                || actions.rebaseStrategy.length != data.rebaseStrategyData.length
+                || actions.liquidityDistribution.length != data.liquidityDistributionData.length
         ) {
             revert InvalidInput();
         }
 
+        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
+
         if (
-            actions.liquidityDistribution.length < 0
-                && actions.exitStrategy.length > length(modules[LIQUIDITY_DISTRIBUTION].modeIDs)
+            (actions.exitStrategy.length <= 0 && actions.exitStrategy.length > length(modules[EXIT_STRATEGY].modeIDs))
+                || (
+                    actions.rebaseStrategy.length <= 0
+                        && actions.rebaseStrategy.length > length(modules[REBASE_STRATEGY].modeIDs)
+                )
+                || (
+                    actions.liquidityDistribution.length <= 0
+                        && actions.liquidityDistribution.length > length(modules[LIQUIDITY_DISTRIBUTION].modeIDs)
+                )
         ) {
             revert InvalidInput();
         }
@@ -119,7 +117,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             key: key,
             actions: positionActionsHash,
             actionsData: actionsDataHash,
-            actionStatus: abi.encode(uint256(0)),
+            actionStatus: "",
             isCompound: isCompound,
             balance0: 0,
             balance1: 0,

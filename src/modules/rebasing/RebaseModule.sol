@@ -116,20 +116,20 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             return StrategyData(bytes32(0), [uint256(0), uint256(0), uint256(0)]);
         }
 
-        PositionActions memory positionActionData = abi.decode(actions, (PositionActions));
-        ActionsData memory _actionsData = abi.decode(actionsData, (ActionsData));
+        PositionActions memory positionActions = abi.decode(actions, (PositionActions));
+        ActionsData memory strategyActionsData = abi.decode(actionsData, (ActionsData));
 
-        if (positionActionData.rebaseStrategy.length > 2) {
+        if (positionActions.rebaseStrategy.length > 2) {
             revert InvalidModesLength();
         }
 
         StrategyData memory data;
         uint256 count = 0;
-        for (uint256 i = 0; i < positionActionData.rebaseStrategy.length; i++) {
-            uint256 rebaseAction = positionActionData.rebaseStrategy[i];
+        for (uint256 i = 0; i < positionActions.rebaseStrategy.length; i++) {
+            uint256 rebaseAction = positionActions.rebaseStrategy[i];
 
-            if (_checkRebaseInactivityStrategies(_actionsData, actionStatus)) {
-                if (shouldAddToQueue(rebaseAction, key, _actionsData)) {
+            if (_checkRebaseInactivityStrategies(strategyActionsData, actionStatus)) {
+                if (shouldAddToQueue(rebaseAction, key, strategyActionsData)) {
                     data.modes[count++] = rebaseAction;
                 }
             }
