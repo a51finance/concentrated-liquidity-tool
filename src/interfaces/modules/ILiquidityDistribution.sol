@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
+import "../ICLTBase.sol";
+
 interface ILiquidityDistribution {
     error InvalidCaller();
 
-    function checkInputData(bytes[] memory data) external;
+    function checkInputData(StrategyDetail[] memory data) external;
 }

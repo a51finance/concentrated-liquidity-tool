@@ -78,24 +78,16 @@ struct ModePackage {
     address modesVault;
 }
 
-/// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
-/// @param exitStrategy Array of whitelistd ids for advance mode exit strategy selection
-/// @param rebaseStrategy Array of whitelistd ids for advance mode rebase strategy selection
-/// @param liquidityDistribution Array of whitelistd ids for advance mode liquidity distribution selection
-struct PositionActions {
-    uint256 mode;
-    uint256[] exitStrategy;
-    uint256[] rebaseStrategy;
-    uint256[] liquidityDistribution;
+struct ActionDetails {
+    uint256 mode; // mode can be 1, 2, or 3
+    StrategyDetail[] exitStrategy;
+    StrategyDetail[] rebaseStrategy;
+    StrategyDetail[] liquidityDistribution;
 }
 
-/// @param exitStrategy Array of inputs as encoded data for exit strategies
-/// @param rebaseStrategy Array of inputs as encoded data for rebase strategies
-/// @param liquidityDistribution Array of inputs as encoded data for liquidity distribution strategies
-struct ActionsData {
-    bytes[] exitStrategyData;
-    bytes[] rebaseStrategyData;
-    bytes[] liquidityDistributionData;
+struct StrategyDetail {
+    bytes32 actionName;
+    bytes data;
 }
 
 /// @param key A51 position's key details
@@ -113,7 +105,6 @@ struct ActionsData {
 /// the entire life of the A51's position
 struct StrategyData {
     StrategyKey key;
-    bytes actions;
     bytes actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
     bytes actionStatus;
     bool isCompound;

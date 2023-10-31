@@ -42,26 +42,17 @@ interface ICLTBase {
     /// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param strategyId a parameter just like in doxygen (must be followed by parameter name)
-    event StrategyCreated(
-        bytes32 strategyId, bytes positionActions, bytes actionsData, StrategyKey key, bool isCompound
-    );
+    event StrategyCreated(bytes32 strategyId, bytes actionsData, StrategyKey key, bool isCompound);
 
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
     /// ......
-    function createStrategy(
-        StrategyKey calldata key,
-        ActionsData calldata data,
-        PositionActions calldata actions,
-        bool isCompound
-    )
-        external;
+    function createStrategies(StrategyKey calldata key, ActionDetails calldata details, bool isCompound) external;
 
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @return key A51 position's key details associated with this strategy
-    /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @return actionsData It is a hash of a preimage composed by all inputs of respective mode
     /// @return actionStatus It is a hash of a additional data of strategy for further required actions
     /// @return isCompound Bool weather the strategy has compunding activated or not
@@ -77,7 +68,6 @@ interface ICLTBase {
         external
         returns (
             StrategyKey memory key,
-            bytes memory actions,
             bytes memory actionsData,
             bytes memory actionStatus,
             bool isCompound,

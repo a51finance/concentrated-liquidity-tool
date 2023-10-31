@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
+import "../ICLTBase.sol";
+
 interface IPreference {
     error InvalidCaller();
     error InvalidThreshold();
@@ -17,7 +19,7 @@ interface IPreference {
     error OnlyRebaseInactivityCannotBeSelected();
     error RebaseInactivityCannotBeZero();
 
-    struct StrategyData {
+    struct StrategyDetailsData {
         bytes32 strategyID;
         uint256[3] modes; // Array to hold multiple valid modes
     }
@@ -29,7 +31,7 @@ interface IPreference {
         REBASE_INACTIVITY
     }
 
-    function checkInputData(bytes[] memory data) external returns (bool);
+    function checkInputData(StrategyDetail[] memory data) external returns (bool);
 
-    event Executed(StrategyData[] strategyIds);
+    event Executed(StrategyDetailsData[] strategyIds);
 }
