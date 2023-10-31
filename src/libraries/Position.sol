@@ -2,7 +2,6 @@
 pragma solidity >=0.5.0;
 
 import "./PoolActions.sol";
-import "../base/Structs.sol";
 import "../libraries/FixedPoint128.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
