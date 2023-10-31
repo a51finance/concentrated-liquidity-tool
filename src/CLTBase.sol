@@ -400,12 +400,14 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @param newModule Array of new mode ids to be added against advance modes
     function addModule(bytes32 moduleKey, address modeVault, uint64[] calldata newModule) external onlyOwner {
         if (
-            moduleKey != MODE || moduleKey != REBASE_STRATEGY || moduleKey != EXIT_STRATEGY
-                || moduleKey != LIQUIDITY_DISTRIBUTION
-        ) revert InvalidModule(moduleKey);
-
-        modules[moduleKey].modeIDs = newModule;
-        modules[moduleKey].modesVault = modeVault;
+            moduleKey == MODE || moduleKey == REBASE_STRATEGY || moduleKey == EXIT_STRATEGY
+                || moduleKey == LIQUIDITY_DISTRIBUTION
+        ) {
+            modules[moduleKey].modeIDs = newModule;
+            modules[moduleKey].modesVault = modeVault;
+        } else {
+            revert InvalidModule(moduleKey);
+        }
     }
 
     function _deposit(
@@ -474,7 +476,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         }
 
         if (mode == LIQUIDITY_DISTRIBUTION) {
-            IPreference(vault).checkInputData(data);
+            ILiquidityDistribution(vault).checkInputData(data);
         } else {
             revert InvalidModule(mode);
         }
