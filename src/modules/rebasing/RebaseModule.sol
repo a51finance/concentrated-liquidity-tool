@@ -119,13 +119,21 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
 
         ActionDetails memory strategyActionsData = abi.decode(actionsData, (ActionDetails));
 
+        for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
+            if (
+                strategyActionsData.rebaseStrategy[i].actionName == REBASE_INACTIVITY
+                    && !_checkRebaseInactivityStrategies(strategyActionsData.rebaseStrategy[i], actionStatus)
+            ) {
+                return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
+            }
+        }
+
         ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
+
         for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
             StrategyDetail memory rebaseAction = strategyActionsData.rebaseStrategy[i];
-
-            // issue here regarding the findings of REBASE_INACTIVITY
-            if (_checkRebaseInactivityStrategies(rebaseAction, actionStatus) && shouldAddToQueue(rebaseAction, key)) {
+            if (shouldAddToQueue(rebaseAction, key)) {
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
             }
         }
@@ -208,7 +216,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         pure
         returns (bool)
     {
-        // actionsData.rebaseStrategyData[2] can generate error ac one rebase action is selected
         uint256 preferredInActivity = abi.decode(strategyDetail.data, (uint256));
         uint256 rebaseCount = abi.decode(actionStatus, (uint256));
         if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
