@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
-import { StrategyKey, ShiftLiquidityParams, PositionActions } from "../../base/Structs.sol";
+import { StrategyKey, ShiftLiquidityParams, ActionDetails } from "../../base/Structs.sol";
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
@@ -18,7 +18,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     function shiftLeft(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
         (StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        PositionActions memory modules = abi.decode(actions, (PositionActions));
+        ActionDetails memory modules = abi.decode(actions, (ActionDetails));
 
         if (modules.mode == 1) {
             (tickLower, tickUpper) = shiftLeft(key);
@@ -34,7 +34,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     function shiftRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
         (StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        PositionActions memory modules = abi.decode(actions, (PositionActions));
+        ActionDetails memory modules = abi.decode(actions, (ActionDetails));
 
         if (modules.mode == 2) {
             (tickLower, tickUpper) = shiftRight(key);
@@ -50,7 +50,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     function shiftLeftAndRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
         (StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        PositionActions memory modules = abi.decode(actions, (PositionActions));
+        ActionDetails memory modules = abi.decode(actions, (ActionDetails));
 
         if (modules.mode == 3) {
             (tickLower, tickUpper) = shiftBothSide(key);
@@ -64,7 +64,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     }
 
     function getStrategy(bytes32 strategyID) internal returns (StrategyKey memory key, bytes memory actions) {
-        (key, actions,,,,,,,,,) = baseVault.strategies(strategyID);
+        (key, actions,,,,,,,,) = baseVault.strategies(strategyID);
     }
 
     function updateStrategy(bytes32 strategyID, StrategyKey memory newKey) internal {

@@ -17,6 +17,10 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Maximum allowable time period
     uint256 public maxTimePeriod;
 
+    bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
+    bytes32 public constant TIME_PREFERENCE = keccak256("TIME_PREFERENCE");
+    bytes32 public constant REBASE_INACTIVITY = keccak256("REBASE_INACTIVITY");
+
     ICLTBase _cltBase; // Instance of the ICLTBase interface
 
     /// @notice Constructs the RebaseModule with the provided parameters.
@@ -33,23 +37,24 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     function executeStrategies(bytes32[] memory strategyIDs) external onlyOperator {
         checkStrategiesArray(strategyIDs);
 
-        StrategyData[] memory _queue = checkAndProcessStrategies(strategyIDs);
+        ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
 
         for (uint256 i = 0; i < _queue.length; i++) {
             ShiftLiquidityParams memory params;
-            (StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) = _cltBase.strategies(_queue[i].strategyID);
+            (StrategyKey memory key,, bytes memory actionStatus,,,,,,,) = _cltBase.strategies(_queue[i].strategyID);
             uint256 rebaseCount = abi.decode(actionStatus, (uint256));
 
             params.strategyId = _queue[i].strategyID;
             params.shouldMint = false;
             params.swapAmount = 0;
 
-            for (uint256 j = 0; j < _queue[i].modes.length; j++) {
-                (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].modes[j]);
+            for (uint256 j = 0; j < _queue[i].actionNames.length; j++) {
+                (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].mode);
                 key.tickLower = tickLower;
                 key.tickUpper = tickUpper;
                 params.key = key;
-                params.moduleStatus = _queue[i].modes[j] == 3 ? abi.encode(uint256(++rebaseCount)) : actionStatus;
+                params.moduleStatus =
+                    _queue[i].actionNames[j] == REBASE_INACTIVITY ? abi.encode(uint256(++rebaseCount)) : actionStatus;
                 _cltBase.shiftLiquidity(params);
             }
         }
@@ -71,11 +76,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         view
         returns (int24 tickLower, int24 tickUpper)
     {
-        if (mode == uint256(Mode.REBASE_PREFERENCE)) {
+        if (mode == 1) {
             (tickLower, tickUpper) = shiftLeft(key);
-        } else if (mode == uint256(Mode.REBASE_TIME_PREFERENCE)) {
+        } else if (mode == 2) {
             (tickLower, tickUpper) = shiftRight(key);
-        } else if (mode == uint256(Mode.REBASE_INACTIVITY)) {
+        } else if (mode == 3) {
             (tickLower, tickUpper) = shiftBothSide(key);
         }
         return (tickLower, tickUpper);
@@ -84,13 +89,16 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks and processes strategies based on their validity.
     /// @dev Returns an array of valid strategies.
     /// @param strategyIDs Array of strategy IDs to check and process.
-    /// @return StrategyData[] array containing valid strategies.
-    function checkAndProcessStrategies(bytes32[] memory strategyIDs) internal returns (StrategyData[] memory) {
-        StrategyData[] memory _queue = new StrategyData[](strategyIDs.length);
+    /// @return ExecutableStrategiesData[] array containing valid strategies.
+    function checkAndProcessStrategies(bytes32[] memory strategyIDs)
+        internal
+        returns (ExecutableStrategiesData[] memory)
+    {
+        ExecutableStrategiesData[] memory _queue = new ExecutableStrategiesData[](strategyIDs.length);
         uint256 validEntries = 0;
 
         for (uint256 i = 0; i < strategyIDs.length; i++) {
-            StrategyData memory data = getStrategyData(strategyIDs[i]);
+            ExecutableStrategiesData memory data = getStrategyData(strategyIDs[i]);
             if (data.strategyID != bytes32(0)) {
                 _queue[validEntries++] = data;
             }
@@ -98,73 +106,56 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         return _queue;
     }
 
-    /// @notice Retrieves strategy data based on strategy ID.
+    // /// @notice Retrieves strategy data based on strategy ID.
     /// @param strategyID The ID of the strategy to retrieve.
-    /// @return StrategyData representing the retrieved strategy.
-    function getStrategyData(bytes32 strategyID) internal returns (StrategyData memory) {
-        (
-            StrategyKey memory key,
-            bytes memory actions,
-            bytes memory actionsData,
-            bytes memory actionStatus,
-            ,
-            ,
-            ,
-            uint256 totalShares,
-            ,
-            ,
-        ) = _cltBase.strategies(strategyID);
+    /// @return ExecutableStrategiesData representing the retrieved strategy.
+    function getStrategyData(bytes32 strategyID) internal returns (ExecutableStrategiesData memory) {
+        (StrategyKey memory key, bytes memory actionsData, bytes memory actionStatus,,,, uint256 totalShares,,,) =
+            _cltBase.strategies(strategyID);
 
         if (totalShares <= liquidityThreshold) {
-            return StrategyData(bytes32(0), [uint256(0), uint256(0), uint256(0)]);
+            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
         }
 
-        PositionActions memory positionActions = abi.decode(actions, (PositionActions));
-        ActionsData memory strategyActionsData = abi.decode(actionsData, (ActionsData));
+        ActionDetails memory strategyActionsData = abi.decode(actionsData, (ActionDetails));
 
-        if (positionActions.rebaseStrategy.length > 2) {
-            revert InvalidModesLength();
-        }
-
-        StrategyData memory data;
+        ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
-        for (uint256 i = 0; i < positionActions.rebaseStrategy.length; i++) {
-            uint256 rebaseAction = positionActions.rebaseStrategy[i];
+        for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
+            StrategyDetail memory rebaseAction = strategyActionsData.rebaseStrategy[i];
 
-            if (_checkRebaseInactivityStrategies(strategyActionsData, actionStatus)) {
-                if (shouldAddToQueue(rebaseAction, key, strategyActionsData)) {
-                    data.modes[count++] = rebaseAction;
-                }
+            // issue here regarding the findings of REBASE_INACTIVITY
+            if (_checkRebaseInactivityStrategies(rebaseAction, actionStatus) && shouldAddToQueue(rebaseAction, key)) {
+                executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
             }
         }
 
         if (count == 0) {
-            return StrategyData(bytes32(0), [uint256(0), uint256(0), uint256(0)]);
+            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
         }
 
-        data.strategyID = strategyID;
-        return data;
+        executableStrategiesData.mode = strategyActionsData.mode;
+        executableStrategiesData.strategyID = strategyID;
+        return executableStrategiesData;
     }
 
     /// @notice Determines if a strategy should be added to the queue.
     /// @dev Checks the preference and other strategy details.
-    /// @param rebaseAction The preference of the strategy.
+    /// @param rebaseAction  Data related to strategy actions.
     /// @param key Strategy key.
-    /// @param actionsData Data related to strategy actions.
     /// @return bool indicating whether the strategy should be added to the queue.
     function shouldAddToQueue(
-        uint256 rebaseAction,
-        StrategyKey memory key,
-        ActionsData memory actionsData
+        StrategyDetail memory rebaseAction,
+        StrategyKey memory key
     )
         internal
         view
         returns (bool)
     {
-        if (rebaseAction == 1) {
-            return _checkRebasePreferenceStrategies(key, actionsData);
-        } else if (rebaseAction == 2) {
-            return _checkRebaseTimePreferenceStrategies(actionsData);
+        if (rebaseAction.actionName == PRICE_PREFERENCE) {
+            return _checkRebasePreferenceStrategies(key, rebaseAction.data);
+        } else if (rebaseAction.actionName == TIME_PREFERENCE) {
+            return _checkRebaseTimePreferenceStrategies(rebaseAction.data);
         }
         return false;
     }
@@ -175,14 +166,13 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @return true if the conditions are met, false otherwise.
     function _checkRebasePreferenceStrategies(
         StrategyKey memory key,
-        ActionsData memory actionsData
+        bytes memory actionsData
     )
         internal
         view
         returns (bool)
     {
-        (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) =
-            abi.decode(actionsData.rebaseStrategyData[0], (int24, int24));
+        (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData, (int24, int24));
 
         (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
             _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
@@ -198,8 +188,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks if the rebase time preference strategies are satisfied.
     /// @param actionsData The actions data that includes the rebase strategy data.
     /// @return true if the conditions are met.
-    function _checkRebaseTimePreferenceStrategies(ActionsData memory actionsData) internal view returns (bool) {
-        uint256 timePreference = abi.decode(actionsData.rebaseStrategyData[1], (uint256));
+    function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) internal view returns (bool) {
+        uint256 timePreference = abi.decode(actionsData, (uint256));
         if (timePreference < block.timestamp || timePreference >= maxTimePeriod || timePreference == 0) {
             revert TimePreferenceConstraint();
         }
@@ -207,19 +197,19 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     }
 
     /// @notice Checks if the rebase inactivity strategies are satisfied.
-    /// @param actionsData The actions data that includes the rebase strategy data.
+    /// @param strategyDetail The actions data that includes the rebase strategy data.
     /// @param actionStatus The status of the action.
     /// @return true if the conditions are met, false otherwise.
     function _checkRebaseInactivityStrategies(
-        ActionsData memory actionsData,
+        StrategyDetail memory strategyDetail,
         bytes memory actionStatus
     )
         internal
         pure
         returns (bool)
     {
-        // actionsData.rebaseStrategyData[2] can generate error here if only one rebase action is selected
-        uint256 preferredInActivity = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
+        // actionsData.rebaseStrategyData[2] can generate error ac one rebase action is selected
+        uint256 preferredInActivity = abi.decode(strategyDetail.data, (uint256));
         uint256 rebaseCount = abi.decode(actionStatus, (uint256));
         if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
             return false;
@@ -228,44 +218,38 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         return true;
     }
 
-    function checkInputData(bytes[] memory data) external view returns (bool) {
-        for (uint256 i = 0; i < data.length; i++) {
-            ActionsData memory actionsData = abi.decode(data[i], (ActionsData));
+    function checkInputData(StrategyDetail memory actionsData) external view returns (bool) {
+        bool hasDiffPreference = actionsData.actionName == PRICE_PREFERENCE;
+        bool hasTimePreference = actionsData.actionName == TIME_PREFERENCE;
+        bool hasInActivity = actionsData.actionName == REBASE_INACTIVITY;
 
-            if (actionsData.rebaseStrategyData.length == 0) {
-                revert RebaseStrategyDataCannotBeZero();
+        if (hasDiffPreference && isNonZero(actionsData.data)) {
+            (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
+            if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
+                revert InvalidPreferenceDifference();
             }
-
-            bool hasDiffPreference = isNonZero(actionsData.rebaseStrategyData[0]);
-            bool hasTimePreference = isNonZero(actionsData.rebaseStrategyData[1]);
-            bool hasInActivity = isNonZero(actionsData.rebaseStrategyData[2]);
-
-            if (hasDiffPreference) {
-                (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) =
-                    abi.decode(actionsData.rebaseStrategyData[0], (int24, int24));
-                if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
-                    revert InvalidPreferenceDifference();
-                }
-            }
-
-            if (hasTimePreference) {
-                uint256 timePreference = abi.decode(actionsData.rebaseStrategyData[1], (uint256));
-                if (timePreference <= block.timestamp || timePreference >= maxTimePeriod || timePreference == 0) {
-                    revert InvalidTimePreference();
-                }
-            }
-
-            if (hasInActivity) {
-                if (hasDiffPreference && hasTimePreference) {
-                    revert OnlyRebaseInactivityCannotBeSelected();
-                }
-                uint256 preferredInActivity = abi.decode(actionsData.rebaseStrategyData[2], (uint256));
-                if (preferredInActivity == 0) {
-                    revert RebaseInactivityCannotBeZero();
-                }
-            }
+            return true;
         }
-        return true;
+
+        if (hasTimePreference && isNonZero(actionsData.data)) {
+            uint256 timePreference = abi.decode(actionsData.data, (uint256));
+            if (timePreference <= block.timestamp || timePreference >= maxTimePeriod || timePreference == 0) {
+                revert InvalidTimePreference();
+            }
+            return true;
+        }
+
+        if (hasInActivity && isNonZero(actionsData.data)) {
+            if (hasDiffPreference && hasTimePreference) {
+                revert OnlyRebaseInactivityCannotBeSelected();
+            }
+            uint256 preferredInActivity = abi.decode(actionsData.data, (uint256));
+            if (preferredInActivity == 0) {
+                revert RebaseInactivityCannotBeZero();
+            }
+            return true;
+        }
+        return false;
     }
 
     /// @notice Checks the bytes value is non zero or not.

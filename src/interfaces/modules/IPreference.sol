@@ -19,24 +19,13 @@ interface IPreference {
     error OnlyRebaseInactivityCannotBeSelected();
     error RebaseInactivityCannotBeZero();
 
-    struct StrategyDetailsData {
-        bytes32 strategyID;
-        uint256[3] modes; // Array to hold multiple valid modes
-    }
-
     struct ExecutableStrategiesData {
         bytes32 strategyID;
-        bytes32 actionName;
-    }
-
-    enum Mode {
-        DUMMY,
-        REBASE_PREFERENCE,
-        REBASE_TIME_PREFERENCE,
-        REBASE_INACTIVITY
+        uint256 mode;
+        bytes32[3] actionNames; // Array to hold multiple valid modes
     }
 
     function checkInputData(StrategyDetail memory data) external returns (bool);
 
-    event Executed(StrategyDetailsData[] strategyIds);
+    event Executed(ExecutableStrategiesData[] strategyIds);
 }
