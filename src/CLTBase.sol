@@ -15,6 +15,8 @@ import "./libraries/FixedPoint128.sol";
 import "./libraries/LiquidityShares.sol";
 import "./libraries/SafeCastExtended.sol";
 
+import "forge-std/console.sol";
+
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
@@ -68,7 +70,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         CLTPayments(_factory, _weth9)
     { }
 
-    function createStrategies(StrategyKey calldata key, ActionDetails calldata details, bool isCompound) external {
+    function createStrategy(StrategyKey calldata key, ActionDetails calldata details, bool isCompound) external {
         /**
          * details will be
          * 2, [], [(bytes32 actionName , bytes data)], []
@@ -375,7 +377,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @param moduleAction Action for the specific module
     /// @param vaultAddress New address of mode's vault
 
-    function addValue(bytes23 moduleKey, bytes32 moduleAction, address vaultAddress) external onlyOwner {
+    function addModule(bytes32 moduleKey, bytes32 moduleAction, address vaultAddress) external onlyOwner {
         if (modulesActions[moduleKey][moduleAction] == address(0)) {
             modulesActions[moduleKey][moduleAction] = vaultAddress;
         } else {
@@ -443,13 +445,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
             if (mode == REBASE_STRATEGY) {
                 IPreference(vault).checkInputData(data[i]);
-            }
-
-            if (mode == EXIT_STRATEGY) {
+            } else if (mode == EXIT_STRATEGY) {
                 IExitStrategy(vault).checkInputData(data[i]);
-            }
-
-            if (mode == LIQUIDITY_DISTRIBUTION) {
+            } else if (mode == LIQUIDITY_DISTRIBUTION) {
                 ILiquidityDistribution(vault).checkInputData(data[i]);
             } else {
                 revert InvalidModule(mode);
@@ -459,7 +457,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     function _checkModeIds(bytes32 mode, StrategyDetail[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
-            if (modulesActions[mode][array[i].actionName] == address(0)) revert InvalidInput();
+            if (modulesActions[mode][array[i].actionName] == address(0)) {
+                revert InvalidModuleAction(array[i].actionName);
+            }
         }
     }
 

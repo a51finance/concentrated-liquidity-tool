@@ -10,6 +10,7 @@ interface ICLTBase {
     error InvalidCaller();
     error onlyNonCompounders();
     error TransactionTooAged();
+    error InvalidModuleAction(bytes32 actionName);
     error InvalidModule(bytes32 module);
 
     /// @notice Emitted when tokens are collected for a position NFT
@@ -48,7 +49,7 @@ interface ICLTBase {
     /// @dev Call this when the pool does exist and is initialized
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
     /// ......
-    function createStrategies(StrategyKey calldata key, ActionDetails calldata details, bool isCompound) external;
+    function createStrategy(StrategyKey calldata key, ActionDetails calldata details, bool isCompound) external;
 
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
