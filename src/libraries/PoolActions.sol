@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import "./SafeCastExtended.sol";
-
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import { SafeCastExtended } from "./SafeCastExtended.sol";
+import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 
-import "../interfaces/ICLTBase.sol";
-import "../interfaces/ICLTPayments.sol";
+import { PositionKey } from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
+import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
-import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-
-import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 /// @title Liquidity and ticks functions
 /// @notice Provides functions for computing liquidity and ticks for token amounts and prices

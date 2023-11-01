@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import "./PoolActions.sol";
-import "../libraries/FixedPoint128.sol";
+import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+
+/// @notice Positions represent an owner in A51 liquidity
 library Position {
     uint128 internal constant MAX_UINT128 = type(uint128).max;
 

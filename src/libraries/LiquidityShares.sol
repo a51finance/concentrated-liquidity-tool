@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import "./PoolActions.sol";
+import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
+
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 library LiquidityShares {
     function getReserves(
