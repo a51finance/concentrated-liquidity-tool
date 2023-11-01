@@ -6,6 +6,7 @@ import "../../base/ModeTicksCalculation.sol";
 import "../../base/AccessControl.sol";
 import "../../interfaces/modules/IPreference.sol";
 import "../../interfaces/ICLTBase.sol";
+import "forge-std/console.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
@@ -198,7 +199,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @return true if the conditions are met.
     function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) internal view returns (bool) {
         uint256 timePreference = abi.decode(actionsData, (uint256));
-        if (timePreference < block.timestamp || timePreference >= maxTimePeriod || timePreference == 0) {
+        if (timePreference < block.timestamp || timePreference >= block.timestamp + maxTimePeriod) {
             revert TimePreferenceConstraint();
         }
         return true;
@@ -240,7 +241,10 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
 
         if (hasTimePreference && isNonZero(actionsData.data)) {
             uint256 timePreference = abi.decode(actionsData.data, (uint256));
-            if (timePreference <= block.timestamp || timePreference >= maxTimePeriod || timePreference == 0) {
+            if (
+                timePreference <= block.timestamp || timePreference >= block.timestamp + maxTimePeriod
+                    || timePreference == 0
+            ) {
                 revert InvalidTimePreference();
             }
             return true;
@@ -256,7 +260,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             }
             return true;
         }
-        return false;
+        revert RebaseStrategyDataCannotBeZero();
     }
 
     /// @notice Checks the bytes value is non zero or not.
