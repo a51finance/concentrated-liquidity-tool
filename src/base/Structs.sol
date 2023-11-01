@@ -71,13 +71,6 @@ struct ClaimFeesParams {
     bool refundAsETH;
 }
 
-/// @param modeIDs Array of ids for each the basic or advance strategy
-/// @param modesVault Address of the base or adnvace mode vault
-struct ModePackage {
-    uint256[] modeIDs;
-    address modesVault;
-}
-
 struct ActionDetails {
     uint256 mode; // mode can be 1, 2, or 3
     StrategyDetail[] exitStrategy;
