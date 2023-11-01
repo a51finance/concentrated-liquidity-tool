@@ -48,6 +48,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     mapping(uint256 => Position.Data) public positions;
 
+    // keccak256("REBASE_STRATEGY") => keccak256("PREFERENCE") => 0x12....0789
     mapping(bytes32 moduleKey => mapping(bytes32 moduleAction => address valut)) public modulesActions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
@@ -441,15 +442,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             address vault = modulesActions[mode][data[i].actionName];
 
             if (mode == REBASE_STRATEGY) {
-                IPreference(vault).checkInputData(data);
+                IPreference(vault).checkInputData(data[i]);
             }
 
             if (mode == EXIT_STRATEGY) {
-                IExitStrategy(vault).checkInputData(data);
+                IExitStrategy(vault).checkInputData(data[i]);
             }
 
             if (mode == LIQUIDITY_DISTRIBUTION) {
-                ILiquidityDistribution(vault).checkInputData(data);
+                ILiquidityDistribution(vault).checkInputData(data[i]);
             } else {
                 revert InvalidModule(mode);
             }

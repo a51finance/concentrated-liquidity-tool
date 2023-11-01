@@ -24,6 +24,11 @@ interface IPreference {
         uint256[3] modes; // Array to hold multiple valid modes
     }
 
+    struct ExecutableStrategiesData {
+        bytes32 strategyID;
+        bytes32 actionName;
+    }
+
     enum Mode {
         DUMMY,
         REBASE_PREFERENCE,
@@ -31,7 +36,7 @@ interface IPreference {
         REBASE_INACTIVITY
     }
 
-    function checkInputData(StrategyDetail[] memory data) external returns (bool);
+    function checkInputData(StrategyDetail memory data) external returns (bool);
 
     event Executed(StrategyDetailsData[] strategyIds);
 }

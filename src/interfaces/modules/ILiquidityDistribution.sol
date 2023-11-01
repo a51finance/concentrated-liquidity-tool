@@ -6,5 +6,5 @@ import "../ICLTBase.sol";
 interface ILiquidityDistribution {
     error InvalidCaller();
 
-    function checkInputData(StrategyDetail[] memory data) external;
+    function checkInputData(StrategyDetail memory data) external returns (bool);
 }

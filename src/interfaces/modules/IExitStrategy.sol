@@ -6,5 +6,5 @@ import "../ICLTBase.sol";
 interface IExitStrategy {
     error InvalidCaller();
 
-    function checkInputData(StrategyDetail[] memory data) external;
+    function checkInputData(StrategyDetail memory data) external returns (bool);
 }
