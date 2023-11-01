@@ -42,13 +42,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     // keccak256("LIQUIDITY_DISTRIBUTION")
     bytes32 public constant LIQUIDITY_DISTRIBUTION = 0xeabe6f62bd74d002b0267a6aaacb5212bb162f4f87ee1c4a80ac0d2698f8a505;
 
-    mapping(bytes32 => ModePackage) public modules;
+    // mapping(bytes32 => ModePackage) public modules;
 
     mapping(bytes32 => StrategyData) public strategies;
 
     mapping(uint256 => Position.Data) public positions;
 
-    mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
+    mapping(bytes32 moduleKey => mapping(bytes32 moduleAction => address valut)) public modulesActions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
@@ -371,15 +371,12 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault
     /// @dev New id can only be added for only rebase, exit & liquidity advance modes
     /// @param moduleKey Hash of the module for which is need to be updated
-    /// @param modeVault New address of mode's vault
-    /// @param newModule Array of new mode ids to be added against advance modes
-    function addModule(bytes32 moduleKey, address modeVault, uint64[] calldata newModule) external onlyOwner {
-        if (
-            moduleKey == MODE || moduleKey == REBASE_STRATEGY || moduleKey == EXIT_STRATEGY
-                || moduleKey == LIQUIDITY_DISTRIBUTION
-        ) {
-            modules[moduleKey].modeIDs = newModule;
-            modules[moduleKey].modesVault = modeVault;
+    /// @param moduleAction Action for the specific module
+    /// @param vaultAddress New address of mode's vault
+
+    function addValue(bytes23 moduleKey, bytes32 moduleAction, address vaultAddress) external onlyOwner {
+        if (modulesActions[moduleKey][moduleAction] == address(0)) {
+            modulesActions[moduleKey][moduleAction] = vaultAddress;
         } else {
             revert InvalidModule(moduleKey);
         }
@@ -440,26 +437,28 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     /// @notice Validates the strategy encoded input data
     function _validateInputData(bytes32 mode, StrategyDetail[] memory data) private {
-        address vault = modules[mode].modesVault;
+        for (uint256 i = 0; i < data.length; i++) {
+            address vault = modulesActions[mode][data[i].actionName];
 
-        if (mode == REBASE_STRATEGY) {
-            IPreference(vault).checkInputData(data);
-        }
+            if (mode == REBASE_STRATEGY) {
+                IPreference(vault).checkInputData(data);
+            }
 
-        if (mode == EXIT_STRATEGY) {
-            IExitStrategy(vault).checkInputData(data);
-        }
+            if (mode == EXIT_STRATEGY) {
+                IExitStrategy(vault).checkInputData(data);
+            }
 
-        if (mode == LIQUIDITY_DISTRIBUTION) {
-            ILiquidityDistribution(vault).checkInputData(data);
-        } else {
-            revert InvalidModule(mode);
+            if (mode == LIQUIDITY_DISTRIBUTION) {
+                ILiquidityDistribution(vault).checkInputData(data);
+            } else {
+                revert InvalidModule(mode);
+            }
         }
     }
 
     function _checkModeIds(bytes32 mode, StrategyDetail[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
-            if (!modulesActions[mode][array[i].actionName]) revert InvalidInput();
+            if (modulesActions[mode][array[i].actionName] == address(0)) revert InvalidInput();
         }
     }
 
