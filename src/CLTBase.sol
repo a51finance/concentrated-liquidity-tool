@@ -1,33 +1,31 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
-import "./interfaces/ICLTBase.sol";
-import "./interfaces/modules/IExitStrategy.sol";
-import "./interfaces/modules/IPreference.sol";
-import "./interfaces/modules/ILiquidityDistribution.sol";
+import { ICLTBase } from "./interfaces/ICLTBase.sol";
+import { IPreference } from "./interfaces/modules/IPreference.sol";
+import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
+import { ILiquidityDistribution } from "./interfaces/modules/ILiquidityDistribution.sol";
 
-import "./base/CLTPayments.sol";
-import "./base/AccessControl.sol";
+import { CLTPayments } from "./base/CLTPayments.sol";
+import { AccessControl } from "./base/AccessControl.sol";
 
-import "./libraries/Position.sol";
-import "./libraries/PoolActions.sol";
-import "./libraries/FixedPoint128.sol";
-import "./libraries/LiquidityShares.sol";
-import "./libraries/SafeCastExtended.sol";
-
-import "forge-std/console.sol";
-
-import "@openzeppelin/contracts/utils/Arrays.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { Position } from "./libraries/Position.sol";
+import { PoolActions } from "./libraries/PoolActions.sol";
+import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
+import { LiquidityShares } from "./libraries/LiquidityShares.sol";
+import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
-/// @notice Explain to an end user what this does
-/// @dev Explain to a developer any extra details
+/// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
+/// user preferences with the help of basic and advance liquidity modes
+/// Holds the state for all strategies and it's users
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Arrays for uint256[];
     using Position for StrategyData;
-    using SafeCastExtended for uint256;
 
     uint256 private _nextId = 1;
     uint256 public constant MIN_INITIAL_SHARES = 1e3;
@@ -46,9 +44,11 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     // mapping(bytes32 => ModePackage) public modules;
 
-    mapping(bytes32 => StrategyData) public strategies;
+    /// @inheritdoc ICLTBase
+    mapping(bytes32 => StrategyData) public override strategies;
 
-    mapping(uint256 => Position.Data) public positions;
+    /// @inheritdoc ICLTBase
+    mapping(uint256 => Position.Data) public override positions;
 
     // keccak256("REBASE_STRATEGY") => keccak256("PREFERENCE") => 0x12....0789
     mapping(bytes32 moduleKey => mapping(bytes32 moduleAction => address valut)) public modulesActions;

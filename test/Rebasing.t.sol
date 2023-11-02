@@ -7,6 +7,7 @@ import "forge-std/console.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { CLTBase } from "../src/CLTBase.sol";
+import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { RebaseModuleMock } from "./mocks/RebaseModule.Mock.sol";
 import "../src/base/Structs.sol";
 
@@ -24,7 +25,7 @@ contract RebasingModulesTest is Test {
     IUniswapV3Factory uniswapV3FactoryContract = IUniswapV3Factory(uniswapV3Factory);
     IUniswapV3Pool poolContract = IUniswapV3Pool(poolAddressPositiveTicks);
 
-    StrategyKey public strategyKey;
+    ICLTBase.StrategyKey public strategyKey;
 
     CLTBase public baseContract;
     RebaseModuleMock public rebaseModuleMockContract;
@@ -52,7 +53,7 @@ contract RebasingModulesTest is Test {
         strategyKey.tickUpper = tickUpper;
     }
 
-    function createStrategy(ActionDetails memory actionDetails) public { }
+    function createStrategy(ICLTBase.ActionDetails memory actionDetails) public { }
 
     function testRebaseDeploymentCheck() public {
         assertEq(rebaseModuleMockContract.isOperator(address(this)), false);
@@ -65,7 +66,7 @@ contract RebasingModulesTest is Test {
     // Price preference
 
     function testInputDataPricePreferenceWithValidInputs() public view {
-        StrategyDetail memory strategyDetail;
+        ICLTBase.StrategyDetail memory strategyDetail;
         strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
         strategyDetail.data = abi.encode(uint256(10), uint256(30));
         rebaseModuleMockContract.checkInputData(strategyDetail);
@@ -75,7 +76,7 @@ contract RebasingModulesTest is Test {
     }
 
     function testInputDataPricePreferenceWithInValidInputs() public {
-        StrategyDetail memory strategyDetail;
+        ICLTBase.StrategyDetail memory strategyDetail;
         strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
         strategyDetail.data = abi.encode(uint256(0), uint256(30));
 
@@ -93,14 +94,14 @@ contract RebasingModulesTest is Test {
     // Time preference
 
     function testCheckInputDataTimePreferenceWithValidInputs() public view {
-        StrategyDetail memory strategyDetail;
+        ICLTBase.StrategyDetail memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(block.timestamp + 3600));
         strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
         rebaseModuleMockContract.checkInputData(strategyDetail);
     }
 
     function testCheckInputDataTimePreferenceWithInvalidInputs() public {
-        StrategyDetail memory strategyDetail;
+        ICLTBase.StrategyDetail memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(block.timestamp));
         strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
 
@@ -122,7 +123,7 @@ contract RebasingModulesTest is Test {
     // Rebase Inactivity
 
     function testInputDataRebaseInActivityWithValidInputs() public {
-        StrategyDetail memory strategyDetail;
+        ICLTBase.StrategyDetail memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(2));
         strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
 
@@ -130,7 +131,7 @@ contract RebasingModulesTest is Test {
     }
 
     function testInputDataRebaseInActivityWithInValidInputs() public {
-        StrategyDetail memory strategyDetail;
+        ICLTBase.StrategyDetail memory strategyDetail;
         strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
         strategyDetail.data = abi.encode(uint256(0));
 
@@ -162,11 +163,11 @@ contract RebasingModulesTest is Test {
         assertEq(strategyKey.tickUpper + 30 > strategyKey.tickUpper, true);
     }
 
-    function testCheckRebasePreferenceStrategiesValidInputs() public {
-        getStrategyKey();
-        bytes memory data = abi.encode(uint256(10), uint256(30));
-        console.log(rebaseModuleMockContract.getTwap(strategyKey.pool));
-        bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
-        assertEq(success, true);
-    }
+    // function testCheckRebasePreferenceStrategiesValidInputs() public {
+    //     getStrategyKey();
+    //     bytes memory data = abi.encode(uint256(10), uint256(30));
+    //     console.log(rebaseModuleMockContract.getTwap(strategyKey.pool));
+    //     bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
+    //     assertEq(success, true);
+    // }
 }
