@@ -378,9 +378,12 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @param moduleKey Hash of the module for which is need to be updated
     /// @param moduleAction Action for the specific module
 
-    function addModule(bytes32 moduleKey, bytes32 moduleAction) external onlyOwner {
+    function addModule(bytes32 moduleKey, bytes32 moduleAction, address vault) external onlyOwner {
         if (modulesActions[moduleKey][moduleAction] == false) {
             modulesActions[moduleKey][moduleAction] = true;
+            if (vaultAddresses[moduleKey] == address(0)) {
+                vaultAddresses[moduleKey] = vault;
+            }
         } else {
             revert InvalidModule(moduleKey);
         }
