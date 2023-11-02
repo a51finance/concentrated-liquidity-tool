@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import "./PoolActions.sol";
-import "../base/Structs.sol";
-import "../libraries/FixedPoint128.sol";
+import { PoolActions } from "./PoolActions.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+
+/// @notice Positions represent an owner in A51 liquidity
 library Position {
     uint128 internal constant MAX_UINT128 = type(uint128).max;
 
@@ -18,7 +21,7 @@ library Position {
     }
 
     function update(
-        StrategyData storage self,
+        ICLTBase.StrategyData storage self,
         uint128 liquidityAdded,
         uint256 share,
         uint256 amount0Desired,
@@ -43,8 +46,9 @@ library Position {
     }
 
     function updateStrategy(
-        StrategyData storage self,
-        StrategyKey memory key,
+        ICLTBase.StrategyData storage self,
+        ICLTBase.StrategyKey memory key,
+        bytes memory status,
         uint128 liquidity,
         uint256 balance0,
         uint256 balance1
@@ -56,10 +60,11 @@ library Position {
         self.balance0 = balance0;
         self.balance1 = balance1;
 
+        self.actionStatus = status;
         self.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
     }
 
-    function updatePositionFee(StrategyData storage self) internal {
+    function updatePositionFee(ICLTBase.StrategyData storage self) internal {
         PoolActions.updatePosition(self.key);
 
         (uint256 fees0, uint256 fees1) =

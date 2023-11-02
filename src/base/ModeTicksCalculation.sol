@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
-import { StrategyKey } from "./Structs.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
@@ -9,7 +9,7 @@ abstract contract ModeTicksCalculation {
     uint32 twapDuration = 300;
 
     function shiftLeft(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         int24 positionWidth // given by the user i.e. no of ticks
     )
         internal
@@ -25,12 +25,12 @@ abstract contract ModeTicksCalculation {
             currentTick = floorTick(currentTick, tickSpacing);
 
             tickLower = currentTick - tickSpacing;
-            tickUpper = tickLower - positionWidth;
+            tickUpper = floorTick(tickLower - positionWidth, tickSpacing);
         }
     }
 
     function shiftRight(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         int24 positionWidth
     )
         internal
@@ -46,11 +46,23 @@ abstract contract ModeTicksCalculation {
             currentTick = floorTick(currentTick, tickSpacing);
 
             tickUpper = currentTick - tickSpacing;
-            tickLower = tickUpper - positionWidth;
+            tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
         }
     }
 
-    function shiftBothSide() internal view { }
+    function shiftBothSide(
+        ICLTBase.StrategyKey memory key,
+        int24 positionWidth
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        int24 currentTick = getTwap(key.pool);
+
+        if (currentTick < key.tickLower) return shiftLeft(key, positionWidth);
+        if (currentTick > key.tickUpper) return shiftRight(key, positionWidth);
+    }
 
     function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
         (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();

@@ -1,29 +1,32 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
-import "./interfaces/ICLTBase.sol";
-import "./interfaces/modules/IExitStrategy.sol";
-import "./interfaces/modules/IPreference.sol";
-import "./interfaces/modules/ILiquidityDistribution.sol";
+import { ICLTBase } from "./interfaces/ICLTBase.sol";
+import { IPreference } from "./interfaces/modules/IPreference.sol";
+import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
+import { ILiquidityDistribution } from "./interfaces/modules/ILiquidityDistribution.sol";
 
-import "./base/CLTPayments.sol";
+import { CLTPayments } from "./base/CLTPayments.sol";
+import { AccessControl } from "./base/AccessControl.sol";
 
-import "./libraries/Position.sol";
-import "./libraries/PoolActions.sol";
-import "./libraries/FixedPoint128.sol";
-import "./libraries/LiquidityShares.sol";
-import "./libraries/SafeCastExtended.sol";
+import { Position } from "./libraries/Position.sol";
+import { PoolActions } from "./libraries/PoolActions.sol";
+import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
+import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 
-import "@solmate/auth/Owned.sol";
-import "@openzeppelin/contracts/utils/Arrays.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
+/// @title A51 Finance Autonomus Liquidity Provision Base Contract
+/// @author 0xMudassir
+/// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
+/// user preferences with the help of basic and advance liquidity modes
+/// Holds the state for all strategies and it's users
+contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Arrays for uint256[];
     using Position for StrategyData;
-    using SafeCastExtended for uint256;
 
     uint256 private _nextId = 1;
     uint256 public constant MIN_INITIAL_SHARES = 1e3;
@@ -42,9 +45,11 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
 
     mapping(bytes32 => ModePackage) public modules;
 
-    mapping(bytes32 => StrategyData) public strategies;
+    /// @inheritdoc ICLTBase
+    mapping(bytes32 => StrategyData) public override strategies;
 
-    mapping(uint256 => Position.Data) public positions;
+    /// @inheritdoc ICLTBase
+    mapping(uint256 => Position.Data) public override positions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
@@ -58,18 +63,20 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         address _weth9,
         IUniswapV3Factory _factory
     )
-        Owned(_owner)
+        AccessControl(_owner)
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
     { }
 
+    /// @inheritdoc ICLTBase
     function createStrategy(
         StrategyKey calldata key,
-        ActionsData calldata data,
         PositionActions calldata actions,
+        ActionsData calldata data,
         bool isCompound
     )
         external
+        override
     {
         if (actions.exitStrategy.length != data.exitStrategyData.length) revert InvalidInput();
 
@@ -121,6 +128,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
             key: key,
             actions: positionActionsHash,
             actionsData: actionsDataHash,
+            actionStatus: "",
             isCompound: isCompound,
             balance0: 0,
             balance1: 0,
@@ -133,6 +141,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         emit StrategyCreated(strategyID, positionActionsHash, actionsDataHash, key, isCompound);
     }
 
+    /// @inheritdoc ICLTBase
     function deposit(DepositParams calldata params)
         external
         payable
@@ -162,8 +171,10 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         emit Deposit(tokenId, params.recipient, share, amount0, amount1);
     }
 
+    /// @inheritdoc ICLTBase
     function updatePositionLiquidity(UpdatePositionParams calldata params)
         external
+        override
         returns (uint256 share, uint256 amount0, uint256 amount1)
     {
         Position.Data storage position = positions[params.tokenId];
@@ -201,6 +212,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         position.liquidityShare += share;
     }
 
+    /// @inheritdoc ICLTBase
     function withdraw(WithdrawParams calldata params)
         external
         override
@@ -289,7 +301,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         position.liquidityShare = positionLiquidity - params.liquidity;
     }
 
-    function claimPositionFee(ClaimFeesParams calldata params) external isAuthorizedForToken(params.tokenId) {
+    /// @inheritdoc ICLTBase
+    function claimPositionFee(ClaimFeesParams calldata params) external override isAuthorizedForToken(params.tokenId) {
         Position.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
@@ -336,7 +349,8 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         emit Collect(params.tokenId, params.recipient, tokensOwed0, tokensOwed1);
     }
 
-    function shiftLiquidity(ShiftLiquidityParams calldata params) external override {
+    /// @inheritdoc ICLTBase
+    function shiftLiquidity(ShiftLiquidityParams calldata params) external override onlyOperator {
         // checks
         PoolActions.checkRange(params.key.tickLower, params.key.tickUpper, params.key.pool.tickSpacing());
 
@@ -375,17 +389,26 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         }
 
         // update state { this state will be reflected to all users having this strategyID }
-        strategy.updateStrategy(params.key, liquidity, amount0 - amount0Added, amount1 - amount1Added);
+        strategy.updateStrategy(
+            params.key, params.moduleStatus, liquidity, amount0 - amount0Added, amount1 - amount1Added
+        );
     }
 
+    /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault
+    /// @dev New id can only be added for only rebase, exit & liquidity advance modes
+    /// @param moduleKey Hash of the module for which is need to be updated
+    /// @param modeVault New address of mode's vault
+    /// @param newModule Array of new mode ids to be added against advance modes
     function addModule(bytes32 moduleKey, address modeVault, uint64[] calldata newModule) external onlyOwner {
         if (
-            moduleKey != MODE || moduleKey != REBASE_STRATEGY || moduleKey != EXIT_STRATEGY
-                || moduleKey != LIQUIDITY_DISTRIBUTION
-        ) revert InvalidModule(moduleKey);
-
-        modules[moduleKey].modeIDs = newModule;
-        modules[moduleKey].modesVault = modeVault;
+            moduleKey == MODE || moduleKey == REBASE_STRATEGY || moduleKey == EXIT_STRATEGY
+                || moduleKey == LIQUIDITY_DISTRIBUTION
+        ) {
+            modules[moduleKey].modeIDs = newModule;
+            modules[moduleKey].modesVault = modeVault;
+        } else {
+            revert InvalidModule(moduleKey);
+        }
     }
 
     function _deposit(
@@ -441,6 +464,7 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         feeGrowthInside1LastX128 = strategy.feeGrowthInside1LastX128;
     }
 
+    /// @notice Validates the strategy encoded input data
     function _validateInputData(bytes32 mode, bytes[] memory data) private {
         address vault = modules[mode].modesVault;
 
@@ -453,23 +477,23 @@ contract CLTBase is ICLTBase, CLTPayments, Owned, ERC721 {
         }
 
         if (mode == LIQUIDITY_DISTRIBUTION) {
-            IPreference(vault).checkInputData(data);
+            ILiquidityDistribution(vault).checkInputData(data);
         } else {
             revert InvalidModule(mode);
         }
-    }
-
-    function length(uint256[] storage self) private view returns (uint256 len) {
-        len = self.length;
-    }
-
-    function unsafeAccess(bytes32 mode, uint256 pos) private view returns (uint256) {
-        return modules[mode].modeIDs.unsafeAccess(pos).value;
     }
 
     function _checkModeIds(bytes32 mode, uint256[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] != unsafeAccess(mode, i)) revert InvalidInput();
         }
+    }
+
+    function unsafeAccess(bytes32 mode, uint256 pos) private view returns (uint256) {
+        return modules[mode].modeIDs.unsafeAccess(pos).value;
+    }
+
+    function length(uint256[] storage self) private view returns (uint256 len) {
+        len = self.length;
     }
 }
