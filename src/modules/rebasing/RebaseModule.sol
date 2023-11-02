@@ -240,6 +240,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         bool hasTimePreference = actionsData.actionName == TIME_PREFERENCE;
         bool hasInActivity = actionsData.actionName == REBASE_INACTIVITY;
 
+        // need to check here whether the preference ticks are outside of range
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
             if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
