@@ -19,6 +19,8 @@ abstract contract ModeTicksCalculation {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
 
+        int24 positionWidth = abs(key.tickUpper - key.tickLower);
+
         if (currentTick < key.tickLower) {
             (, currentTick,,,,,) = key.pool.slot0();
 
@@ -28,6 +30,7 @@ abstract contract ModeTicksCalculation {
             tickUpper = floorTick(tickLower - positionWidth, tickSpacing);
         }
     }
+
 
     function shiftRight(
         ICLTBase.StrategyKey memory key,
@@ -39,6 +42,7 @@ abstract contract ModeTicksCalculation {
     {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
+        int24 positionWidth = abs(key.tickUpper - key.tickLower);
 
         if (currentTick > key.tickUpper) {
             (, currentTick,,,,,) = key.pool.slot0();
@@ -60,8 +64,8 @@ abstract contract ModeTicksCalculation {
     {
         int24 currentTick = getTwap(key.pool);
 
-        if (currentTick < key.tickLower) return shiftLeft(key, positionWidth);
-        if (currentTick > key.tickUpper) return shiftRight(key, positionWidth);
+        if (currentTick < key.tickLower) return shiftLeft(key);
+        if (currentTick > key.tickUpper) return shiftRight(key);
     }
 
     function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
@@ -78,5 +82,12 @@ abstract contract ModeTicksCalculation {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
         return compressed * tickSpacing;
+    }
+
+    function abs(int24 x) internal pure returns (int24) {
+        if (x < 0) {
+            return -x;
+        }
+        return x;
     }
 }

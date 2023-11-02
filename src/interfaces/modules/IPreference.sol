@@ -6,15 +6,30 @@ interface IPreference {
     error InvalidThreshold();
     error InvalidModesLength();
     error InvalidMode();
+    error InvalidPreferenceDifference();
+    error InvalidTimePreference();
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();
     error DuplicateStrategyId(bytes32 strategyId);
-    error timePreferenceConstraint();
+    error TimePreferenceConstraint();
+    error BothTicksCannotBeZero();
+    error RebaseStrategyDataCannotBeZero();
+    error OnlyRebaseInactivityCannotBeSelected();
+    error RebaseInactivityCannotBeZero();
 
     struct StrategyData {
         bytes32 strategyID;
-        uint64[3] modes; // Array to hold multiple valid modes
+        uint256[3] modes; // Array to hold multiple valid modes
     }
 
-    function checkInputData(bytes[] memory data, uint64 mode) external;
+    enum Mode {
+        DUMMY,
+        REBASE_PREFERENCE,
+        REBASE_TIME_PREFERENCE,
+        REBASE_INACTIVITY
+    }
+
+    function checkInputData(bytes[] memory data) external returns (bool);
+
+    event Executed(StrategyData[] strategyIds);
 }
