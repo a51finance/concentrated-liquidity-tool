@@ -8,7 +8,7 @@ interface IPreference {
     error InvalidThreshold();
     error InvalidModesLength();
     error InvalidMode();
-    error InvalidPreferenceDifference();
+    error InvalidPricePreferenceDifference();
     error InvalidTimePreference();
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();

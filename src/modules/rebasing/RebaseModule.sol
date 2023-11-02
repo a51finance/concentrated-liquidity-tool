@@ -234,7 +234,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
             if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
-                revert InvalidPreferenceDifference();
+                revert InvalidPricePreferenceDifference();
             }
             return true;
         }
@@ -250,10 +250,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             return true;
         }
 
-        if (hasInActivity && isNonZero(actionsData.data)) {
-            if (hasDiffPreference && hasTimePreference) {
-                revert OnlyRebaseInactivityCannotBeSelected();
-            }
+        if (hasInActivity) {
+            //   check needs to be added on frontend so that rebase inactivity cannot be seleted independently
             uint256 preferredInActivity = abi.decode(actionsData.data, (uint256));
             if (preferredInActivity == 0) {
                 revert RebaseInactivityCannotBeZero();

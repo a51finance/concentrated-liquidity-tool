@@ -60,88 +60,81 @@ contract RebasingModulesTest is Test {
         assertEq(rebaseModuleContract.isOperator(address(this)), true);
     }
 
+    // check input data test cases
+    // Price preference
+
+    function testInputDataPricePreferenceWithValidInputs() public view {
+        StrategyDetail memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleContract.PRICE_PREFERENCE();
+        strategyDetail.data = abi.encode(uint256(10), uint256(30));
+        rebaseModuleContract.checkInputData(strategyDetail);
+
+        strategyDetail.data = abi.encode(uint256(203_247), uint256(10_000));
+        rebaseModuleContract.checkInputData(strategyDetail);
+    }
+
+    function testInputDataPricePreferenceWithInValidInputs() public {
+        StrategyDetail memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleContract.PRICE_PREFERENCE();
+        strategyDetail.data = abi.encode(uint256(0), uint256(30));
+
+        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        hevm.expectRevert(selector);
+        rebaseModuleContract.checkInputData(strategyDetail);
+
+        strategyDetail.data = abi.encode(uint256(0), uint256(0));
+
+        selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        hevm.expectRevert(selector);
+        rebaseModuleContract.checkInputData(strategyDetail);
+    }
+
     // Time preference
-    function testCheckInputDataTimePreference() public {
-        ActionDetails memory actionDetails;
-        StrategyDetail[] memory details = new StrategyDetail[](1);
 
-        getStrategyKey();
+    function testCheckInputDataTimePreferenceWithValidInputs() public view {
+        StrategyDetail memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(block.timestamp + 3600));
+        strategyDetail.actionName = rebaseModuleContract.TIME_PREFERENCE();
+        rebaseModuleContract.checkInputData(strategyDetail);
+    }
 
-        details[0].actionName = keccak256("TIME_PREFERENCE");
-        details[0].data = abi.encode(uint256(10));
-
-        actionDetails.mode = 1;
-        actionDetails.exitStrategy = new StrategyDetail[](0);
-        actionDetails.rebaseStrategy = details;
-        actionDetails.liquidityDistribution = new StrategyDetail[](0);
-
-        hevm.prank(owner);
-        baseContract.addModule(
-            keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleContract)
-        );
+    function testCheckInputDataTimePreferenceWithInvalidInputs() public {
+        StrategyDetail memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(block.timestamp));
+        strategyDetail.actionName = rebaseModuleContract.TIME_PREFERENCE();
 
         bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
         hevm.expectRevert(selector);
-        baseContract.createStrategy(strategyKey, actionDetails, true);
+        rebaseModuleContract.checkInputData(strategyDetail);
 
-        details[0].data = abi.encode(uint256(31_537_000));
+        strategyDetail.data = abi.encode(uint256(0));
+        selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        hevm.expectRevert(selector);
+        rebaseModuleContract.checkInputData(strategyDetail);
 
-        actionDetails.rebaseStrategy = details;
-
+        strategyDetail.data = abi.encode(uint256(block.timestamp + 31_537_000));
         selector = bytes4(keccak256("InvalidTimePreference()"));
         hevm.expectRevert(selector);
-        baseContract.createStrategy(strategyKey, actionDetails, true);
+        rebaseModuleContract.checkInputData(strategyDetail);
     }
 
-    function testCheckInputDataTimePreferenceWithZeroData() public {
-        getStrategyKey();
-        ActionDetails memory actionDetails;
-        StrategyDetail[] memory details = new StrategyDetail[](1);
+    // Rebase Inactivity
 
-        hevm.prank(owner);
-        baseContract.addModule(
-            keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleContract)
-        );
+    function testInputDataRebaseInActivityWithValidInputs() public {
+        StrategyDetail memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(2));
+        strategyDetail.actionName = rebaseModuleContract.REBASE_INACTIVITY();
 
-        details[0].actionName = keccak256("TIME_PREFERENCE");
-        details[0].data = abi.encode(uint256(0));
+        rebaseModuleContract.checkInputData(strategyDetail);
+    }
 
-        actionDetails.mode = 1;
-        actionDetails.exitStrategy = new StrategyDetail[](0);
-        actionDetails.rebaseStrategy = details;
-        actionDetails.liquidityDistribution = new StrategyDetail[](0);
+    function testInputDataRebaseInActivityWithInValidInputs() public {
+        StrategyDetail memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleContract.REBASE_INACTIVITY();
+        strategyDetail.data = abi.encode(uint256(0));
 
-        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        bytes4 selector = bytes4(keccak256("RebaseInactivityCannotBeZero()"));
         hevm.expectRevert(selector);
-        baseContract.createStrategy(strategyKey, actionDetails, true);
-    }
-
-    function testCheckInputDataTimePreferenceWithRebaseInactivity() public {
-        getStrategyKey();
-        ActionDetails memory actionDetails;
-        StrategyDetail[] memory details = new StrategyDetail[](2);
-
-        details[0].actionName = keccak256("TIME_PREFERENCE");
-        details[0].data = abi.encode(uint256(block.timestamp + 1000));
-
-        details[1].actionName = keccak256("REBASE_INACTIVITY");
-        details[1].data = abi.encode(uint256(2));
-
-        actionDetails.mode = 1;
-        actionDetails.exitStrategy = new StrategyDetail[](0);
-        actionDetails.rebaseStrategy = details;
-        actionDetails.liquidityDistribution = new StrategyDetail[](0);
-
-        hevm.prank(owner);
-        baseContract.addModule(
-            keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleContract)
-        );
-
-        hevm.prank(owner);
-        baseContract.addModule(
-            keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModuleContract)
-        );
-
-        baseContract.createStrategy(strategyKey, actionDetails, true);
+        rebaseModuleContract.checkInputData(strategyDetail);
     }
 }
