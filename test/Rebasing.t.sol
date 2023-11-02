@@ -9,9 +9,9 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { CLTBase } from "../src/CLTBase.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { RebaseModuleMock } from "./mocks/RebaseModule.Mock.sol";
-import "../src/base/Structs.sol";
+import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
 
-contract RebasingModulesTest is Test {
+contract RebasingModulesTest is Test, ModeTicksCalculation {
     Vm hevm = Vm(HEVM_ADDRESS);
 
     address public WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -53,13 +53,44 @@ contract RebasingModulesTest is Test {
         strategyKey.tickUpper = tickUpper;
     }
 
-    function createStrategy(ICLTBase.ActionDetails memory actionDetails) public { }
+    function createStrategy() public {
+        hevm.prank(owner);
+        baseContract.addModule(
+            keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModuleMockContract)
+        );
+        hevm.prank(owner);
+        baseContract.addModule(
+            keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleMockContract)
+        );
+
+        ICLTBase.ActionDetails memory actionDetails;
+
+        ICLTBase.StrategyDetail[] memory details = new ICLTBase.StrategyDetail[](2);
+
+        details[0].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        details[0].data = abi.encode(uint256(10), uint256(23));
+
+        details[1].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        details[1].data = abi.encode(uint256(block.timestamp + 1000));
+
+        actionDetails.mode = 2;
+        actionDetails.exitStrategy = new ICLTBase.StrategyDetail[](0);
+        actionDetails.rebaseStrategy = details;
+        actionDetails.liquidityDistribution = new ICLTBase.StrategyDetail[](0);
+
+        baseContract.createStrategy(strategyKey, actionDetails, true);
+    }
 
     function testRebaseDeploymentCheck() public {
         assertEq(rebaseModuleMockContract.isOperator(address(this)), false);
         hevm.prank(owner);
         rebaseModuleMockContract.toggleOperator(address(this));
         assertEq(rebaseModuleMockContract.isOperator(address(this)), true);
+    }
+
+    function testRebasePricePreference() public {
+        getStrategyKey();
+        createStrategy();
     }
 
     // check input data test cases
@@ -122,7 +153,7 @@ contract RebasingModulesTest is Test {
 
     // Rebase Inactivity
 
-    function testInputDataRebaseInActivityWithValidInputs() public {
+    function testInputDataRebaseInActivityWithValidInputs() public view {
         ICLTBase.StrategyDetail memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(2));
         strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
@@ -163,11 +194,12 @@ contract RebasingModulesTest is Test {
         assertEq(strategyKey.tickUpper + 30 > strategyKey.tickUpper, true);
     }
 
-    // function testCheckRebasePreferenceStrategiesValidInputs() public {
-    //     getStrategyKey();
-    //     bytes memory data = abi.encode(uint256(10), uint256(30));
-    //     console.log(rebaseModuleMockContract.getTwap(strategyKey.pool));
-    //     bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
-    //     assertEq(success, true);
-    // }
+    function testCheckRebasePreferenceStrategiesValidInputs() public {
+        getStrategyKey();
+        bytes memory data = abi.encode(uint256(10), uint256(30));
+        (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
+        int24 tick = getTwap(strategyKey.pool);
+        bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
+        assertEq(success, (tick < tl || tick > tu));
+    }
 }
