@@ -2,16 +2,17 @@
 pragma solidity >=0.8.19;
 
 // Importing foundational and interfaced contracts
-import "../../base/ModeTicksCalculation.sol";
-import "../../base/AccessControl.sol";
-import "../../interfaces/modules/IPreference.sol";
-import "../../interfaces/ICLTBase.sol";
+import "../../src/base/ModeTicksCalculation.sol";
+import "../../src/base/AccessControl.sol";
+import "../../src/interfaces/modules/IPreference.sol";
+import "../../src/interfaces/ICLTBase.sol";
+import "forge-std/console.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
+contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Threshold for liquidity consideration
     uint256 public liquidityThreshold = 1e3;
     /// @notice Maximum allowable time period
@@ -72,7 +73,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         StrategyKey memory key,
         uint256 mode
     )
-        internal
+        public
         view
         returns (int24 tickLower, int24 tickUpper)
     {
@@ -91,7 +92,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @param strategyIDs Array of strategy IDs to check and process.
     /// @return ExecutableStrategiesData[] array containing valid strategies.
     function checkAndProcessStrategies(bytes32[] memory strategyIDs)
-        internal
+        public
         returns (ExecutableStrategiesData[] memory)
     {
         ExecutableStrategiesData[] memory _queue = new ExecutableStrategiesData[](strategyIDs.length);
@@ -109,7 +110,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     // /// @notice Retrieves strategy data based on strategy ID.
     /// @param strategyID The ID of the strategy to retrieve.
     /// @return ExecutableStrategiesData representing the retrieved strategy.
-    function getStrategyData(bytes32 strategyID) internal returns (ExecutableStrategiesData memory) {
+    function getStrategyData(bytes32 strategyID) public returns (ExecutableStrategiesData memory) {
         (StrategyKey memory key, bytes memory actionsData, bytes memory actionStatus,,,, uint256 totalShares,,,) =
             _cltBase.strategies(strategyID);
 
@@ -152,14 +153,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @param rebaseAction  Data related to strategy actions.
     /// @param key Strategy key.
     /// @return bool indicating whether the strategy should be added to the queue.
-    function shouldAddToQueue(
-        StrategyDetail memory rebaseAction,
-        StrategyKey memory key
-    )
-        internal
-        view
-        returns (bool)
-    {
+    function shouldAddToQueue(StrategyDetail memory rebaseAction, StrategyKey memory key) public view returns (bool) {
         if (rebaseAction.actionName == PRICE_PREFERENCE) {
             return _checkRebasePreferenceStrategies(key, rebaseAction.data);
         } else if (rebaseAction.actionName == TIME_PREFERENCE) {
@@ -176,7 +170,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         StrategyKey memory key,
         bytes memory actionsData
     )
-        internal
+        public
         view
         returns (bool)
     {
@@ -196,7 +190,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks if the rebase time preference strategies are satisfied.
     /// @param actionsData The actions data that includes the rebase strategy data.
     /// @return true if the conditions are met.
-    function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) internal view returns (bool) {
+    function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) public view returns (bool) {
         uint256 timePreference = abi.decode(actionsData, (uint256));
         if (timePreference < block.timestamp || timePreference >= block.timestamp + maxTimePeriod) {
             revert TimePreferenceConstraint();
@@ -212,7 +206,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         StrategyDetail memory strategyDetail,
         bytes memory actionStatus
     )
-        internal
+        public
         pure
         returns (bool)
     {
@@ -263,7 +257,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks the bytes value is non zero or not.
     /// @param data bytes value to be checked.
     /// @return true if the value is nonzero.
-    function isNonZero(bytes memory data) internal pure returns (bool) {
+    function isNonZero(bytes memory data) public pure returns (bool) {
         for (uint256 i = 0; i < data.length; i++) {
             if (data[i] != bytes1(0)) {
                 return true;
@@ -275,7 +269,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks the strategies array for validity.
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
-    function checkStrategiesArray(bytes32[] memory data) internal pure returns (bool) {
+    function checkStrategiesArray(bytes32[] memory data) public pure returns (bool) {
         // this function has a comlexity of O(n^2).
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
@@ -309,7 +303,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         int24 lowerPreferenceDiff,
         int24 upperPreferenceDiff
     )
-        internal
+        public
         pure
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
@@ -326,7 +320,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @param tick The tick value to be floored.
     /// @param tickSpacing The spacing value for flooring.
     /// @return The floored tick value.
-    function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
+    function _floor(int24 tick, int24 tickSpacing) public pure returns (int24) {
         int24 compressed = tick / tickSpacing;
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
         return compressed * tickSpacing;
