@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.19;
 
-import { StrategyKey, ShiftLiquidityParams, PositionActions } from "../../base/Structs.sol";
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
@@ -16,14 +15,14 @@ contract Modes is ModeTicksCalculation, AccessControl {
     }
 
     function shiftLeft(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
-        (StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
+        (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        PositionActions memory modules = abi.decode(actions, (PositionActions));
+        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 1) {
             (tickLower, tickUpper) = shiftLeft(key);
 
-            key = StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
+            key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 
             updateStrategy(strategyID, key);
         } else {
@@ -32,14 +31,14 @@ contract Modes is ModeTicksCalculation, AccessControl {
     }
 
     function shiftRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
-        (StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
+        (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        PositionActions memory modules = abi.decode(actions, (PositionActions));
+        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 2) {
             (tickLower, tickUpper) = shiftRight(key);
 
-            key = StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
+            key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 
             updateStrategy(strategyID, key);
         } else {
@@ -48,14 +47,14 @@ contract Modes is ModeTicksCalculation, AccessControl {
     }
 
     function shiftLeftAndRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
-        (StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
+        (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        PositionActions memory modules = abi.decode(actions, (PositionActions));
+        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 3) {
             (tickLower, tickUpper) = shiftBothSide(key);
 
-            key = StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
+            key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 
             updateStrategy(strategyID, key);
         } else {
@@ -63,12 +62,12 @@ contract Modes is ModeTicksCalculation, AccessControl {
         }
     }
 
-    function getStrategy(bytes32 strategyID) internal returns (StrategyKey memory key, bytes memory actions) {
+    function getStrategy(bytes32 strategyID) internal returns (ICLTBase.StrategyKey memory key, bytes memory actions) {
         (key, actions,,,,,,,,,) = baseVault.strategies(strategyID);
     }
 
-    function updateStrategy(bytes32 strategyID, StrategyKey memory newKey) internal {
-        ShiftLiquidityParams memory params = ShiftLiquidityParams({
+    function updateStrategy(bytes32 strategyID, ICLTBase.StrategyKey memory newKey) internal {
+        ICLTBase.ShiftLiquidityParams memory params = ICLTBase.ShiftLiquidityParams({
             key: newKey,
             strategyId: strategyID,
             shouldMint: true,
