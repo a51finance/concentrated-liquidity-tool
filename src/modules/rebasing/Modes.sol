@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.19;
+pragma solidity =0.8.15;
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { AccessControl } from "../../base/AccessControl.sol";
@@ -20,7 +20,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 1) {
-            (tickLower, tickUpper) = shiftLeft(key);
+            (tickLower, tickUpper) = shiftLeft(key, 10);
 
             key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 
@@ -36,7 +36,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 2) {
-            (tickLower, tickUpper) = shiftRight(key);
+            (tickLower, tickUpper) = shiftRight(key, 10);
 
             key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 
@@ -52,7 +52,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 3) {
-            (tickLower, tickUpper) = shiftBothSide(key);
+            (tickLower, tickUpper) = shiftBothSide(key, 10);
 
             key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
 

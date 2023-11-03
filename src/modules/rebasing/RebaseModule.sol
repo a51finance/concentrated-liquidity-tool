@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.19;
+pragma solidity =0.8.15;
 
 // Importing foundational and interfaced contracts
 import "../../base/ModeTicksCalculation.sol";
@@ -36,8 +36,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         StrategyData[] memory _queue = checkAndProcessStrategies(strategyIDs);
 
         for (uint256 i = 0; i < _queue.length; i++) {
-            ShiftLiquidityParams memory params;
-            (StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) = _cltBase.strategies(_queue[i].strategyID);
+            ICLTBase.ShiftLiquidityParams memory params;
+            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) =
+                _cltBase.strategies(_queue[i].strategyID);
             uint256 rebaseCount = abi.decode(actionStatus, (uint256));
 
             params.strategyId = _queue[i].strategyID;
@@ -64,7 +65,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @return tickLower and tickUpper values.
 
     function getTicksForMode(
-        StrategyKey memory key,
+        ICLTBase.StrategyKey memory key,
         uint256 mode
     )
         internal
@@ -72,11 +73,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         returns (int24 tickLower, int24 tickUpper)
     {
         if (mode == uint256(Mode.REBASE_PREFERENCE)) {
-            (tickLower, tickUpper) = shiftLeft(key);
+            (tickLower, tickUpper) = shiftLeft(key, 10);
         } else if (mode == uint256(Mode.REBASE_TIME_PREFERENCE)) {
-            (tickLower, tickUpper) = shiftRight(key);
+            (tickLower, tickUpper) = shiftRight(key, 10);
         } else if (mode == uint256(Mode.REBASE_INACTIVITY)) {
-            (tickLower, tickUpper) = shiftBothSide(key);
+            (tickLower, tickUpper) = shiftBothSide(key, 10);
         }
         return (tickLower, tickUpper);
     }
@@ -103,7 +104,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @return StrategyData representing the retrieved strategy.
     function getStrategyData(bytes32 strategyID) internal returns (StrategyData memory) {
         (
-            StrategyKey memory key,
+            ICLTBase.StrategyKey memory key,
             bytes memory actions,
             bytes memory actionsData,
             bytes memory actionStatus,
@@ -119,8 +120,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             return StrategyData(bytes32(0), [uint256(0), uint256(0), uint256(0)]);
         }
 
-        PositionActions memory positionActions = abi.decode(actions, (PositionActions));
-        ActionsData memory strategyActionsData = abi.decode(actionsData, (ActionsData));
+        ICLTBase.PositionActions memory positionActions = abi.decode(actions, (ICLTBase.PositionActions));
+        ICLTBase.ActionsData memory strategyActionsData = abi.decode(actionsData, (ICLTBase.ActionsData));
 
         if (positionActions.rebaseStrategy.length > 2) {
             revert InvalidModesLength();
@@ -154,8 +155,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @return bool indicating whether the strategy should be added to the queue.
     function shouldAddToQueue(
         uint256 rebaseAction,
-        StrategyKey memory key,
-        ActionsData memory actionsData
+        ICLTBase.StrategyKey memory key,
+        ICLTBase.ActionsData memory actionsData
     )
         internal
         view
@@ -174,8 +175,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @param actionsData The actions data that includes the rebase strategy data.
     /// @return true if the conditions are met, false otherwise.
     function _checkRebasePreferenceStrategies(
-        StrategyKey memory key,
-        ActionsData memory actionsData
+        ICLTBase.StrategyKey memory key,
+        ICLTBase.ActionsData memory actionsData
     )
         internal
         view
@@ -198,7 +199,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks if the rebase time preference strategies are satisfied.
     /// @param actionsData The actions data that includes the rebase strategy data.
     /// @return true if the conditions are met.
-    function _checkRebaseTimePreferenceStrategies(ActionsData memory actionsData) internal view returns (bool) {
+    function _checkRebaseTimePreferenceStrategies(ICLTBase.ActionsData memory actionsData)
+        internal
+        view
+        returns (bool)
+    {
         uint256 timePreference = abi.decode(actionsData.rebaseStrategyData[1], (uint256));
         if (timePreference < block.timestamp || timePreference >= maxTimePeriod || timePreference == 0) {
             revert TimePreferenceConstraint();
@@ -211,7 +216,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @param actionStatus The status of the action.
     /// @return true if the conditions are met, false otherwise.
     function _checkRebaseInactivityStrategies(
-        ActionsData memory actionsData,
+        ICLTBase.ActionsData memory actionsData,
         bytes memory actionStatus
     )
         internal
@@ -230,7 +235,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
 
     function checkInputData(bytes[] memory data) external view returns (bool) {
         for (uint256 i = 0; i < data.length; i++) {
-            ActionsData memory actionsData = abi.decode(data[i], (ActionsData));
+            ICLTBase.ActionsData memory actionsData = abi.decode(data[i], (ICLTBase.ActionsData));
 
             if (actionsData.rebaseStrategyData.length == 0) {
                 revert RebaseStrategyDataCannotBeZero();
@@ -313,7 +318,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @return lowerPreferenceTick The calculated lower preference tick.
     /// @return upperPreferenceTick The calculated upper preference tick.
     function _getPreferenceTicks(
-        StrategyKey memory _key,
+        ICLTBase.StrategyKey memory _key,
         int24 lowerPreferenceDiff,
         int24 upperPreferenceDiff
     )

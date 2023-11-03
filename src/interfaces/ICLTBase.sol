@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity >=0.8.19;
+pragma solidity =0.8.15;
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
@@ -262,8 +262,7 @@ interface ICLTBase {
     /// @param shouldMint Bool weather liquidity should be added on AMM or hold in contract
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
-    /// exact
-    /// output (negative)
+    /// exact output (negative)
     /// @param moduleStatus The encoded data for each of the strategy to track any detail for futher actions
     struct ShiftLiquidityParams {
         StrategyKey key;
