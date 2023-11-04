@@ -138,6 +138,8 @@ interface ICLTBase {
             uint256 feeGrowthInside1LastX128
         );
 
+    function modulesActions(bytes32 moduleKey, bytes32 moduleAction) external view returns (bool);
+
     /// @notice Returns the position information associated with a given token ID.
     /// @dev Throws if the token ID is not valid.
     /// @param positionId The ID of the token that represents the position

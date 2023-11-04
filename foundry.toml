@@ -17,6 +17,7 @@
   src = "src"
   test = "test"
 
+
 [profile.ci]
   fuzz = { runs = 10_000 }
   verbosity = 4
