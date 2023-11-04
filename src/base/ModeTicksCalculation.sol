@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.19;
+pragma solidity =0.8.15;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
@@ -11,8 +11,6 @@ abstract contract ModeTicksCalculation {
     function shiftLeft(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
-
-        int24 positionWidth = abs(key.tickUpper - key.tickLower);
 
         if (currentTick < key.tickLower) {
             (, currentTick,,,,,) = key.pool.slot0();
@@ -27,7 +25,6 @@ abstract contract ModeTicksCalculation {
     function shiftRight(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
-        int24 positionWidth = abs(key.tickUpper - key.tickLower);
 
         if (currentTick > key.tickUpper) {
             (, currentTick,,,,,) = key.pool.slot0();
@@ -42,8 +39,8 @@ abstract contract ModeTicksCalculation {
     function shiftBothSide(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
 
-        if (currentTick < key.tickLower) return shiftLeft(key);
-        if (currentTick > key.tickUpper) return shiftRight(key);
+        if (currentTick < key.tickLower) return shiftLeft(key, positionWidth);
+        if (currentTick > key.tickUpper) return shiftRight(key, positionWidth);
     }
 
     function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
