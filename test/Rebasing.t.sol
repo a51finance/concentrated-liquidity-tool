@@ -1,66 +1,76 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.19;
+pragma solidity =0.8.15;
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
-
-import { UniswapV3Factory } from "@uniswap/v3-core/contracts/UniswapV3Factory.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { CLTBase } from "../src/CLTBase.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { RebaseModuleMock } from "./mocks/RebaseModule.Mock.sol";
 import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
-import "./mocks/WETH9.mock.sol";
-import "./mocks/MockERC20.sol";
+import { Vm } from "forge-std/Vm.sol";
+import { Test } from "forge-std/Test.sol";
+import { CLTBase } from "../src/CLTBase.sol";
+import { WETH } from "@solmate/tokens/WETH.sol";
+import { ERC20Mock } from "./mocks/ERC20Mock.sol";
+import { UniswapDeployer } from "./lib/UniswapDeployer.sol";
+import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-contract RebasingModulesTest is Test, ModeTicksCalculation {
+contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     Vm _hevm = Vm(HEVM_ADDRESS);
 
-    /**
-     * For Mainnet Testing
-     *    *
-     * // for mainnet testing
-     * address public WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-     * address public uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-     * address public poolAddressPositiveTicks = 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640; // USDC-ETH
-     * address public poolAddressNegativeTicks = 0x60594a405d53811d3BC4766596EFD80fd545A270; // DAI-ETH
-     * // address public baseContractAddress = 0xCeA591CC4E4114cd4537B72e5640f0f60E9BCB10;
-     * // address public rebaseModuleContractAddress = 0xC4a2C558fDBeEF505105438e97A77A0073ecd792;
-     * address public owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-     *
-     * // IUniswapV3Factory uniswapV3FactoryContract = IUniswapV3Factory(uniswapV3Factory);
-     * // IUniswapV3Pool poolContract = IUniswapV3Pool(poolAddressPositiveTicks);
-     */
+    RebaseModuleMock rebaseModuleMockContract;
+    IUniswapV3Factory uniswapV3FactoryContract;
+    IUniswapV3Pool poolContract;
+    CLTBase baseContract;
+    SwapRouter router;
+    ERC20Mock token0;
+    ERC20Mock token1;
+    CLTBase base;
+    WETH weth;
 
-    // for local testing
-
-    MockERC20 public tokenA;
-    MockERC20 public tokenB;
-    UniswapV3Factory public uniswapV3FactoryContract;
-    IUniswapV3Pool public poolContract;
-    WETH9 public wethContractAddress;
-
-    ICLTBase.StrategyKey public strategyKey;
-    CLTBase public baseContract;
-    RebaseModuleMock public rebaseModuleMockContract;
-    address public owner = address(this);
+    ICLTBase.StrategyKey strategyKey;
+    address owner = address(this);
+    address alice = _hevm.addr(1);
+    address bob = _hevm.addr(2);
+    address user1 = _hevm.addr(3);
+    address user2 = _hevm.addr(4);
 
     function setUp() public {
-        tokenA = new MockERC20("TOKEN A", "TA",18);
-        tokenB = new MockERC20("TOKEN B", "TB",6);
-        wethContractAddress = new WETH9();
-        uniswapV3FactoryContract = new UniswapV3Factory();
-        address poolAddress = uniswapV3FactoryContract.createPool(address(tokenA), address(tokenB), 500);
-        poolContract = new IUniswapV3Pool(poolAddress);
-        baseContract = new CLTBase("ALP TOKEN", "ALPT", owner, address(wethContractAddress), uniswapV3FactoryContract);
+        token0 = new ERC20Mock();
+        token1 = new ERC20Mock();
+
+        if (address(token0) >= address(token1)) {
+            (token0, token1) = (token1, token0);
+        }
+
+        weth = new WETH();
+
+        // intialize uniswap contracts
+        weth = new WETH();
+        uniswapV3FactoryContract = IUniswapV3Factory(deployUniswapV3Factory());
+        poolContract = IUniswapV3Pool(uniswapV3FactoryContract.createPool(address(token0), address(token1), 500));
+        poolContract.initialize(TickMath.getSqrtRatioAtTick(0));
+        router = new SwapRouter(address(uniswapV3FactoryContract), address(weth));
+
+        // initialize base contract
+        base = new CLTBase("ALP Base", "ALP", owner, address(0), uniswapV3FactoryContract);
+
+        // approve tokens
+        token0.approve(address(base), type(uint256).max);
+        token0.approve(address(router), type(uint256).max);
+        token1.approve(address(base), type(uint256).max);
+        token1.approve(address(router), type(uint256).max);
+
+        // initialize module contract
         rebaseModuleMockContract = new RebaseModuleMock(owner,address(baseContract));
     }
 
-    // function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
-    //     int24 compressed = tick / tickSpacing;
-    //     if (tick < 0 && tick % tickSpacing != 0) compressed--;
-    //     return compressed * tickSpacing;
-    // }
+    function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
+        int24 compressed = tick / tickSpacing;
+        if (tick < 0 && tick % tickSpacing != 0) compressed--;
+        return compressed * tickSpacing;
+    }
 
     // function getStrategyKey() public {
     //     (, int24 tick,,,,,) = poolContract.slot0();
@@ -87,12 +97,11 @@ contract RebasingModulesTest is Test, ModeTicksCalculation {
     //     baseContract.createStrategy(strategyKey, actionDetails, true);
     // }
 
-    // function testRebaseDeploymentCheck() public {
-    //     assertEq(rebaseModuleMockContract.isOperator(address(this)), false);
-    //     hevm.prank(owner);
-    //     rebaseModuleMockContract.toggleOperator(address(this));
-    //     assertEq(rebaseModuleMockContract.isOperator(address(this)), true);
-    // }
+    function testRebaseDeploymentCheck() public {
+        assertEq(rebaseModuleMockContract.isOperator(alice), false);
+        rebaseModuleMockContract.toggleOperator(owner);
+        assertEq(rebaseModuleMockContract.isOperator(address(this)), true);
+    }
 
     // // function testRebaseStrategyEncodedData() public {
     // //     getStrategyKey();
@@ -113,7 +122,8 @@ contract RebasingModulesTest is Test, ModeTicksCalculation {
 
     // //     createStrategy(actionDetails);
 
-    // //     assertEq(baseContract.modulesActions(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE")), true);
+    // //     assertEq(baseContract.modulesActions(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE")),
+    // true);
     // //     assertEq(baseContract.vaultAddresses(keccak256("REBASE_STRATEGY")), address(rebaseModuleMockContract));
 
     // //     bytes32 strategyID = keccak256(abi.encode(address(this), 1));

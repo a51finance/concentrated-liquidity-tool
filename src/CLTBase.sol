@@ -51,9 +51,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     mapping(uint256 => Position.Data) public override positions;
 
     // keccak256("REBASE_STRATEGY") => keccak256("PREFERENCE") => true/false
-    mapping(bytes32 moduleKey => mapping(bytes32 moduleAction => bool enabled)) public modulesActions;
+    mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
-    mapping(bytes32 moduleKey => address vault) public vaultAddresses;
+    mapping(bytes32 => address) public vaultAddresses;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");

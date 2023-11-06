@@ -8,7 +8,14 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 abstract contract ModeTicksCalculation {
     uint32 twapDuration = 300;
 
-    function shiftLeft(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
+    function shiftLeft(
+        ICLTBase.StrategyKey memory key,
+        int24 positionWidth // given by the user i.e. no of ticks
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
 
@@ -22,7 +29,14 @@ abstract contract ModeTicksCalculation {
         }
     }
 
-    function shiftRight(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
+    function shiftRight(
+        ICLTBase.StrategyKey memory key,
+        int24 positionWidth
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
 
@@ -36,7 +50,14 @@ abstract contract ModeTicksCalculation {
         }
     }
 
-    function shiftBothSide(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
+    function shiftBothSide(
+        ICLTBase.StrategyKey memory key,
+        int24 positionWidth
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
         int24 currentTick = getTwap(key.pool);
 
         if (currentTick < key.tickLower) return shiftLeft(key, positionWidth);

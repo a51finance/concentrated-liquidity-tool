@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.19;
+pragma solidity =0.8.15;
 
 // Importing foundational and interfaced contracts
 import "../../src/base/ModeTicksCalculation.sol";
@@ -79,12 +79,14 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         view
         returns (int24 tickLower, int24 tickUpper)
     {
+        int24 positionWidth = abs(key.tickUpper - key.tickLower);
+
         if (mode == 1) {
-            (tickLower, tickUpper) = shiftLeft(key);
+            (tickLower, tickUpper) = shiftLeft(key, positionWidth);
         } else if (mode == 2) {
-            (tickLower, tickUpper) = shiftRight(key);
+            (tickLower, tickUpper) = shiftRight(key, positionWidth);
         } else if (mode == 3) {
-            (tickLower, tickUpper) = shiftBothSide(key);
+            (tickLower, tickUpper) = shiftBothSide(key, positionWidth);
         }
         return (tickLower, tickUpper);
     }
