@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
+import "../ICLTBase.sol";
+
 interface IPreference {
     error InvalidCaller();
     error InvalidThreshold();
     error InvalidModesLength();
     error InvalidMode();
-    error InvalidPreferenceDifference();
+    error InvalidPricePreferenceDifference();
     error InvalidTimePreference();
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();
@@ -17,19 +19,13 @@ interface IPreference {
     error OnlyRebaseInactivityCannotBeSelected();
     error RebaseInactivityCannotBeZero();
 
-    struct StrategyData {
+    struct ExecutableStrategiesData {
         bytes32 strategyID;
-        uint256[3] modes; // Array to hold multiple valid modes
+        uint256 mode;
+        bytes32[3] actionNames; // Array to hold multiple valid modes
     }
 
-    enum Mode {
-        DUMMY,
-        REBASE_PREFERENCE,
-        REBASE_TIME_PREFERENCE,
-        REBASE_INACTIVITY
-    }
+    function checkInputData(ICLTBase.StrategyPayload memory data) external returns (bool);
 
-    function checkInputData(bytes[] memory data) external returns (bool);
-
-    event Executed(StrategyData[] strategyIds);
+    event Executed(ExecutableStrategiesData[] strategyIds);
 }

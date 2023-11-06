@@ -14,7 +14,6 @@ import { PoolActions } from "./libraries/PoolActions.sol";
 import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 
-import { Arrays } from "@openzeppelin/contracts/utils/Arrays.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -25,7 +24,6 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 /// user preferences with the help of basic and advance liquidity modes
 /// Holds the state for all strategies and it's users
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
-    using Arrays for uint256[];
     using Position for StrategyData;
 
     uint256 private _nextId = 1;
@@ -43,13 +41,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     // keccak256("LIQUIDITY_DISTRIBUTION")
     bytes32 public constant LIQUIDITY_DISTRIBUTION = 0xeabe6f62bd74d002b0267a6aaacb5212bb162f4f87ee1c4a80ac0d2698f8a505;
 
-    mapping(bytes32 => ModePackage) public modules;
-
     /// @inheritdoc ICLTBase
     mapping(bytes32 => StrategyData) public override strategies;
 
     /// @inheritdoc ICLTBase
     mapping(uint256 => Position.Data) public override positions;
+
+    mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
+
+    mapping(bytes32 => address) public modeVaults;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
@@ -72,60 +72,35 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     function createStrategy(
         StrategyKey calldata key,
         PositionActions calldata actions,
-        ActionsData calldata data,
         bool isCompound
     )
         external
         override
     {
-        if (
-            actions.exitStrategy.length != data.exitStrategyData.length
-                || actions.rebaseStrategy.length != data.rebaseStrategyData.length
-                || actions.liquidityDistribution.length != data.liquidityDistributionData.length
-        ) {
-            revert InvalidInput();
-        }
-
         if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
-
-        if (
-            (actions.exitStrategy.length <= 0 && actions.exitStrategy.length > length(modules[EXIT_STRATEGY].modeIDs))
-                || (
-                    actions.rebaseStrategy.length <= 0
-                        && actions.rebaseStrategy.length > length(modules[REBASE_STRATEGY].modeIDs)
-                )
-                || (
-                    actions.liquidityDistribution.length <= 0
-                        && actions.liquidityDistribution.length > length(modules[LIQUIDITY_DISTRIBUTION].modeIDs)
-                )
-        ) {
-            revert InvalidInput();
-        }
 
         if (actions.exitStrategy.length > 0) {
             _checkModeIds(EXIT_STRATEGY, actions.exitStrategy);
-            _validateInputData(EXIT_STRATEGY, data.exitStrategyData);
+            _validateInputData(EXIT_STRATEGY, actions.exitStrategy);
         }
 
         if (actions.rebaseStrategy.length > 0) {
             _checkModeIds(REBASE_STRATEGY, actions.rebaseStrategy);
-            _validateInputData(REBASE_STRATEGY, data.rebaseStrategyData);
+            _validateInputData(REBASE_STRATEGY, actions.rebaseStrategy);
         }
 
         if (actions.liquidityDistribution.length > 0) {
             _checkModeIds(LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-            _validateInputData(LIQUIDITY_DISTRIBUTION, data.liquidityDistributionData);
+            _validateInputData(LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
         }
 
         bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
 
-        bytes memory actionsDataHash = abi.encode(data);
         bytes memory positionActionsHash = abi.encode(actions);
 
         strategies[strategyID] = StrategyData({
             key: key,
             actions: positionActionsHash,
-            actionsData: actionsDataHash,
             actionStatus: "",
             isCompound: isCompound,
             balance0: 0,
@@ -136,7 +111,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             feeGrowthInside1LastX128: 0
         });
 
-        emit StrategyCreated(strategyID, positionActionsHash, actionsDataHash, key, isCompound);
+        emit StrategyCreated(strategyID, positionActionsHash, key, isCompound);
     }
 
     /// @inheritdoc ICLTBase
@@ -397,13 +372,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @param moduleKey Hash of the module for which is need to be updated
     /// @param modeVault New address of mode's vault
     /// @param newModule Array of new mode ids to be added against advance modes
-    function addModule(bytes32 moduleKey, address modeVault, uint64[] calldata newModule) external onlyOwner {
+    function addModule(bytes32 moduleKey, bytes32 newModule, address modeVault, bool isActivated) external onlyOwner {
         if (
             moduleKey == MODE || moduleKey == REBASE_STRATEGY || moduleKey == EXIT_STRATEGY
                 || moduleKey == LIQUIDITY_DISTRIBUTION
         ) {
-            modules[moduleKey].modeIDs = newModule;
-            modules[moduleKey].modesVault = modeVault;
+            modulesActions[moduleKey][newModule] = isActivated;
+            modeVaults[moduleKey] = modeVault;
         } else {
             revert InvalidModule(moduleKey);
         }
@@ -463,35 +438,29 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     }
 
     /// @notice Validates the strategy encoded input data
-    function _validateInputData(bytes32 mode, bytes[] memory data) private {
-        address vault = modules[mode].modesVault;
+    function _validateInputData(bytes32 mode, StrategyPayload[] memory array) private {
+        address vault = modeVaults[mode];
 
-        if (mode == REBASE_STRATEGY) {
-            IPreference(vault).checkInputData(data);
-        }
-
-        if (mode == EXIT_STRATEGY) {
-            IExitStrategy(vault).checkInputData(data);
-        }
-
-        if (mode == LIQUIDITY_DISTRIBUTION) {
-            ILiquidityDistribution(vault).checkInputData(data);
-        } else {
-            revert InvalidModule(mode);
-        }
-    }
-
-    function _checkModeIds(bytes32 mode, uint256[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
-            if (array[i] != unsafeAccess(mode, i)) revert InvalidInput();
+            if (mode == REBASE_STRATEGY) {
+                IPreference(vault).checkInputData(array[i]);
+            }
+
+            if (mode == EXIT_STRATEGY) {
+                IExitStrategy(vault).checkInputData(array[i]);
+            }
+
+            if (mode == LIQUIDITY_DISTRIBUTION) {
+                ILiquidityDistribution(vault).checkInputData(array[i]);
+            } else {
+                revert InvalidModule(mode);
+            }
         }
     }
 
-    function unsafeAccess(bytes32 mode, uint256 pos) private view returns (uint256) {
-        return modules[mode].modeIDs.unsafeAccess(pos).value;
-    }
-
-    function length(uint256[] storage self) private view returns (uint256 len) {
-        len = self.length;
+    function _checkModeIds(bytes32 mode, StrategyPayload[] memory array) private view {
+        for (uint256 i = 0; i < array.length; i++) {
+            if (!modulesActions[mode][array[i].actionName]) revert InvalidModule(array[i].actionName);
+        }
     }
 }

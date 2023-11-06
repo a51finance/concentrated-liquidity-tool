@@ -63,7 +63,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     }
 
     function getStrategy(bytes32 strategyID) internal returns (ICLTBase.StrategyKey memory key, bytes memory actions) {
-        (key, actions,,,,,,,,,) = baseVault.strategies(strategyID);
+        (key, actions,,,,,,,,) = baseVault.strategies(strategyID);
     }
 
     function updateStrategy(bytes32 strategyID, ICLTBase.StrategyKey memory newKey) internal {
