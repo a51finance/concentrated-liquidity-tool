@@ -2,6 +2,7 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
+import { console } from "forge-std/console.sol";
 import { RebaseModuleMock } from "./mocks/RebaseModule.Mock.sol";
 import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
 import { Vm } from "forge-std/Vm.sol";
@@ -10,6 +11,8 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "./mocks/ERC20Mock.sol";
 import { UniswapDeployer } from "./lib/UniswapDeployer.sol";
+import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
@@ -19,9 +22,12 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     Vm _hevm = Vm(HEVM_ADDRESS);
 
-    RebaseModuleMock rebaseModuleMockContract;
+    ISwapRouter.ExactInputSingleParams swapParams;
+    NonfungiblePositionManager positionManager;
     IUniswapV3Factory uniswapV3FactoryContract;
+    RebaseModuleMock rebaseModuleMockContract;
     IUniswapV3Pool poolContract;
+    INonfungiblePositionManager.MintParams mintParams;
     CLTBase baseContract;
     SwapRouter router;
     ERC20Mock token0;
@@ -52,6 +58,25 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         poolContract = IUniswapV3Pool(uniswapV3FactoryContract.createPool(address(token0), address(token1), 500));
         poolContract.initialize(TickMath.getSqrtRatioAtTick(0));
         router = new SwapRouter(address(uniswapV3FactoryContract), address(weth));
+        positionManager =
+        new NonfungiblePositionManager(address(uniswapV3FactoryContract),address(weth),address(uniswapV3FactoryContract));
+
+        mintParams.token0 = address(token0);
+        mintParams.token1 = address(token1);
+        mintParams.tickLower = (-887_272 / poolContract.tickSpacing()) * poolContract.tickSpacing();
+        mintParams.tickUpper = (-887_272 / poolContract.tickSpacing()) * poolContract.tickSpacing();
+        mintParams.fee = 500;
+        mintParams.recipient = address(this);
+        mintParams.amount0Desired = 100_000e18;
+        mintParams.amount1Desired = 100_000;
+        mintParams.amount0Min = 0;
+        mintParams.amount1Min = 0;
+        mintParams.deadline = 2_000_000_000;
+
+        token0.approve(address(positionManager), type(uint256).max);
+        token1.approve(address(positionManager), type(uint256).max);
+
+        positionManager.mint(mintParams);
 
         // initialize base contract
         base = new CLTBase("ALP Base", "ALP", owner, address(0), uniswapV3FactoryContract);
@@ -59,6 +84,7 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         // approve tokens
         token0.approve(address(base), type(uint256).max);
         token0.approve(address(router), type(uint256).max);
+
         token1.approve(address(base), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
 
@@ -66,35 +92,26 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         rebaseModuleMockContract = new RebaseModuleMock(owner,address(baseContract));
     }
 
-    function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
-        int24 compressed = tick / tickSpacing;
-        if (tick < 0 && tick % tickSpacing != 0) compressed--;
-        return compressed * tickSpacing;
-    }
+    // function generateSwaps(ISwapRouter.ExactInputSingleParams memory params) public {
+    //     router.exactInputSingle(params);
+    // }
 
-    // function getStrategyKey() public {
+    // function getStrategyKey(int24 difference) public {
     //     (, int24 tick,,,,,) = poolContract.slot0();
 
     //     int24 tickLower = _floor(tick, poolContract.tickSpacing());
-    //     (tick - 2000, poolContract.tickSpacing());
-    //     int24 tickUpper = _floor(tick + 2000, poolContract.tickSpacing());
+    //     (tick - difference, poolContract.tickSpacing());
+    //     int24 tickUpper = _floor(tick + difference, poolContract.tickSpacing());
 
     //     strategyKey.pool = poolContract;
     //     strategyKey.tickLower = tickLower;
     //     strategyKey.tickUpper = tickUpper;
     // }
 
-    // function createStrategy(ICLTBase.ActionDetails memory actionDetails) public {
-    //     hevm.prank(owner);
-    //     baseContract.addModule(
-    //         keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModuleMockContract)
-    //     );
-    //     hevm.prank(owner);
-    //     baseContract.addModule(
-    //         keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleMockContract)
-    //     );
-
-    //     baseContract.createStrategy(strategyKey, actionDetails, true);
+    // function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
+    //     int24 compressed = tick / tickSpacing;
+    //     if (tick < 0 && tick % tickSpacing != 0) compressed--;
+    //     return compressed * tickSpacing;
     // }
 
     function testRebaseDeploymentCheck() public {
@@ -102,42 +119,6 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         rebaseModuleMockContract.toggleOperator(owner);
         assertEq(rebaseModuleMockContract.isOperator(address(this)), true);
     }
-
-    // // function testRebaseStrategyEncodedData() public {
-    // //     getStrategyKey();
-    // //     ICLTBase.ActionDetails memory actionDetails;
-
-    // //     ICLTBase.StrategyDetail[] memory details = new ICLTBase.StrategyDetail[](2);
-
-    // //     details[0].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
-    // //     details[0].data = abi.encode(uint256(10), uint256(23));
-
-    // //     details[1].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-    // //     details[1].data = abi.encode(uint256(block.timestamp + 1000));
-
-    // //     actionDetails.mode = 2;
-    // //     actionDetails.exitStrategy = new ICLTBase.StrategyDetail[](0);
-    // //     actionDetails.rebaseStrategy = details;
-    // //     actionDetails.liquidityDistribution = new ICLTBase.StrategyDetail[](0);
-
-    // //     createStrategy(actionDetails);
-
-    // //     assertEq(baseContract.modulesActions(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE")),
-    // true);
-    // //     assertEq(baseContract.vaultAddresses(keccak256("REBASE_STRATEGY")), address(rebaseModuleMockContract));
-
-    // //     bytes32 strategyID = keccak256(abi.encode(address(this), 1));
-
-    // //     (, bytes memory actionsData,,,,,,,,) = baseContract.strategies(strategyID);
-
-    // //     ICLTBase.ActionDetails memory decodedDetails = abi.decode(actionsData, (ICLTBase.ActionDetails));
-
-    // //     assertEq(decodedDetails.mode, 2);
-    // //     assertEq(decodedDetails.exitStrategy.length, 0);
-    // //     assertEq(decodedDetails.liquidityDistribution.length, 0);
-    // //     assertEq(decodedDetails.rebaseStrategy[0].data, details[0].data);
-    // //     assertEq(decodedDetails.rebaseStrategy[1].data, details[1].data);
-    // // }
 
     // // checkStrategiesArray Testing
     // // Test Case 1: Non-empty Array without Zero ID and without Duplicates
@@ -252,13 +233,13 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     //     strategyDetail.data = abi.encode(uint256(0), uint256(30));
 
     //     bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
-    //     hevm.expectRevert(selector);
+    //     _hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
 
     //     strategyDetail.data = abi.encode(uint256(0), uint256(0));
 
     //     selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-    //     hevm.expectRevert(selector);
+    //     _hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
     // }
 
@@ -277,17 +258,17 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     //     strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
 
     //     bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
-    //     hevm.expectRevert(selector);
+    //     _hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
 
     //     strategyDetail.data = abi.encode(uint256(0));
     //     selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-    //     hevm.expectRevert(selector);
+    //     _hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
 
     //     strategyDetail.data = abi.encode(uint256(block.timestamp + 31_537_000));
     //     selector = bytes4(keccak256("InvalidTimePreference()"));
-    //     hevm.expectRevert(selector);
+    //     _hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
     // }
 
@@ -307,14 +288,15 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     //     strategyDetail.data = abi.encode(uint256(0));
 
     //     bytes4 selector = bytes4(keccak256("RebaseInactivityCannotBeZero()"));
-    //     hevm.expectRevert(selector);
+    //     _hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
     // }
 
     // // _checkRebasePreferenceStrategies
 
     // function testGetPreferenceTicks() public {
-    //     getStrategyKey();
+    //     getStrategyKey(2000);
+    //     console.logInt(strategyKey.tickLower);
     //     (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 20, 30);
     //     // positive ticks
 
@@ -323,23 +305,32 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     //     assertEq(strategyKey.tickLower - 20 < strategyKey.tickLower, true);
     //     assertEq(strategyKey.tickUpper + 30 > strategyKey.tickUpper, true);
 
-    //     // negative ticks
-    //     poolContract = IUniswapV3Pool(poolAddressNegativeTicks);
-    //     getStrategyKey();
-    //     (tl, tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 20, 30);
+    //     // // negative ticks
+    //     // poolContract = IUniswapV3Pool(poolAddressNegativeTicks);
+    //     // getStrategyKey();
+    //     // (tl, tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 20, 30);
 
-    //     assertEq(tl, strategyKey.tickLower - 20);
-    //     assertEq(tu, strategyKey.tickUpper + 30);
-    //     assertEq(strategyKey.tickLower - 20 < strategyKey.tickLower, true);
-    //     assertEq(strategyKey.tickUpper + 30 > strategyKey.tickUpper, true);
+    //     // assertEq(tl, strategyKey.tickLower - 20);
+    //     // assertEq(tu, strategyKey.tickUpper + 30);
+    //     // assertEq(strategyKey.tickLower - 20 < strategyKey.tickLower, true);
+    //     // assertEq(strategyKey.tickUpper + 30 > strategyKey.tickUpper, true);
     // }
 
     // function testCheckRebasePreferenceStrategiesValidInputs() public {
-    //     getStrategyKey();
-    //     bytes memory data = abi.encode(uint256(10), uint256(30));
-    //     (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
-    //     int24 tick = getTwap(strategyKey.pool);
-    //     bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
-    //     assertEq(success, (tick < tl || tick > tu));
+    //     getStrategyKey(2000);
+    //     // swapParams.tokenIn = address(token0);
+    //     // swapParams.tokenOut = address(token1);
+    //     // swapParams.fee = 500;
+    //     // swapParams.recipient = owner;
+    //     // swapParams.deadline = block.timestamp + 100;
+    //     // swapParams.amountIn = 100;
+    //     // swapParams.amountOutMinimum = 0;
+    //     // swapParams.sqrtPriceLimitX96 = 0;
+    //     // generateSwaps(swapParams);
+    //     // bytes memory data = abi.encode(uint256(10), uint256(30));
+    //     // (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
+    //     // int24 tick = getTwap(strategyKey.pool);
+    //     // bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
+    //     // assertEq(success, (tick < tl || tick > tu));
     // }
 }
