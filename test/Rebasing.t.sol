@@ -2,8 +2,7 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
-import { console } from "forge-std/console.sol";
-import { RebaseModuleMock } from "./mocks/RebaseModule.Mock.sol";
+import { RebaseModuleMock } from "./mocks/RebaseModule.mock.sol";
 import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -84,7 +83,6 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         // approve tokens
         token0.approve(address(base), type(uint256).max);
         token0.approve(address(router), type(uint256).max);
-
         token1.approve(address(base), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
 
@@ -112,6 +110,31 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     //     int24 compressed = tick / tickSpacing;
     //     if (tick < 0 && tick % tickSpacing != 0) compressed--;
     //     return compressed * tickSpacing;
+    // }
+
+    // function getStrategyKey() public {
+    //     (, int24 tick,,,,,) = poolContract.slot0();
+
+    //     int24 tickLower = _floor(tick, poolContract.tickSpacing());
+    //     (tick - 2000, poolContract.tickSpacing());
+    //     int24 tickUpper = _floor(tick + 2000, poolContract.tickSpacing());
+
+    //     strategyKey.pool = poolContract;
+    //     strategyKey.tickLower = tickLower;
+    //     strategyKey.tickUpper = tickUpper;
+    // }
+
+    // function createStrategy(ICLTBase.ActionDetails memory actionDetails) public {
+    //     hevm.prank(owner);
+    //     baseContract.addModule(
+    //         keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModuleMockContract)
+    //     );
+    //     hevm.prank(owner);
+    //     baseContract.addModule(
+    //         keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleMockContract)
+    //     );
+
+    //     baseContract.createStrategy(strategyKey, actionDetails, true);
     // }
 
     function testRebaseDeploymentCheck() public {
@@ -264,10 +287,8 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     //     strategyDetail.data = abi.encode(uint256(0));
     //     selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
     //     _hevm.expectRevert(selector);
+    //     hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
-
-    //     strategyDetail.data = abi.encode(uint256(block.timestamp + 31_537_000));
-    //     selector = bytes4(keccak256("InvalidTimePreference()"));
     //     _hevm.expectRevert(selector);
     //     rebaseModuleMockContract.checkInputData(strategyDetail);
     // }

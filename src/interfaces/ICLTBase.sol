@@ -22,28 +22,26 @@ interface ICLTBase {
         int24 tickUpper;
     }
 
-    /// @param modeIDs Array of ids for each the basic or advance strategy
-    /// @param modesVault Address of the base or adnvace mode vault
-    struct ModePackage {
-        uint256[] modeIDs;
-        address modesVault;
-    }
-
-    struct ActionDetails {
-        uint256 mode; // mode can be 1, 2, or 3
-        StrategyDetail[] exitStrategy;
-        StrategyDetail[] rebaseStrategy;
-        StrategyDetail[] liquidityDistribution;
-    }
-
-    struct StrategyDetail {
+    /// @param actionName Encoded name of whitelisted advance module
+    /// @param data input as encoded data for selected module
+    struct StrategyPayload {
         bytes32 actionName;
         bytes data;
     }
 
+    /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
+    /// @param exitStrategy Array of whitelistd ids for advance mode exit strategy selection
+    /// @param rebaseStrategy Array of whitelistd ids for advance mode rebase strategy selection
+    /// @param liquidityDistribution Array of whitelistd ids for advance mode liquidity distribution selection
+    struct PositionActions {
+        uint256 mode;
+        StrategyPayload[] exitStrategy;
+        StrategyPayload[] rebaseStrategy;
+        StrategyPayload[] liquidityDistribution;
+    }
+
     /// @param key A51 position's key details
     /// @param actions Ids of all modes selected by the strategist encoded together in a single hash
-    /// @param actionsData Input values for the respective mode encoded in hash & all inputs are encoded together again
     /// @param actionStatus The encoded data for each of the strategy to track any detail for futher actions
     /// @param isCompound Bool weather the strategy has compunding activated or not
     /// @param balance0 Amount of token0 left that are not added on AMM's position
@@ -56,7 +54,7 @@ interface ICLTBase {
     /// the entire life of the A51's position
     struct StrategyData {
         StrategyKey key;
-        bytes actionsData; // assembly operations needed to merge actions & data into single byte32 word { figure out }
+        bytes actions;
         bytes actionStatus;
         bool isCompound;
         uint256 balance0;
@@ -94,10 +92,12 @@ interface ICLTBase {
         uint256 indexed tokenId, address indexed recipient, uint256 liquidity, uint256 amount0, uint256 amount1
     );
 
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
-    /// @param strategyId a parameter just like in doxygen (must be followed by parameter name)
-    event StrategyCreated(bytes32 strategyId, bytes actionsData, StrategyKey key, bool isCompound);
+    /// @notice Emitted when strategy is created
+    /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
+    /// @param positionActions It is a hash of a preimage composed by all modes IDs selected by the strategist
+    /// @param key A51 position's key details associated with this strategy
+    /// @param isCompound Bool weather the strategy has compunding activated or not
+    event StrategyCreated(bytes32 strategyId, bytes positionActions, StrategyKey key, bool isCompound);
 
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized
@@ -106,13 +106,14 @@ interface ICLTBase {
     /// E.g: actions: [1, 3], it's should be: actionsData: [dataOfID1, dataOfID2]
     /// otherwise it will revert
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
-    /// ......
-    function createStrategy(StrategyKey calldata key, ActionDetails calldata details, bool isCompound) external;
+    /// @param actions It is hash of all encoded data of whitelisted IDs which are being passed
+    /// @param isCompound Bool weather the strategy should have compunding activated or not
+    function createStrategy(StrategyKey calldata key, PositionActions calldata actions, bool isCompound) external;
 
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @return key A51 position's key details associated with this strategy
-    /// @return actionsData It is a hash of a preimage composed by all inputs of respective mode
+    /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @return actionStatus It is a hash of a additional data of strategy for further required actions
     /// @return isCompound Bool weather the strategy has compunding activated or not
     /// @return balance0 Amount of token0 left that are not added on AMM's position
@@ -127,7 +128,7 @@ interface ICLTBase {
         external
         returns (
             StrategyKey memory key,
-            bytes memory actionsData,
+            bytes memory actions,
             bytes memory actionStatus,
             bool isCompound,
             uint256 balance0,
