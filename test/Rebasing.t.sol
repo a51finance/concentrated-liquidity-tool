@@ -94,52 +94,52 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         rebaseModuleMockContract = new RebaseModuleMock(owner,address(baseContract));
     }
 
-    // function generateSwaps(ISwapRouter.ExactInputSingleParams memory params) public {
-    //     router.exactInputSingle(params);
-    // }
+    function generateSwaps(ISwapRouter.ExactInputSingleParams memory params) public {
+        router.exactInputSingle(params);
+    }
 
-    // function getStrategyKey(int24 difference) public {
-    //     (, int24 tick,,,,,) = poolContract.slot0();
+    function getStrategyKey(int24 difference) public {
+        (, int24 tick,,,,,) = poolContract.slot0();
 
-    //     int24 tickLower = _floor(tick, poolContract.tickSpacing());
-    //     (tick - difference, poolContract.tickSpacing());
-    //     int24 tickUpper = _floor(tick + difference, poolContract.tickSpacing());
+        int24 tickLower = _floor(tick, poolContract.tickSpacing());
+        (tick - difference, poolContract.tickSpacing());
+        int24 tickUpper = _floor(tick + difference, poolContract.tickSpacing());
 
-    //     strategyKey.pool = poolContract;
-    //     strategyKey.tickLower = tickLower;
-    //     strategyKey.tickUpper = tickUpper;
-    // }
+        strategyKey.pool = poolContract;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
+    }
 
-    // function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
-    //     int24 compressed = tick / tickSpacing;
-    //     if (tick < 0 && tick % tickSpacing != 0) compressed--;
-    //     return compressed * tickSpacing;
-    // }
+    function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
+        int24 compressed = tick / tickSpacing;
+        if (tick < 0 && tick % tickSpacing != 0) compressed--;
+        return compressed * tickSpacing;
+    }
 
-    // function getStrategyKey() public {
-    //     (, int24 tick,,,,,) = poolContract.slot0();
+    function getStrategyKey() public {
+        (, int24 tick,,,,,) = poolContract.slot0();
 
-    //     int24 tickLower = _floor(tick, poolContract.tickSpacing());
-    //     (tick - 2000, poolContract.tickSpacing());
-    //     int24 tickUpper = _floor(tick + 2000, poolContract.tickSpacing());
+        int24 tickLower = _floor(tick, poolContract.tickSpacing());
+        (tick - 2000, poolContract.tickSpacing());
+        int24 tickUpper = _floor(tick + 2000, poolContract.tickSpacing());
 
-    //     strategyKey.pool = poolContract;
-    //     strategyKey.tickLower = tickLower;
-    //     strategyKey.tickUpper = tickUpper;
-    // }
+        strategyKey.pool = poolContract;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
+    }
 
-    // function createStrategy(ICLTBase.ActionDetails memory actionDetails) public {
-    //     hevm.prank(owner);
-    //     baseContract.addModule(
-    //         keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModuleMockContract)
-    //     );
-    //     hevm.prank(owner);
-    //     baseContract.addModule(
-    //         keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleMockContract)
-    //     );
+    function createStrategy(ICLTBase.PositionActions memory positionActions) public {
+        _hevm.prank(owner);
+        baseContract.addModule(
+            keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModuleMockContract), true
+        );
+        _hevm.prank(owner);
+        baseContract.addModule(
+            keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleMockContract), true
+        );
 
-    //     baseContract.createStrategy(strategyKey, actionDetails, true);
-    // }
+        baseContract.createStrategy(strategyKey, positionActions, true);
+    }
 
     function testRebaseDeploymentCheck() public {
         assertEq(rebaseModuleMockContract.isOperator(alice), false);
@@ -244,7 +244,8 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
      * check input data test cases
      */
 
-    function testInputDataPricePreferenceWithValidInputs() public view {
+    // Price Preference
+    function testPricePreferenceWithValidInputs() public view {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
         strategyDetail.data = abi.encode(uint256(10), uint256(30));
@@ -254,44 +255,83 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         rebaseModuleMockContract.checkInputData(strategyDetail);
     }
 
-    function testInputDataPricePreferenceWithInValidInputs() public {
+    function testPricePreferenceWithLowerPriceZero() public {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
         strategyDetail.data = abi.encode(uint256(0), uint256(30));
-
         bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
-        _hevm.expectRevert(selector);
-        rebaseModuleMockContract.checkInputData(strategyDetail);
-
-        strategyDetail.data = abi.encode(uint256(0), uint256(0));
-
-        selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
         _hevm.expectRevert(selector);
         rebaseModuleMockContract.checkInputData(strategyDetail);
     }
 
-    // // Time preference
+    function testPricePreferenceWithUpperPriceZero() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        strategyDetail.data = abi.encode(uint256(30), uint256(0));
+        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
-    function testCheckInputDataTimePreferenceWithValidInputs() public view {
+    function testPricePreferenceWithBothPriceZero() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        strategyDetail.data = abi.encode(uint256(0), uint256(0));
+        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
+
+    function testPricePreferenceWithZeroData() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        strategyDetail.data = "";
+        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
+
+    // Time preference
+
+    function testTimePreferenceWithValidInputs() public view {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(block.timestamp + 3600));
         strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
         rebaseModuleMockContract.checkInputData(strategyDetail);
     }
 
-    function testCheckInputDataTimePreferenceWithInvalidInputs() public {
+    function testTimePreferenceWithCurrentTime() public {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(block.timestamp));
         strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-
         bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
         _hevm.expectRevert(selector);
         rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
-        strategyDetail.data = abi.encode(uint256(0));
-        selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+    function testTimePreferenceWithPastTime() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(block.timestamp - 36_000));
+        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
         _hevm.expectRevert(selector);
         rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
+
+    function testTimePreferenceWithFarFutureTime() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(block.timestamp + 31_536_001));
+        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
+
+    function testTimePreferenceWithZeroTime() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.data = "";
+        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
         _hevm.expectRevert(selector);
         rebaseModuleMockContract.checkInputData(strategyDetail);
     }
@@ -315,6 +355,10 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         _hevm.expectRevert(selector);
         rebaseModuleMockContract.checkInputData(strategyDetail);
     }
+
+    // combined cases
+
+    function testInputDataWithMultipleValidPreferences() public { }
 
     // // _checkRebasePreferenceStrategies
 
