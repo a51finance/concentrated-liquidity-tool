@@ -43,7 +43,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
 
         for (uint256 i = 0; i < _queue.length; i++) {
             ICLTBase.ShiftLiquidityParams memory params;
-            (ICLTBase.StrategyKey memory key,, bytes memory actionStatus,,,,,,,) =
+            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) =
                 _cltBase.strategies(_queue[i].strategyID);
             uint256 rebaseCount = abi.decode(actionStatus, (uint256));
 
@@ -117,6 +117,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     function getStrategyData(bytes32 strategyID) public returns (ExecutableStrategiesData memory) {
         (
             ICLTBase.StrategyKey memory key,
+            ,
             bytes memory actionsData,
             bytes memory actionStatus,
             ,
