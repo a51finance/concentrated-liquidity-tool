@@ -5,6 +5,7 @@ import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { RebaseModuleMock } from "./mocks/RebaseModule.mock.sol";
 import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
 import { Vm } from "forge-std/Vm.sol";
+import { console } from "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 import { CLTBase } from "../src/CLTBase.sol";
 import { WETH } from "@solmate/tokens/WETH.sol";
@@ -51,6 +52,9 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
 
         weth = new WETH();
 
+        token0.mint(owner, 10_000_000_000e18);
+        token1.mint(owner, 10_000_000_000e18);
+
         // intialize uniswap contracts
         weth = new WETH();
         uniswapV3FactoryContract = IUniswapV3Factory(deployUniswapV3Factory());
@@ -63,9 +67,9 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);
         mintParams.tickLower = (-887_272 / poolContract.tickSpacing()) * poolContract.tickSpacing();
-        mintParams.tickUpper = (-887_272 / poolContract.tickSpacing()) * poolContract.tickSpacing();
+        mintParams.tickUpper = (887_272 / poolContract.tickSpacing()) * poolContract.tickSpacing();
         mintParams.fee = 500;
-        mintParams.recipient = address(this);
+        mintParams.recipient = owner;
         mintParams.amount0Desired = 100_000e18;
         mintParams.amount1Desired = 100_000;
         mintParams.amount0Min = 0;
@@ -143,175 +147,174 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         assertEq(rebaseModuleMockContract.isOperator(address(this)), true);
     }
 
-    // // checkStrategiesArray Testing
-    // // Test Case 1: Non-empty Array without Zero ID and without Duplicates
+    // checkStrategiesArray Testing
+    // Test Case 1: Non-empty Array without Zero ID and without Duplicates
 
-    // function testValidArray() public {
-    //     bytes32[] memory data = new bytes32[](3);
-    //     data[0] = keccak256(abi.encodePacked("strategy1"));
-    //     data[1] = keccak256(abi.encodePacked("strategy2"));
-    //     data[2] = keccak256(abi.encodePacked("strategy3"));
-    //     assertTrue(rebaseModuleMockContract.checkStrategiesArray(data));
-    // }
+    function testValidArray() public {
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = keccak256(abi.encodePacked("strategy1"));
+        data[1] = keccak256(abi.encodePacked("strategy2"));
+        data[2] = keccak256(abi.encodePacked("strategy3"));
+        assertTrue(rebaseModuleMockContract.checkStrategiesArray(data));
+    }
 
-    // // Test Case 2: Empty Array
-    // function testEmptyArrayReverts() public {
-    //     bytes32[] memory data = new bytes32[](0);
-    //     bytes4 selector = bytes4(keccak256("StrategyIdsCannotBeEmpty()"));
-    //     vm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkStrategiesArray(data);
-    // }
+    // Test Case 2: Empty Array
+    function testEmptyArrayReverts() public {
+        bytes32[] memory data = new bytes32[](0);
+        bytes4 selector = bytes4(keccak256("StrategyIdsCannotBeEmpty()"));
+        vm.expectRevert(selector);
+        rebaseModuleMockContract.checkStrategiesArray(data);
+    }
 
-    // // Test Case 3: Array with Zero ID
-    // function testArrayWithZeroIdReverts() public {
-    //     bytes32[] memory data = new bytes32[](2);
-    //     data[0] = keccak256(abi.encodePacked("strategy1"));
-    //     data[1] = bytes32(0);
+    // Test Case 3: Array with Zero ID
+    function testArrayWithZeroIdReverts() public {
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = keccak256(abi.encodePacked("strategy1"));
+        data[1] = bytes32(0);
 
-    //     bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
-    //     vm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkStrategiesArray(data);
-    // }
+        bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
+        vm.expectRevert(selector);
+        rebaseModuleMockContract.checkStrategiesArray(data);
+    }
 
-    // // Test Case 4: Array with Duplicates
-    // function testArrayWithDuplicatesReverts() public {
-    //     bytes32 duplicateId = keccak256("strategy1");
-    //     bytes32[] memory data = new bytes32[](2);
-    //     data[0] = duplicateId;
-    //     data[1] = duplicateId;
-    //     bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", duplicateId);
-    //     vm.expectRevert(encodedError);
-    //     rebaseModuleMockContract.checkStrategiesArray(data);
-    // }
+    // Test Case 4: Array with Duplicates
+    function testArrayWithDuplicatesReverts() public {
+        bytes32 duplicateId = keccak256("strategy1");
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = duplicateId;
+        data[1] = duplicateId;
+        bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", duplicateId);
+        vm.expectRevert(encodedError);
+        rebaseModuleMockContract.checkStrategiesArray(data);
+    }
 
-    // // Test Case 5: Large Array without Issues
-    // function testLargeArray() public {
-    //     uint256 largeSize = 1000;
-    //     bytes32[] memory data = new bytes32[](largeSize);
-    //     for (uint256 i = 0; i < largeSize; i++) {
-    //         data[i] = keccak256(abi.encodePacked(i));
-    //     }
-    //     assertTrue(rebaseModuleMockContract.checkStrategiesArray(data));
-    // }
+    // Test Case 5: Large Array without Issues
+    function testLargeArray() public {
+        uint256 largeSize = 1000;
+        bytes32[] memory data = new bytes32[](largeSize);
+        for (uint256 i = 0; i < largeSize; i++) {
+            data[i] = keccak256(abi.encodePacked(i));
+        }
+        assertTrue(rebaseModuleMockContract.checkStrategiesArray(data));
+    }
 
-    // // Test Case 6: Array with Last Element Zero
-    // function testArrayWithLastElementZeroReverts() public {
-    //     bytes32[] memory data = new bytes32[](2);
-    //     data[0] = keccak256("strategy1");
-    //     data[1] = bytes32(0);
-    //     bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
-    //     vm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkStrategiesArray(data);
-    // }
+    // Test Case 6: Array with Last Element Zero
+    function testArrayWithLastElementZeroReverts() public {
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = keccak256("strategy1");
+        data[1] = bytes32(0);
+        bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
+        vm.expectRevert(selector);
+        rebaseModuleMockContract.checkStrategiesArray(data);
+    }
 
-    // // Test Case 7: Array with First Element Zero
-    // function testArrayWithFirstElementZeroReverts() public {
-    //     bytes32[] memory data = new bytes32[](2);
-    //     data[0] = bytes32(0);
-    //     data[1] = keccak256("strategy2");
-    //     bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
-    //     vm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkStrategiesArray(data);
-    // }
+    // Test Case 7: Array with First Element Zero
+    function testArrayWithFirstElementZeroReverts() public {
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = bytes32(0);
+        data[1] = keccak256("strategy2");
+        bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
+        vm.expectRevert(selector);
+        rebaseModuleMockContract.checkStrategiesArray(data);
+    }
 
-    // // Test Case 8: Array with All Elements Zero
-    // function testArrayWithAllElementsZeroReverts() public {
-    //     bytes32[] memory data = new bytes32[](2);
-    //     data[0] = bytes32(0);
-    //     data[1] = bytes32(0);
-    //     bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
-    //     vm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkStrategiesArray(data);
-    // }
+    // Test Case 8: Array with All Elements Zero
+    function testArrayWithAllElementsZeroReverts() public {
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = bytes32(0);
+        data[1] = bytes32(0);
+        bytes4 selector = bytes4(keccak256("StrategyIdCannotBeZero()"));
+        vm.expectRevert(selector);
+        rebaseModuleMockContract.checkStrategiesArray(data);
+    }
 
-    // // Test Case 9: Array with All Elements Identical
-    // function testArrayWithAllElementsIdenticalReverts() public {
-    //     bytes32 identicalId = keccak256(abi.encodePacked("strategy"));
-    //     bytes32[] memory data = new bytes32[](3);
-    //     data[0] = identicalId;
-    //     data[1] = identicalId;
-    //     data[2] = identicalId;
-    //     bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", identicalId);
-    //     vm.expectRevert(encodedError);
-    //     rebaseModuleMockContract.checkStrategiesArray(data);
-    // }
+    // Test Case 9: Array with All Elements Identical
+    function testArrayWithAllElementsIdenticalReverts() public {
+        bytes32 identicalId = keccak256(abi.encodePacked("strategy"));
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = identicalId;
+        data[1] = identicalId;
+        data[2] = identicalId;
+        bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", identicalId);
+        vm.expectRevert(encodedError);
+        rebaseModuleMockContract.checkStrategiesArray(data);
+    }
 
-    // /*
-    //  * check input data test cases
-    //  */
+    /*
+     * check input data test cases
+     */
 
-    // function testInputDataPricePreferenceWithValidInputs() public view {
-    //     ICLTBase.StrategyDetail memory strategyDetail;
-    //     strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
-    //     strategyDetail.data = abi.encode(uint256(10), uint256(30));
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
+    function testInputDataPricePreferenceWithValidInputs() public view {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        strategyDetail.data = abi.encode(uint256(10), uint256(30));
+        rebaseModuleMockContract.checkInputData(strategyDetail);
 
-    //     strategyDetail.data = abi.encode(uint256(203_247), uint256(10_000));
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
-    // }
+        strategyDetail.data = abi.encode(uint256(203_247), uint256(10_000));
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
-    // function testInputDataPricePreferenceWithInValidInputs() public {
-    //     ICLTBase.StrategyDetail memory strategyDetail;
-    //     strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
-    //     strategyDetail.data = abi.encode(uint256(0), uint256(30));
+    function testInputDataPricePreferenceWithInValidInputs() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        strategyDetail.data = abi.encode(uint256(0), uint256(30));
 
-    //     bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
-    //     _hevm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
+        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
 
-    //     strategyDetail.data = abi.encode(uint256(0), uint256(0));
+        strategyDetail.data = abi.encode(uint256(0), uint256(0));
 
-    //     selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-    //     _hevm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
-    // }
+        selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
     // // Time preference
 
-    // function testCheckInputDataTimePreferenceWithValidInputs() public view {
-    //     ICLTBase.StrategyDetail memory strategyDetail;
-    //     strategyDetail.data = abi.encode(uint256(block.timestamp + 3600));
-    //     strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
-    // }
+    function testCheckInputDataTimePreferenceWithValidInputs() public view {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(block.timestamp + 3600));
+        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
-    // function testCheckInputDataTimePreferenceWithInvalidInputs() public {
-    //     ICLTBase.StrategyDetail memory strategyDetail;
-    //     strategyDetail.data = abi.encode(uint256(block.timestamp));
-    //     strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+    function testCheckInputDataTimePreferenceWithInvalidInputs() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(block.timestamp));
+        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
 
-    //     bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
-    //     _hevm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
+        bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
 
-    //     strategyDetail.data = abi.encode(uint256(0));
-    //     selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-    //     _hevm.expectRevert(selector);
-    //     hevm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
-    //     _hevm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
-    // }
+        strategyDetail.data = abi.encode(uint256(0));
+        selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
-    // // Rebase Inactivity
+    // Rebase Inactivity
 
-    // function testInputDataRebaseInActivityWithValidInputs() public view {
-    //     ICLTBase.StrategyDetail memory strategyDetail;
-    //     strategyDetail.data = abi.encode(uint256(2));
-    //     strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+    function testInputDataRebaseInActivityWithValidInputs() public view {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.data = abi.encode(uint256(2));
+        strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
 
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
-    // }
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
-    // function testInputDataRebaseInActivityWithInValidInputs() public {
-    //     ICLTBase.StrategyDetail memory strategyDetail;
-    //     strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
-    //     strategyDetail.data = abi.encode(uint256(0));
+    function testInputDataRebaseInActivityWithInValidInputs() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetail.data = abi.encode(uint256(0));
 
-    //     bytes4 selector = bytes4(keccak256("RebaseInactivityCannotBeZero()"));
-    //     _hevm.expectRevert(selector);
-    //     rebaseModuleMockContract.checkInputData(strategyDetail);
-    // }
+        bytes4 selector = bytes4(keccak256("RebaseInactivityCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModuleMockContract.checkInputData(strategyDetail);
+    }
 
     // // _checkRebasePreferenceStrategies
 
