@@ -26,7 +26,11 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Position for StrategyData;
 
     uint256 private _nextId = 1;
-    uint256 public constant MIN_INITIAL_SHARES = 1e3;
+    uint256 private constant WAD = 1e18;
+    uint256 private constant MAX_PROTOCOL_FEE = 5e17;
+    uint256 private constant MIN_INITIAL_SHARES = 1e3;
+
+    uint256 public protocolFee;
 
     // keccak256("MODE")
     bytes32 public constant MODE = 0x25d202ee31c346b8c1099dc1a469d77ca5ac14ed43336c881902290b83e0a13a;
@@ -60,12 +64,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         string memory _symbol,
         address _owner,
         address _weth9,
+        uint256 _protocolFee,
         IUniswapV3Factory _factory
     )
         AccessControl(_owner)
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
-    { }
+    {
+        protocolFee = _protocolFee;
+    }
 
     /// @inheritdoc ICLTBase
     function createStrategy(
@@ -93,12 +100,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             _validateInputData(LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
         }
 
-        bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
+        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _nextId++));
 
         bytes memory positionActionsHash = abi.encode(actions);
 
         strategies[strategyID] = StrategyData({
             key: key,
+            owner: _msgSender(),
             actions: positionActionsHash,
             actionStatus: "",
             isCompound: isCompound,
@@ -364,6 +372,21 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         strategy.updateStrategy(
             params.key, params.moduleStatus, liquidity, amount0 - amount0Added, amount1 - amount1Added
         );
+    }
+
+    function updateStrategyBase(NewState calldata state) external {
+        StrategyData storage strategy = strategies[state.strategyId];
+        if (strategy.owner != _msgSender()) revert InvalidCaller();
+
+        /// should we remove previous actions state?
+        strategy.updateStrategyState(state.newKey, state.newActions);
+    }
+
+    function setProtocolFee(uint256 value) external onlyOwner {
+        if (value >= MAX_PROTOCOL_FEE) revert InvalidInput();
+
+        protocolFee = value;
+        emit ProtocolFeeUpdated(value);
     }
 
     /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault

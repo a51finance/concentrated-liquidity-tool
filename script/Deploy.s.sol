@@ -15,7 +15,7 @@ contract DeployALP is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, _factoryAddress);
+        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, 1000000000000000, _factoryAddress);
 
         vm.stopBroadcast();
     }

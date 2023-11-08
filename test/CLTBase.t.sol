@@ -40,7 +40,7 @@ contract CLTBaseTest is Test, UniswapDeployer {
         router = new SwapRouter(address(factory), address(weth));
 
         // initialize base contract
-        base = new CLTBase("ALP Base", "ALP", msg.sender, address(0), factory);
+        base = new CLTBase("ALP Base", "ALP", msg.sender, address(0), 1000000000000000, factory);
 
         // base.createStrategy();
 

@@ -64,6 +64,17 @@ library Position {
         self.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
     }
 
+    function updateStrategyState(
+        ICLTBase.StrategyData storage self,
+        ICLTBase.StrategyKey memory newKey,
+        bytes memory newActions
+    )
+        internal
+    {
+        self.key = newKey;
+        self.actions = newActions; // this can effect balances and actionStatus?
+    }
+
     function updatePositionFee(ICLTBase.StrategyData storage self) internal {
         PoolActions.updatePosition(self.key);
 

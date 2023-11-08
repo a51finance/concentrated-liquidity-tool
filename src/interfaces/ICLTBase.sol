@@ -13,6 +13,13 @@ interface ICLTBase {
     error InvalidModuleAction(bytes32 actionName);
     error InvalidModule(bytes32 module);
 
+    struct NewState {
+        uint256 tokenId;
+        bytes32 strategyId;
+        StrategyKey newKey;
+        bytes newActions;
+    }
+
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
     /// @param tickUpper The upper tick of the A51's LP position
@@ -54,6 +61,7 @@ interface ICLTBase {
     /// the entire life of the A51's position
     struct StrategyData {
         StrategyKey key;
+        address owner;
         bytes actions;
         bytes actionStatus;
         bool isCompound;
@@ -64,6 +72,10 @@ interface ICLTBase {
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
     }
+
+    /// @notice Explain to an end user what this does
+    /// @param value a parameter just like in doxygen (must be followed by parameter name)
+    event ProtocolFeeUpdated(uint256 value);
 
     /// @notice Emitted when tokens are collected for a position NFT
     /// @param tokenId The ID of the token for which underlying tokens were collected
@@ -113,6 +125,7 @@ interface ICLTBase {
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @return key A51 position's key details associated with this strategy
+    /// @return owner
     /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @return actionStatus It is a hash of a additional data of strategy for further required actions
     /// @return isCompound Bool weather the strategy has compunding activated or not
@@ -128,6 +141,7 @@ interface ICLTBase {
         external
         returns (
             StrategyKey memory key,
+            address owner,
             bytes memory actions,
             bytes memory actionStatus,
             bool isCompound,

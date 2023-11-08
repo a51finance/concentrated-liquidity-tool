@@ -82,7 +82,7 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         positionManager.mint(mintParams);
 
         // initialize base contract
-        base = new CLTBase("ALP Base", "ALP", owner, address(0), uniswapV3FactoryContract);
+        base = new CLTBase("ALP Base", "ALP", owner, address(0), 1000000000000000, uniswapV3FactoryContract);
 
         // approve tokens
         token0.approve(address(base), type(uint256).max);
