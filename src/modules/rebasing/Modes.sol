@@ -17,7 +17,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     function shiftLeft(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
         (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        ICLTBase.ActionDetails memory modules = abi.decode(actions, (ICLTBase.ActionDetails));
+        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 1) {
             (tickLower, tickUpper) = shiftLeft(key, 10);
@@ -33,7 +33,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     function shiftRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
         (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        ICLTBase.ActionDetails memory modules = abi.decode(actions, (ICLTBase.ActionDetails));
+        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 2) {
             (tickLower, tickUpper) = shiftRight(key, 10);
@@ -49,7 +49,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     function shiftLeftAndRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
         (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
 
-        ICLTBase.ActionDetails memory modules = abi.decode(actions, (ICLTBase.ActionDetails));
+        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
         if (modules.mode == 3) {
             (tickLower, tickUpper) = shiftBothSide(key, 10);
