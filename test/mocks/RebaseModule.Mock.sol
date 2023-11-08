@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
-
 // Importing foundational and interfaced contracts
+
 import "../../src/base/ModeTicksCalculation.sol";
 import "../../src/base/AccessControl.sol";
 import "../../src/interfaces/modules/IPreference.sol";
@@ -13,17 +13,17 @@ import "forge-std/console.sol";
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
 
-contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
+contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
+    ICLTBase _cltBase;
+
     /// @notice Threshold for liquidity consideration
     uint256 public liquidityThreshold = 1e3;
     /// @notice Maximum allowable time period
     uint256 public maxTimePeriod;
 
-    bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
     bytes32 public constant TIME_PREFERENCE = keccak256("TIME_PREFERENCE");
+    bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
     bytes32 public constant REBASE_INACTIVITY = keccak256("REBASE_INACTIVITY");
-
-    ICLTBase _cltBase; // Instance of the ICLTBase interface
 
     /// @notice Constructs the RebaseModule with the provided parameters.
     /// @param _owner Address of the owner.
@@ -70,7 +70,6 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @param key Strategy key.
     /// @param mode Mode to calculate ticks.
     /// @return tickLower and tickUpper values.
-
     function getTicksForMode(
         ICLTBase.StrategyKey memory key,
         uint256 mode
@@ -131,7 +130,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
             return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
         }
 
-        ICLTBase.ActionDetails memory strategyActionsData = abi.decode(actionsData, (ICLTBase.ActionDetails));
+        ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
 
         for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
             if (
@@ -146,7 +145,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         uint256 count = 0;
 
         for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
-            ICLTBase.StrategyDetail memory rebaseAction = strategyActionsData.rebaseStrategy[i];
+            ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
             if (shouldAddToQueue(rebaseAction, key)) {
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
             }
@@ -167,7 +166,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @param key Strategy key.
     /// @return bool indicating whether the strategy should be added to the queue.
     function shouldAddToQueue(
-        ICLTBase.StrategyDetail memory rebaseAction,
+        ICLTBase.StrategyPayload memory rebaseAction,
         ICLTBase.StrategyKey memory key
     )
         public
@@ -223,7 +222,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @param actionStatus The status of the action.
     /// @return true if the conditions are met, false otherwise.
     function _checkRebaseInactivityStrategies(
-        ICLTBase.StrategyDetail memory strategyDetail,
+        ICLTBase.StrategyPayload memory strategyDetail,
         bytes memory actionStatus
     )
         public
@@ -239,11 +238,12 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         return true;
     }
 
-    function checkInputData(ICLTBase.StrategyDetail memory actionsData) external view returns (bool) {
+    function checkInputData(ICLTBase.StrategyPayload memory actionsData) external view override returns (bool) {
         bool hasDiffPreference = actionsData.actionName == PRICE_PREFERENCE;
         bool hasTimePreference = actionsData.actionName == TIME_PREFERENCE;
         bool hasInActivity = actionsData.actionName == REBASE_INACTIVITY;
 
+        // need to check here whether the preference ticks are outside of range
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
             if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
