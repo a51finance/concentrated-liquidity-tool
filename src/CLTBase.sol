@@ -367,6 +367,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         );
     }
 
+    function updateStrategyBase(NewState calldata state) external isAuthorizedForToken(state.tokenId) {
+        StrategyData storage strategy = strategies[state.strategyId];
+
+        /// should we remove previous actions state?
+        strategy.updateStrategyState(state.newKey, state.newActions);
+    }
+
     /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault
     /// @dev New id can only be added for only rebase, exit & liquidity advance modes
     /// @param moduleKey Hash of the module for which is need to be updated

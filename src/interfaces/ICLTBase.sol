@@ -12,6 +12,13 @@ interface ICLTBase {
     error TransactionTooAged();
     error InvalidModule(bytes32 module);
 
+    struct NewState {
+        uint256 tokenId;
+        bytes32 strategyId;
+        StrategyKey newKey;
+        bytes newActions;
+    }
+
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
     /// @param tickUpper The upper tick of the A51's LP position
