@@ -245,14 +245,14 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
      */
 
     // Price Preference
-    function testPricePreferenceWithValidInputs() public view {
+    function testPricePreferenceWithValidInputs() public {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
         strategyDetail.data = abi.encode(uint256(10), uint256(30));
         rebaseModuleMockContract.checkInputData(strategyDetail);
 
         strategyDetail.data = abi.encode(uint256(203_247), uint256(10_000));
-        rebaseModuleMockContract.checkInputData(strategyDetail);
+        assertTrue(rebaseModuleMockContract.checkInputData(strategyDetail));
     }
 
     function testPricePreferenceWithLowerPriceZero() public {
@@ -293,11 +293,11 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
 
     // Time preference
 
-    function testTimePreferenceWithValidInputs() public view {
+    function testTimePreferenceWithValidInputs() public {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(block.timestamp + 3600));
         strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-        rebaseModuleMockContract.checkInputData(strategyDetail);
+        assertTrue(rebaseModuleMockContract.checkInputData(strategyDetail));
     }
 
     function testTimePreferenceWithCurrentTime() public {
@@ -338,12 +338,11 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
 
     // Rebase Inactivity
 
-    function testInputDataRebaseInActivityWithValidInputs() public view {
+    function testInputDataRebaseInActivityWithValidInputs() public {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.data = abi.encode(uint256(2));
         strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
-
-        rebaseModuleMockContract.checkInputData(strategyDetail);
+        assertTrue(rebaseModuleMockContract.checkInputData(strategyDetail));
     }
 
     function testInputDataRebaseInActivityWithInValidInputs() public {
@@ -358,7 +357,88 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
 
     // combined cases
 
-    function testInputDataWithMultipleValidPreferences() public { }
+    function testInputDataWithMultipleValidPreferences() public {
+        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](2);
+        strategyDetailArray[0].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetailArray[1].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+
+        strategyDetailArray[0].data = abi.encode(uint256(2));
+        strategyDetailArray[1].data = abi.encode(uint256(10), uint256(30));
+
+        for (uint256 i = 0; i < strategyDetailArray.length; i++) {
+            assertTrue(rebaseModuleMockContract.checkInputData(strategyDetailArray[i]));
+        }
+
+        strategyDetailArray[0].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetailArray[1].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+
+        strategyDetailArray[0].data = abi.encode(uint256(2));
+        strategyDetailArray[1].data = abi.encode(uint256(block.timestamp + 100));
+
+        for (uint256 i = 0; i < strategyDetailArray.length; i++) {
+            assertTrue(rebaseModuleMockContract.checkInputData(strategyDetailArray[i]));
+        }
+
+        strategyDetailArray = new ICLTBase.StrategyPayload[](3);
+
+        strategyDetailArray[0].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetailArray[1].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        strategyDetailArray[2].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+
+        strategyDetailArray[0].data = abi.encode(uint256(2));
+        strategyDetailArray[1].data = abi.encode(uint256(block.timestamp + 100));
+        strategyDetailArray[2].data = abi.encode(uint256(120), uint256(45));
+
+        for (uint256 i = 0; i < strategyDetailArray.length; i++) {
+            assertTrue(rebaseModuleMockContract.checkInputData(strategyDetailArray[i]));
+        }
+    }
+
+    function testInputDataWithMultipleInValidPreferencesOne() public {
+        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](2);
+        strategyDetailArray[0].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetailArray[1].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+
+        strategyDetailArray[0].data = abi.encode(uint256(0));
+        strategyDetailArray[1].data = abi.encode(uint256(0), uint256(30));
+
+        for (uint256 i = 0; i < strategyDetailArray.length; i++) {
+            _hevm.expectRevert();
+            rebaseModuleMockContract.checkInputData(strategyDetailArray[i]);
+        }
+    }
+
+    function testInputDataWithMultipleInValidPreferencesTwo() public {
+        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](2);
+
+        strategyDetailArray[0].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        strategyDetailArray[1].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+
+        strategyDetailArray[0].data = abi.encode(uint256(block.timestamp));
+        strategyDetailArray[1].data = abi.encode(uint256(2));
+
+        _hevm.expectRevert();
+        for (uint256 i = 0; i < strategyDetailArray.length; i++) {
+            rebaseModuleMockContract.checkInputData(strategyDetailArray[i]);
+        }
+    }
+
+    function testInputDataWithMultipleInValidPreferencesThree() public {
+        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](3);
+
+        strategyDetailArray[0].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetailArray[1].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        strategyDetailArray[2].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+
+        strategyDetailArray[2].data = abi.encode(uint256(120), uint256(0));
+        strategyDetailArray[0].data = abi.encode(uint256(0));
+        strategyDetailArray[1].data = abi.encode(uint256(block.timestamp));
+
+        for (uint256 i = 0; i < strategyDetailArray.length; i++) {
+            _hevm.expectRevert();
+            rebaseModuleMockContract.checkInputData(strategyDetailArray[i]);
+        }
+    }
 
     // // _checkRebasePreferenceStrategies
 
