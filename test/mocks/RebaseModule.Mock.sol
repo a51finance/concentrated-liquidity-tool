@@ -43,7 +43,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
 
         for (uint256 i = 0; i < _queue.length; i++) {
             ICLTBase.ShiftLiquidityParams memory params;
-            (ICLTBase.StrategyKey memory key,, bytes memory actionStatus,,,,,,,) =
+            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) =
                 _cltBase.strategies(_queue[i].strategyID);
             uint256 rebaseCount = abi.decode(actionStatus, (uint256));
 
@@ -113,9 +113,10 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     // /// @notice Retrieves strategy data based on strategy ID.
     /// @param strategyID The ID of the strategy to retrieve.
     /// @return ExecutableStrategiesData representing the retrieved strategy.
-    function getStrategyData(bytes32 strategyID) public returns (ExecutableStrategiesData memory) {
+    function getStrategyData(bytes32 strategyID) internal returns (ExecutableStrategiesData memory) {
         (
             ICLTBase.StrategyKey memory key,
+            ,
             bytes memory actionsData,
             bytes memory actionStatus,
             ,
