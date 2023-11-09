@@ -480,45 +480,101 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         }
     }
 
-    // // _checkRebasePreferenceStrategies
+    // _checkRebasePreferenceStrategies
 
-    // function testGetPreferenceTicks() public {
-    //     getStrategyKey(2000);
-    //     console.logInt(strategyKey.tickLower);
-    //     (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 20, 30);
-    //     // positive ticks
+    function testCheckRebasePreferenceStrategiesValidInputs() public {
+        getStrategyKey(2000);
+        bytes memory data = abi.encode(uint256(10), uint256(30));
+        (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
+        int24 tick = getTwap(strategyKey.pool);
+        bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
+        assertEq(success, (tick < tl || tick > tu));
 
-    //     assertEq(tl, strategyKey.tickLower - 20);
-    //     assertEq(tu, strategyKey.tickUpper + 30);
-    //     assertEq(strategyKey.tickLower - 20 < strategyKey.tickLower, true);
-    //     assertEq(strategyKey.tickUpper + 30 > strategyKey.tickUpper, true);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
 
-    //     // // negative ticks
-    //     // poolContract = IUniswapV3Pool(poolAddressNegativeTicks);
-    //     // getStrategyKey();
-    //     // (tl, tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 20, 30);
+        executeSwap(token1, token0, 500, owner, 80e18, 0, 0);
 
-    //     // assertEq(tl, strategyKey.tickLower - 20);
-    //     // assertEq(tu, strategyKey.tickUpper + 30);
-    //     // assertEq(strategyKey.tickLower - 20 < strategyKey.tickLower, true);
-    //     // assertEq(strategyKey.tickUpper + 30 > strategyKey.tickUpper, true);
-    // }
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
 
-    // function testCheckRebasePreferenceStrategiesValidInputs() public {
-    //     getStrategyKey(2000);
-    //     // swapParams.tokenIn = address(token0);
-    //     // swapParams.tokenOut = address(token1);
-    //     // swapParams.fee = 500;
-    //     // swapParams.recipient = owner;
-    //     // swapParams.deadline = block.timestamp + 100;
-    //     // swapParams.amountIn = 100;
-    //     // swapParams.amountOutMinimum = 0;
-    //     // swapParams.sqrtPriceLimitX96 = 0;
-    //     // generateSwaps(swapParams);
-    //     // bytes memory data = abi.encode(uint256(10), uint256(30));
-    //     // (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
-    //     // int24 tick = getTwap(strategyKey.pool);
-    //     // bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
-    //     // assertEq(success, (tick < tl || tick > tu));
-    // }
+        (tl, tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
+        tick = getTwap(strategyKey.pool);
+        success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
+        assertEq(success, (tick < tl || tick > tu));
+    }
+
+    function testCheckRebasePreferenceStrategiesWithALargeSwapOnTwap() public {
+        getStrategyKey(2000);
+        bytes memory data = abi.encode(uint256(10), uint256(30));
+        (int24 tl, int24 tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
+        int24 tick = getTwap(strategyKey.pool);
+        bool success = rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data);
+        assertEq(success, (tick < tl || tick > tu));
+
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+
+        executeSwap(token1, token0, 500, owner, 80e18, 0, 0);
+
+        (tl, tu) = rebaseModuleMockContract._getPreferenceTicks(strategyKey, 10, 30);
+        tick = getTwap(strategyKey.pool);
+        assertFalse(rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data));
+        assertEq(rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data), (tick < tl || tick > tu));
+    }
+
+    function testCheckRebasePreferenceStrategiesFunction() public {
+        getStrategyKey(2000);
+        bytes memory data = abi.encode(uint256(10), uint256(30));
+        assertFalse(rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data));
+
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+
+        executeSwap(token1, token0, 500, owner, 80e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 300);
+        _hevm.roll(block.number + 3);
+        assertTrue(rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data));
+    }
+
+    // _checkRebaseTimePreferenceStrategies
+    function testCheckRebaseTimePreferenceStrategiesWithValidInputs() public {
+        bytes memory data = abi.encode(uint256(block.timestamp + 3600));
+        assertTrue(rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data));
+    }
+
+    function testCheckRebaseTimePreferenceStrategiesWithInValidInputs() public {
+        bytes memory data = abi.encode(uint256(block.timestamp));
+        assertTrue(rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data));
+
+        data = abi.encode(uint256(0));
+        bytes4 selector = bytes4(keccak256("TimePreferenceConstraint()"));
+        vm.expectRevert(selector);
+        rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data);
+
+        selector = bytes4(keccak256("TimePreferenceConstraint()"));
+        vm.expectRevert(selector);
+        data = abi.encode(uint256(block.timestamp + 31_536_000));
+        rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data);
+    }
+
+    // _checkRebaseInactivityStrategies
+    function testCheckRebaseInactivityStrategiesWithInValidInputs() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+
+        strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetail.data = abi.encode(uint256(5));
+        bytes memory actionStatus = abi.encode(uint256(0));
+
+        assertTrue(rebaseModuleMockContract._checkRebaseInactivityStrategies(strategyDetail, actionStatus));
+    }
+
+    function testCheckRebaseInactivityStrategiesWithGreaterActionStatus() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        strategyDetail.data = abi.encode(uint256(5));
+        bytes memory actionStatus = abi.encode(uint256(5));
+        assertFalse(rebaseModuleMockContract._checkRebaseInactivityStrategies(strategyDetail, actionStatus));
+    }
 }
