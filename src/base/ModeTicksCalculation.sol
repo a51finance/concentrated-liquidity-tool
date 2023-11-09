@@ -8,14 +8,7 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 abstract contract ModeTicksCalculation {
     uint32 twapDuration = 300;
 
-    function shiftLeft(
-        ICLTBase.StrategyKey memory key,
-        int24 positionWidth // given by the user i.e. no of ticks
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
+    function shiftLeft(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
 
@@ -24,19 +17,14 @@ abstract contract ModeTicksCalculation {
 
             currentTick = floorTick(currentTick, tickSpacing);
 
+            int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
+
             tickLower = currentTick - tickSpacing;
             tickUpper = floorTick(tickLower - positionWidth, tickSpacing);
         }
     }
 
-    function shiftRight(
-        ICLTBase.StrategyKey memory key,
-        int24 positionWidth
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
+    function shiftRight(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
         int24 tickSpacing = key.pool.tickSpacing();
 
@@ -45,23 +33,18 @@ abstract contract ModeTicksCalculation {
 
             currentTick = floorTick(currentTick, tickSpacing);
 
+            int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
+
             tickUpper = currentTick - tickSpacing;
             tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
         }
     }
 
-    function shiftBothSide(
-        ICLTBase.StrategyKey memory key,
-        int24 positionWidth
-    )
-        internal
-        view
-        returns (int24 tickLower, int24 tickUpper)
-    {
+    function shiftBothSide(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
 
-        if (currentTick < key.tickLower) return shiftLeft(key, positionWidth);
-        if (currentTick > key.tickUpper) return shiftRight(key, positionWidth);
+        if (currentTick < key.tickLower) return shiftLeft(key);
+        if (currentTick > key.tickUpper) return shiftRight(key);
     }
 
     function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
@@ -85,5 +68,17 @@ abstract contract ModeTicksCalculation {
             return -x;
         }
         return x;
+    }
+
+    function getPositionWidth(
+        int24 currentTick,
+        int24 tickLower,
+        int24 tickUpper
+    )
+        internal
+        pure
+        returns (int24 width)
+    {
+        width = (currentTick - tickLower) + (tickUpper - currentTick);
     }
 }
