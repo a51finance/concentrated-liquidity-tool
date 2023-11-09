@@ -22,7 +22,6 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     Vm _hevm = Vm(HEVM_ADDRESS);
 
-    ISwapRouter.ExactInputSingleParams swapParams;
     NonfungiblePositionManager positionManager;
     IUniswapV3Factory uniswapV3FactoryContract;
     RebaseModuleMock rebaseModuleMockContract;
@@ -66,12 +65,12 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
 
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);
-        mintParams.tickLower = (-887_272 / poolContract.tickSpacing()) * poolContract.tickSpacing();
-        mintParams.tickUpper = (887_272 / poolContract.tickSpacing()) * poolContract.tickSpacing();
+        mintParams.tickLower = (-600_000 / poolContract.tickSpacing()) * poolContract.tickSpacing();
+        mintParams.tickUpper = (600_000 / poolContract.tickSpacing()) * poolContract.tickSpacing();
         mintParams.fee = 500;
         mintParams.recipient = owner;
-        mintParams.amount0Desired = 100_000e18;
-        mintParams.amount1Desired = 100_000;
+        mintParams.amount0Desired = 1000e18;
+        mintParams.amount1Desired = 100e18;
         mintParams.amount0Min = 0;
         mintParams.amount1Min = 0;
         mintParams.deadline = 2_000_000_000;
@@ -90,12 +89,53 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         token1.approve(address(base), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
 
+        generateMultipleSwapsWithTime();
+
+        poolContract.increaseObservationCardinalityNext(80);
         // initialize module contract
         rebaseModuleMockContract = new RebaseModuleMock(owner,address(baseContract));
     }
 
-    function generateSwaps(ISwapRouter.ExactInputSingleParams memory params) public {
-        router.exactInputSingle(params);
+    function generateMultipleSwapsWithTime() public {
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token0, token1, 500, owner, 10e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token1, token0, 500, owner, 5e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token0, token1, 500, owner, 10e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token1, token0, 500, owner, 5e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+    }
+
+    function executeSwap(
+        ERC20Mock tokenIn,
+        ERC20Mock tokenOut,
+        uint24 fee,
+        address recipient,
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        uint160 sqrtPriceLimitX96
+    )
+        public
+    {
+        ISwapRouter.ExactInputSingleParams memory swapParams;
+
+        swapParams.tokenIn = address(tokenIn);
+        swapParams.tokenOut = address(tokenOut);
+        swapParams.fee = fee;
+        swapParams.recipient = recipient;
+        swapParams.deadline = block.timestamp + 100;
+        swapParams.amountIn = amountIn;
+        swapParams.amountOutMinimum = amountOutMinimum;
+        swapParams.sqrtPriceLimitX96 = sqrtPriceLimitX96;
+
+        router.exactInputSingle(swapParams);
     }
 
     function getStrategyKey(int24 difference) public {
