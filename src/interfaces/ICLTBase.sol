@@ -35,6 +35,13 @@ interface ICLTBase {
         bytes data;
     }
 
+    /// @param protocolFee Encoded name of whitelisted advance module
+    /// @param strategistFee input as encoded data for selected module
+    struct StrategyFees {
+        uint256 protocolFee;
+        uint256 strategistFee;
+    }
+
     /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
     /// @param exitStrategy Array of whitelistd ids for advance mode exit strategy selection
     /// @param rebaseStrategy Array of whitelistd ids for advance mode rebase strategy selection
@@ -118,8 +125,15 @@ interface ICLTBase {
     /// otherwise it will revert
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
     /// @param actions It is hash of all encoded data of whitelisted IDs which are being passed
+    /// @param strategistFee b
     /// @param isCompound Bool weather the strategy should have compunding activated or not
-    function createStrategy(StrategyKey calldata key, PositionActions calldata actions, bool isCompound) external;
+    function createStrategy(
+        StrategyKey calldata key,
+        PositionActions calldata actions,
+        uint256 strategistFee,
+        bool isCompound
+    )
+        external;
 
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID

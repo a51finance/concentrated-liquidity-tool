@@ -46,14 +46,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     bytes32 public constant LIQUIDITY_DISTRIBUTION = 0xeabe6f62bd74d002b0267a6aaacb5212bb162f4f87ee1c4a80ac0d2698f8a505;
 
     /// @inheritdoc ICLTBase
-    mapping(bytes32 => StrategyData) public override strategies;
-
-    /// @inheritdoc ICLTBase
     mapping(uint256 => Position.Data) public override positions;
 
-    mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
+    /// @inheritdoc ICLTBase
+    mapping(bytes32 => StrategyData) public override strategies;
 
     mapping(bytes32 => address) public modeVaults;
+
+    mapping(bytes32 => StrategyFees) public strategyFees;
+
+    mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
@@ -79,6 +81,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     function createStrategy(
         StrategyKey calldata key,
         PositionActions calldata actions,
+        uint256 strategistFee,
         bool isCompound
     )
         external
@@ -118,6 +121,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             feeGrowthInside0LastX128: 0,
             feeGrowthInside1LastX128: 0
         });
+
+        strategyFees[strategyID] = StrategyFees({ protocolFee: protocolFee, strategistFee: strategistFee });
 
         emit StrategyCreated(strategyID, positionActionsHash, key, isCompound);
     }
@@ -383,11 +388,17 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         strategy.updateStrategyState(state.newKey, state.newActions);
     }
 
-    function setProtocolFee(uint256 value) external onlyOwner {
+    function setProtocolFeeOverall(uint256 value) external onlyOwner {
         if (value >= MAX_PROTOCOL_FEE) revert InvalidInput();
 
         protocolFee = value;
         emit ProtocolFeeUpdated(value);
+    }
+
+    function setProtocolFeeStrategy(bytes32 strategyID, uint256 value) external onlyOwner {
+        if (value >= MAX_PROTOCOL_FEE) revert InvalidInput();
+
+        strategyFees[strategyID].protocolFee = value;
     }
 
     /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault
