@@ -12,6 +12,7 @@ import { AccessControl } from "./base/AccessControl.sol";
 import { Position } from "./libraries/Position.sol";
 import { PoolActions } from "./libraries/PoolActions.sol";
 import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
+import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -27,7 +28,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Position for StrategyData;
 
     uint256 private _nextId = 1;
-    uint256 private constant WAD = 1e18;
     uint256 private constant MAX_PROTOCOL_FEE = 5e17;
     uint256 private constant MIN_INITIAL_SHARES = 1e3;
 
@@ -51,9 +51,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @inheritdoc ICLTBase
     mapping(bytes32 => StrategyData) public override strategies;
 
-    mapping(bytes32 => address) public modeVaults;
-
     mapping(bytes32 => StrategyFees) public strategyFees;
+
+    mapping(bytes32 => address) public modeVaults;
 
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
@@ -342,15 +342,22 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         StrategyData storage strategy = strategies[params.strategyId];
 
-        // some checks here for key.ticks validation according to new position
-
         if (!strategy.isCompound) strategy.updatePositionFee();
+
+        uint128 liquidity;
+        uint256 amount0Added;
+        uint256 amount1Added;
 
         // only burn this strategy liquidity not others
         (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1) =
             PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity);
 
-        // deduct any fees if required for protocol
+        // deduct any fees if required for protocol & strategist
+        (amount0Added, amount1Added) =
+            transferFee(strategyFees[params.strategyId], strategy.key, amount0, amount1, owner, strategy.owner);
+
+        amount0 -= amount0Added;
+        amount1 -= amount1Added;
 
         if (strategy.isCompound) {
             amount0 += fees0 + strategy.balance0;
@@ -366,10 +373,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             );
         }
 
-        uint128 liquidity;
-        uint256 amount0Added;
-        uint256 amount1Added;
-
+        /// reuse amountAdded vars
         if (params.shouldMint) {
             (liquidity, amount0Added, amount1Added) = PoolActions.mintLiquidity(params.key, amount0, amount1);
         }
@@ -388,17 +392,14 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         strategy.updateStrategyState(state.newKey, state.newActions);
     }
 
-    function setProtocolFeeOverall(uint256 value) external onlyOwner {
+    function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOwner {
         if (value >= MAX_PROTOCOL_FEE) revert InvalidInput();
 
-        protocolFee = value;
-        emit ProtocolFeeUpdated(value);
-    }
-
-    function setProtocolFeeStrategy(bytes32 strategyID, uint256 value) external onlyOwner {
-        if (value >= MAX_PROTOCOL_FEE) revert InvalidInput();
-
-        strategyFees[strategyID].protocolFee = value;
+        if (strategyID == 0) {
+            emit ProtocolFeeOverallUpdated(protocolFee = value);
+        } else {
+            emit ProtocolFeeStrategyUpdated(strategyFees[strategyID].protocolFee = value);
+        }
     }
 
     /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault

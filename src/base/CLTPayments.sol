@@ -5,10 +5,14 @@ import "../libraries/TransferHelper.sol";
 
 import "../interfaces/ICLTPayments.sol";
 import "../interfaces/external/IWETH9.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 abstract contract CLTPayments is ICLTPayments {
-    address public immutable override WETH9;
-    IUniswapV3Factory public immutable override factory;
+    uint256 private constant WAD = 1e18;
+
+    address private immutable WETH9;
+    IUniswapV3Factory private immutable factory;
 
     constructor(IUniswapV3Factory _factory, address _WETH9) {
         factory = _factory;
@@ -59,12 +63,38 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
-    function refundETH() external payable {
-        if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
-    }
+    function transferFee(
+        ICLTBase.StrategyFees storage self,
+        ICLTBase.StrategyKey memory key,
+        uint256 amount0,
+        uint256 amount1,
+        address governance,
+        address strategtOwner
+    )
+        internal
+        returns (uint256 fee0, uint256 fee1)
+    {
+        if (self.protocolFee > 0) {
+            if (amount0 > 0) {
+                TransferHelper.safeTransfer(key.pool.token0(), governance, (amount0 * self.protocolFee) / WAD);
+            }
 
-    /// @dev Amount of token held as unused balance.
-    function _balanceOf(address token, address account) internal view returns (uint256) {
-        return IERC20(token).balanceOf(account);
+            if (amount1 > 0) {
+                TransferHelper.safeTransfer(key.pool.token1(), governance, (amount1 * self.protocolFee) / WAD);
+            }
+        }
+
+        if (self.strategistFee > 0) {
+            if (amount0 > 0) {
+                TransferHelper.safeTransfer(key.pool.token0(), strategtOwner, (amount0 * self.strategistFee) / WAD);
+            }
+
+            if (amount1 > 0) {
+                TransferHelper.safeTransfer(key.pool.token1(), strategtOwner, (amount1 * self.strategistFee) / WAD);
+            }
+        }
+
+        fee0 = ((amount0 * self.protocolFee) / WAD) + ((amount0 * self.protocolFee) / WAD);
+        fee1 = ((amount1 * self.protocolFee) / WAD) + ((amount1 * self.protocolFee) / WAD);
     }
 }

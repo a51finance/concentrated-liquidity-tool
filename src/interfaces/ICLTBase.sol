@@ -81,7 +81,11 @@ interface ICLTBase {
 
     /// @notice Explain to an end user what this does
     /// @param value a parameter just like in doxygen (must be followed by parameter name)
-    event ProtocolFeeUpdated(uint256 value);
+    event ProtocolFeeStrategyUpdated(uint256 value);
+
+    /// @notice Explain to an end user what this does
+    /// @param value a parameter just like in doxygen (must be followed by parameter name)
+    event ProtocolFeeOverallUpdated(uint256 value);
 
     /// @notice Emitted when tokens are collected for a position NFT
     /// @param tokenId The ID of the token for which underlying tokens were collected
