@@ -10,12 +10,13 @@ import { CLTPayments } from "./base/CLTPayments.sol";
 import { AccessControl } from "./base/AccessControl.sol";
 
 import { Position } from "./libraries/Position.sol";
+import { Constants } from "./libraries/Constants.sol";
 import { PoolActions } from "./libraries/PoolActions.sol";
 import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 
-import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ERC721 } from "@solmate/tokens/ERC721.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
@@ -28,22 +29,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Position for StrategyData;
 
     uint256 private _nextId = 1;
-    uint256 private constant MAX_PROTOCOL_FEE = 5e17;
-    uint256 private constant MIN_INITIAL_SHARES = 1e3;
 
     uint256 public protocolFee;
-
-    // keccak256("MODE")
-    bytes32 public constant MODE = 0x25d202ee31c346b8c1099dc1a469d77ca5ac14ed43336c881902290b83e0a13a;
-
-    // keccak256("EXIT_STRATEGY")
-    bytes32 public constant EXIT_STRATEGY = 0xf36a697ed62dd2d982c1910275ee6172360bf72c4dc9f3b10f2d9c700666e227;
-
-    // keccak256("REBASE_STRATEGY")
-    bytes32 public constant REBASE_STRATEGY = 0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204;
-
-    // keccak256("LIQUIDITY_DISTRIBUTION")
-    bytes32 public constant LIQUIDITY_DISTRIBUTION = 0xeabe6f62bd74d002b0267a6aaacb5212bb162f4f87ee1c4a80ac0d2698f8a505;
 
     /// @inheritdoc ICLTBase
     mapping(uint256 => Position.Data) public override positions;
@@ -58,7 +45,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
-        require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
+        require(ownerOf(tokenId) == msg.sender);
         _;
     }
 
@@ -90,27 +77,27 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
 
         if (actions.exitStrategy.length > 0) {
-            _checkModeIds(EXIT_STRATEGY, actions.exitStrategy);
-            _validateInputData(EXIT_STRATEGY, actions.exitStrategy);
+            _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
+            _validateInputData(Constants.EXIT_STRATEGY, actions.exitStrategy);
         }
 
         if (actions.rebaseStrategy.length > 0) {
-            _checkModeIds(REBASE_STRATEGY, actions.rebaseStrategy);
-            _validateInputData(REBASE_STRATEGY, actions.rebaseStrategy);
+            _checkModeIds(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
+            _validateInputData(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
         }
 
         if (actions.liquidityDistribution.length > 0) {
-            _checkModeIds(LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-            _validateInputData(LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
+            _checkModeIds(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
+            _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
         }
 
-        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _nextId++));
+        bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
 
         bytes memory positionActionsHash = abi.encode(actions);
 
         strategies[strategyID] = StrategyData({
             key: key,
-            owner: _msgSender(),
+            owner: msg.sender,
             actions: positionActionsHash,
             actionStatus: "",
             isCompound: isCompound,
@@ -354,10 +341,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         // deduct any fees if required for protocol & strategist
         (amount0Added, amount1Added) =
-            transferFee(strategyFees[params.strategyId], strategy.key, amount0, amount1, owner, strategy.owner);
+            transferFee(strategy.key, strategyFees[params.strategyId].protocolFee, amount0, amount1, owner);
 
         amount0 -= amount0Added;
         amount1 -= amount1Added;
+
+        (amount0Added, amount1Added) =
+            transferFee(strategy.key, strategyFees[params.strategyId].strategistFee, fees0, fees0, strategy.owner);
+
+        fees0 -= amount0Added;
+        fees1 -= amount1Added;
 
         if (strategy.isCompound) {
             amount0 += fees0 + strategy.balance0;
@@ -386,14 +379,14 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     function updateStrategyBase(NewState calldata state) external {
         StrategyData storage strategy = strategies[state.strategyId];
-        if (strategy.owner != _msgSender()) revert InvalidCaller();
+        if (strategy.owner != msg.sender) revert InvalidCaller();
 
         /// should we remove previous actions state?
         strategy.updateStrategyState(state.newKey, state.newActions);
     }
 
-    function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOwner {
-        if (value >= MAX_PROTOCOL_FEE) revert InvalidInput();
+    function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOperator {
+        if (value >= Constants.MAX_PROTOCOL_FEE) revert InvalidInput();
 
         if (strategyID == 0) {
             emit ProtocolFeeOverallUpdated(protocolFee = value);
@@ -407,17 +400,27 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @param moduleKey Hash of the module for which is need to be updated
     /// @param modeVault New address of mode's vault
     /// @param newModule Array of new mode ids to be added against advance modes
-    function addModule(bytes32 moduleKey, bytes32 newModule, address modeVault, bool isActivated) external onlyOwner {
+    function addModule(
+        bytes32 moduleKey,
+        bytes32 newModule,
+        address modeVault,
+        bool isActivated
+    )
+        external
+        onlyOperator
+    {
         if (
-            moduleKey == MODE || moduleKey == REBASE_STRATEGY || moduleKey == EXIT_STRATEGY
-                || moduleKey == LIQUIDITY_DISTRIBUTION
+            moduleKey == Constants.MODE || moduleKey == Constants.REBASE_STRATEGY
+                || moduleKey == Constants.EXIT_STRATEGY || moduleKey == Constants.LIQUIDITY_DISTRIBUTION
         ) {
-            modulesActions[moduleKey][newModule] = isActivated;
             modeVaults[moduleKey] = modeVault;
+            modulesActions[moduleKey][newModule] = isActivated;
         } else {
             revert InvalidModule(moduleKey);
         }
     }
+
+    function tokenURI(uint256 id) public view override returns (string memory) { }
 
     function _deposit(
         bytes32 strategyId,
@@ -450,7 +453,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         if (share == 0) revert InvalidShare();
 
         if (strategy.totalShares == 0) {
-            if (share < MIN_INITIAL_SHARES) revert InvalidShare();
+            if (share < Constants.MIN_INITIAL_SHARES) revert InvalidShare();
         }
 
         pay(strategy.key.pool.token0(), msg.sender, address(this), amount0);
@@ -477,15 +480,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         address vault = modeVaults[mode];
 
         for (uint256 i = 0; i < array.length; i++) {
-            if (mode == REBASE_STRATEGY) {
+            if (mode == Constants.REBASE_STRATEGY) {
                 IPreference(vault).checkInputData(array[i]);
             }
 
-            if (mode == EXIT_STRATEGY) {
+            if (mode == Constants.EXIT_STRATEGY) {
                 IExitStrategy(vault).checkInputData(array[i]);
             }
 
-            if (mode == LIQUIDITY_DISTRIBUTION) {
+            if (mode == Constants.LIQUIDITY_DISTRIBUTION) {
                 ILiquidityDistribution(vault).checkInputData(array[i]);
             } else {
                 revert InvalidModule(mode);

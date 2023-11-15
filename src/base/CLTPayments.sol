@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import "../libraries/TransferHelper.sol";
+import { Constants } from "../libraries/Constants.sol";
+import { TransferHelper } from "../libraries/TransferHelper.sol";
 
-import "../interfaces/ICLTPayments.sol";
-import "../interfaces/external/IWETH9.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import { IWETH9 } from "../interfaces/external/IWETH9.sol";
+import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 abstract contract CLTPayments is ICLTPayments {
-    uint256 private constant WAD = 1e18;
-
     address private immutable WETH9;
     IUniswapV3Factory private immutable factory;
 
@@ -64,37 +63,25 @@ abstract contract CLTPayments is ICLTPayments {
     }
 
     function transferFee(
-        ICLTBase.StrategyFees storage self,
         ICLTBase.StrategyKey memory key,
+        uint256 percentage,
         uint256 amount0,
         uint256 amount1,
-        address governance,
-        address strategtOwner
+        address owner
     )
         internal
         returns (uint256 fee0, uint256 fee1)
     {
-        if (self.protocolFee > 0) {
+        if (percentage > 0) {
             if (amount0 > 0) {
-                TransferHelper.safeTransfer(key.pool.token0(), governance, (amount0 * self.protocolFee) / WAD);
+                fee0 = (amount0 * percentage) / Constants.WAD;
+                TransferHelper.safeTransfer(key.pool.token0(), owner, fee0);
             }
 
             if (amount1 > 0) {
-                TransferHelper.safeTransfer(key.pool.token1(), governance, (amount1 * self.protocolFee) / WAD);
+                fee1 = (amount1 * percentage) / Constants.WAD;
+                TransferHelper.safeTransfer(key.pool.token1(), owner, fee1);
             }
         }
-
-        if (self.strategistFee > 0) {
-            if (amount0 > 0) {
-                TransferHelper.safeTransfer(key.pool.token0(), strategtOwner, (amount0 * self.strategistFee) / WAD);
-            }
-
-            if (amount1 > 0) {
-                TransferHelper.safeTransfer(key.pool.token1(), strategtOwner, (amount1 * self.strategistFee) / WAD);
-            }
-        }
-
-        fee0 = ((amount0 * self.protocolFee) / WAD) + ((amount0 * self.protocolFee) / WAD);
-        fee1 = ((amount1 * self.protocolFee) / WAD) + ((amount1 * self.protocolFee) / WAD);
     }
 }
