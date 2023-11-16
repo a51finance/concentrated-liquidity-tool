@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import "../libraries/TransferHelper.sol";
+import { Constants } from "../libraries/Constants.sol";
+import { TransferHelper } from "../libraries/TransferHelper.sol";
 
-import "../interfaces/ICLTPayments.sol";
-import "../interfaces/external/IWETH9.sol";
+import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import { IWETH9 } from "../interfaces/external/IWETH9.sol";
+import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
+import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 abstract contract CLTPayments is ICLTPayments {
-    address public immutable override WETH9;
-    IUniswapV3Factory public immutable override factory;
+    address private immutable WETH9;
+    IUniswapV3Factory private immutable factory;
 
     constructor(IUniswapV3Factory _factory, address _WETH9) {
         factory = _factory;
@@ -59,12 +62,26 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
-    function refundETH() external payable {
-        if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
-    }
+    function transferFee(
+        ICLTBase.StrategyKey memory key,
+        uint256 percentage,
+        uint256 amount0,
+        uint256 amount1,
+        address owner
+    )
+        internal
+        returns (uint256 fee0, uint256 fee1)
+    {
+        if (percentage > 0) {
+            if (amount0 > 0) {
+                fee0 = (amount0 * percentage) / Constants.WAD;
+                TransferHelper.safeTransfer(key.pool.token0(), owner, fee0);
+            }
 
-    /// @dev Amount of token held as unused balance.
-    function _balanceOf(address token, address account) internal view returns (uint256) {
-        return IERC20(token).balanceOf(account);
+            if (amount1 > 0) {
+                fee1 = (amount1 * percentage) / Constants.WAD;
+                TransferHelper.safeTransfer(key.pool.token1(), owner, fee1);
+            }
+        }
     }
 }
