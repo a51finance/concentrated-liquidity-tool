@@ -429,13 +429,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         for (uint256 i = 0; i < array.length; i++) {
             if (mode == Constants.REBASE_STRATEGY) {
                 IPreference(vault).checkInputData(array[i]);
-            }
-
-            if (mode == Constants.EXIT_STRATEGY) {
+            } else if (mode == Constants.EXIT_STRATEGY) {
                 IExitStrategy(vault).checkInputData(array[i]);
-            }
-
-            if (mode == Constants.LIQUIDITY_DISTRIBUTION) {
+            } else if (mode == Constants.LIQUIDITY_DISTRIBUTION) {
                 ILiquidityDistribution(vault).checkInputData(array[i]);
             } else {
                 revert InvalidModule(mode);

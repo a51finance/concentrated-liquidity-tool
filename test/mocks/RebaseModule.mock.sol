@@ -19,8 +19,11 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Maximum allowable time period
     uint256 public maxTimePeriod;
 
+    // 0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b
     bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
+    // 0x4036d2cde3df45671689d4979c1a0416dd81c5761f9d35cce34ae9a59728ccb2
     bytes32 public constant TIME_PREFERENCE = keccak256("TIME_PREFERENCE");
+    // 0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893
     bytes32 public constant REBASE_INACTIVITY = keccak256("REBASE_INACTIVITY");
 
     ICLTBase _cltBase; // Instance of the ICLTBase interface
@@ -38,30 +41,46 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @param strategyIDs Array of strategy IDs to be executed.
     function executeStrategies(bytes32[] memory strategyIDs) external onlyOperator {
         checkStrategiesArray(strategyIDs);
-
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
 
         for (uint256 i = 0; i < _queue.length; i++) {
+            uint256 rebaseCount;
+            bool hasRebaseInactivity = false;
             ICLTBase.ShiftLiquidityParams memory params;
             (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) =
                 _cltBase.strategies(_queue[i].strategyID);
-            uint256 rebaseCount = abi.decode(actionStatus, (uint256));
+
+            if (
+                _queue[i].actionNames[0] == REBASE_INACTIVITY || _queue[i].actionNames[1] == REBASE_INACTIVITY
+                    || _queue[i].actionNames[2] == REBASE_INACTIVITY
+            ) {
+                hasRebaseInactivity = true;
+                if (actionStatus.length > 0) {
+                    rebaseCount = abi.decode(actionStatus, (uint256));
+                }
+                rebaseCount = 0;
+            }
 
             params.strategyId = _queue[i].strategyID;
             params.shouldMint = false;
             params.swapAmount = 0;
 
             for (uint256 j = 0; j < _queue[i].actionNames.length; j++) {
+                console.logBytes32(_queue[i].actionNames[j]);
+                if (_queue[i].actionNames[j] == bytes32(0) || _queue[i].actionNames[j] == REBASE_INACTIVITY) {
+                    continue;
+                }
+
                 (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].mode);
+
                 key.tickLower = tickLower;
                 key.tickUpper = tickUpper;
                 params.key = key;
-                params.moduleStatus =
-                    _queue[i].actionNames[j] == REBASE_INACTIVITY ? abi.encode(uint256(++rebaseCount)) : actionStatus;
+                params.moduleStatus = hasRebaseInactivity ? abi.encode(uint256(++rebaseCount)) : actionStatus;
+
                 _cltBase.shiftLiquidity(params);
             }
         }
-
         emit Executed(_queue);
     }
 
@@ -102,10 +121,11 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
 
         for (uint256 i = 0; i < strategyIDs.length; i++) {
             ExecutableStrategiesData memory data = getStrategyData(strategyIDs[i]);
-            if (data.strategyID != bytes32(0)) {
+            if (data.strategyID != bytes32(0) && data.mode != 0) {
                 _queue[validEntries++] = data;
             }
         }
+
         return _queue;
     }
 
@@ -131,7 +151,6 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         }
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
-
         for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
             if (
                 strategyActionsData.rebaseStrategy[i].actionName == REBASE_INACTIVITY
@@ -143,10 +162,9 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
 
         ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
-
         for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
             ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
-            if (shouldAddToQueue(rebaseAction, key)) {
+            if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode)) {
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
             }
         }
@@ -167,17 +185,21 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @return bool indicating whether the strategy should be added to the queue.
     function shouldAddToQueue(
         ICLTBase.StrategyPayload memory rebaseAction,
-        ICLTBase.StrategyKey memory key
+        ICLTBase.StrategyKey memory key,
+        uint256 mode
     )
         public
         view
         returns (bool)
     {
         if (rebaseAction.actionName == PRICE_PREFERENCE) {
-            return _checkRebasePreferenceStrategies(key, rebaseAction.data);
+            return _checkRebasePreferenceStrategies(key, rebaseAction.data, mode);
         } else if (rebaseAction.actionName == TIME_PREFERENCE) {
             return _checkRebaseTimePreferenceStrategies(rebaseAction.data);
+        } else if (rebaseAction.actionName == REBASE_INACTIVITY) {
+            return true;
         }
+
         return false;
     }
 
@@ -187,7 +209,8 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @return true if the conditions are met, false otherwise.
     function _checkRebasePreferenceStrategies(
         ICLTBase.StrategyKey memory key,
-        bytes memory actionsData
+        bytes memory actionsData,
+        uint256 mode
     )
         public
         view
@@ -197,11 +220,12 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
 
         (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
             _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
-
         int24 tick = getTwap(key.pool);
 
-        if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
-            return true;
+        if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower) {
+            if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
+                return true;
+            }
         }
         return false;
     }
@@ -211,10 +235,11 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @return true if the conditions are met.
     function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) public view returns (bool) {
         uint256 timePreference = abi.decode(actionsData, (uint256));
-        if (timePreference < block.timestamp || timePreference >= block.timestamp + maxTimePeriod) {
-            revert TimePreferenceConstraint();
+
+        if (block.timestamp > timePreference || block.timestamp > block.timestamp + maxTimePeriod) {
+            return true;
         }
-        return true;
+        return false;
     }
 
     /// @notice Checks if the rebase inactivity strategies are satisfied.
@@ -230,11 +255,12 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         returns (bool)
     {
         uint256 preferredInActivity = abi.decode(strategyDetail.data, (uint256));
-        uint256 rebaseCount = abi.decode(actionStatus, (uint256));
-        if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
-            return false;
+        if (actionStatus.length > 0) {
+            uint256 rebaseCount = abi.decode(actionStatus, (uint256));
+            if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
+                return false;
+            }
         }
-
         return true;
     }
 

@@ -17,6 +17,7 @@
   src = "src"
   test = "test"
 
+
 [profile.ci]
   fuzz = { runs = 10_000 }
   verbosity = 4
@@ -44,7 +45,7 @@
   gnosis_chain = "https://rpc.gnosischain.com"
   goerli = "https://rpc.ankr.com/eth_goerli"
   localhost = "http://localhost:8545"
-  mainnet = "https://eth.llamarpc.com"
+  mainnet = "https://rpc.mevblocker.io"
   optimism = "https://optimism-mainnet.infura.io/v3/${API_KEY_INFURA}"
   polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
   sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
