@@ -17,7 +17,7 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 library PoolActions {
     using SafeCastExtended for uint256;
 
-    function updatePosition(ICLTBase.StrategyKey memory key) internal returns (uint128 liquidity) {
+    function updatePosition(ICLTBase.StrategyKey memory key) external returns (uint128 liquidity) {
         (liquidity,,,,) = getPositionLiquidity(key);
 
         if (liquidity > 0) {
@@ -29,7 +29,7 @@ library PoolActions {
         ICLTBase.StrategyKey memory key,
         uint128 strategyliquidity
     )
-        internal
+        external
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
         (uint128 liquidity,,,,) = getPositionLiquidity(key);
@@ -54,7 +54,7 @@ library PoolActions {
         uint256 userSharePercentage,
         bool isCompound
     )
-        internal
+        external
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
         uint256 liquidityRemoved =
@@ -76,7 +76,7 @@ library PoolActions {
         uint256 amount0Desired,
         uint256 amount1Desired
     )
-        internal
+        external
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
@@ -102,7 +102,7 @@ library PoolActions {
         bool zeroForOne,
         int256 amountSpecified
     )
-        internal
+        external
         returns (int256 amount0, int256 amount1)
     {
         // manually specify sqrtPrice limit from bot
@@ -123,14 +123,14 @@ library PoolActions {
         uint128 tokensOwed1,
         address recipient
     )
-        internal
+        external
         returns (uint256 collect0, uint256 collect1)
     {
         (collect0, collect1) = key.pool.collect(recipient, key.tickLower, key.tickUpper, tokensOwed0, tokensOwed1);
     }
 
     function getPositionLiquidity(ICLTBase.StrategyKey memory key)
-        internal
+        public
         view
         returns (
             uint128 liquidity,
@@ -150,7 +150,7 @@ library PoolActions {
         uint256 amount0,
         uint256 amount1
     )
-        internal
+        public
         view
         returns (uint128)
     {
@@ -169,7 +169,7 @@ library PoolActions {
         ICLTBase.StrategyKey memory key,
         uint128 liquidity
     )
-        internal
+        public
         view
         returns (uint256, uint256)
     {
@@ -184,7 +184,7 @@ library PoolActions {
     }
 
     function getSqrtRatioX96AndTick(IUniswapV3Pool pool)
-        internal
+        public
         view
         returns (uint160 sqrtRatioX96, int24 tick, uint16 observationCardinality)
     {
@@ -198,7 +198,7 @@ library PoolActions {
         uint256 amount0,
         uint256 amount1
     )
-        internal
+        external
         pure
         returns (uint256 reserves0, uint256 reserves1)
     {
@@ -207,7 +207,7 @@ library PoolActions {
             : (amount0Recieved + amount0, amount1Recieved - amount1);
     }
 
-    function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) internal pure {
+    function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) external pure {
         require(tickLower < tickUpper, "TLU");
         require(tickLower >= TickMath.MIN_TICK, "TLM");
         require(tickUpper <= TickMath.MAX_TICK, "TUM");
