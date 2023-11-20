@@ -13,6 +13,7 @@ import { Position } from "./libraries/Position.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { PoolActions } from "./libraries/PoolActions.sol";
 import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
+import { UserPositions } from "./libraries/UserPositions.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 
@@ -28,6 +29,7 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 /// Holds the state for all strategies and it's users
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     using Position for StrategyData;
+    using UserPositions for Position.Data;
 
     uint256 private _nextId = 1;
 
@@ -46,7 +48,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
-        require(ownerOf(tokenId) == _msgSender());
+        _authorization(tokenId);
         _;
     }
 
@@ -165,24 +167,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             _deposit(position.strategyId, params.amount0Desired, params.amount1Desired);
 
         if (!strategies[position.strategyId].isCompound) {
-            position.tokensOwed0 += uint128(
-                FullMath.mulDiv(
-                    feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128,
-                    position.liquidityShare,
-                    FixedPoint128.Q128
-                )
-            );
-
-            position.tokensOwed1 += uint128(
-                FullMath.mulDiv(
-                    feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128,
-                    position.liquidityShare,
-                    FixedPoint128.Q128
-                )
-            );
-
-            position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
-            position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
+            position.updateUserPosition(feeGrowthInside0LastX128, feeGrowthInside1LastX128);
         }
 
         position.liquidityShare += share;
@@ -215,29 +200,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         );
 
         if (!strategy.isCompound) {
-            amount0 += uint128(position.tokensOwed0)
-                + uint128(
-                    FullMath.mulDiv(
-                        strategy.feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128,
-                        positionLiquidity,
-                        FixedPoint128.Q128
-                    )
-                );
+            (uint256 claimable0, uint256 claimable1) = position.claimPositionAmounts(
+                position.tokensOwed0,
+                position.tokensOwed1,
+                strategy.feeGrowthInside0LastX128,
+                strategy.feeGrowthInside1LastX128
+            );
 
-            amount1 += uint128(position.tokensOwed1)
-                + uint128(
-                    FullMath.mulDiv(
-                        strategy.feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128,
-                        positionLiquidity,
-                        FixedPoint128.Q128
-                    )
-                );
-
-            position.tokensOwed0 = 0;
-            position.tokensOwed1 = 0;
-
-            position.feeGrowthInside0LastX128 = strategy.feeGrowthInside0LastX128;
-            position.feeGrowthInside1LastX128 = strategy.feeGrowthInside1LastX128;
+            amount0 += claimable0;
+            amount1 += claimable1;
         }
 
         uint256 balance0 = strategy.balance0 + fees0;
@@ -292,27 +263,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
             (strategy.feeGrowthInside0LastX128, strategy.feeGrowthInside1LastX128);
 
-        tokensOwed0 += uint128(
-            FullMath.mulDiv(
-                feeGrowthInside0LastX128 - position.feeGrowthInside0LastX128,
-                position.liquidityShare,
-                FixedPoint128.Q128
-            )
-        );
-
-        tokensOwed1 += uint128(
-            FullMath.mulDiv(
-                feeGrowthInside1LastX128 - position.feeGrowthInside1LastX128,
-                position.liquidityShare,
-                FixedPoint128.Q128
-            )
-        );
-
-        position.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
-        position.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
-
-        position.tokensOwed0 = 0;
-        position.tokensOwed1 = 0;
+        (tokensOwed0, tokensOwed1) =
+            position.claimPositionAmounts(tokensOwed0, tokensOwed1, feeGrowthInside0LastX128, feeGrowthInside1LastX128);
 
         if (tokensOwed0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), tokensOwed0);
@@ -495,5 +447,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         for (uint256 i = 0; i < array.length; i++) {
             if (!modulesActions[mode][array[i].actionName]) revert InvalidModule(array[i].actionName);
         }
+    }
+
+    function _authorization(uint256 tokenID) private view {
+        require(ownerOf(tokenID) == _msgSender());
     }
 }

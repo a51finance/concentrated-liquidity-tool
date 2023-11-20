@@ -11,7 +11,7 @@ library LiquidityShares {
         ICLTBase.StrategyKey memory key,
         uint128 liquidity
     )
-        internal
+        public
         returns (uint256 reserves0, uint256 reserves1)
     {
         PoolActions.updatePosition(key);
@@ -37,7 +37,7 @@ library LiquidityShares {
         uint256 balance1,
         uint256 totalSupply
     )
-        internal
+        external
         returns (uint256 shares, uint256 amount0, uint256 amount1)
     {
         if (isCompound) {
@@ -63,7 +63,7 @@ library LiquidityShares {
         uint256 reserve1,
         uint256 totalSupply
     )
-        internal
+        public
         pure
         returns (uint256 shares, uint256 amount0, uint256 amount1)
     {
