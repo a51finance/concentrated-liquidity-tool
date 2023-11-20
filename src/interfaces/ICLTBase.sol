@@ -10,7 +10,6 @@ interface ICLTBase {
     error InvalidCaller();
     error onlyNonCompounders();
     error TransactionTooAged();
-    error InvalidModuleAction(bytes32 actionName);
     error InvalidModule(bytes32 module);
 
     struct NewState {
@@ -170,8 +169,6 @@ interface ICLTBase {
             uint256 feeGrowthInside0LastX128,
             uint256 feeGrowthInside1LastX128
         );
-
-    function modulesActions(bytes32 moduleKey, bytes32 moduleAction) external view returns (bool);
 
     /// @notice Returns the position information associated with a given token ID.
     /// @dev Throws if the token ID is not valid.
