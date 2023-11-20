@@ -17,6 +17,7 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 
 import { ERC721 } from "@solmate/tokens/ERC721.sol";
+import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
@@ -25,7 +26,7 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
 /// user preferences with the help of basic and advance liquidity modes
 /// Holds the state for all strategies and it's users
-contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
+contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     using Position for StrategyData;
 
     uint256 private _nextId = 1;
@@ -45,7 +46,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
-        require(ownerOf(tokenId) == msg.sender);
+        require(ownerOf(tokenId) == _msgSender());
         _;
     }
 
@@ -74,6 +75,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         external
         override
     {
+        if (strategistFee >= Constants.MAX_FEE) revert InvalidInput();
+
         if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
 
         if (actions.exitStrategy.length > 0) {
@@ -91,13 +94,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
         }
 
-        bytes32 strategyID = keccak256(abi.encode(msg.sender, _nextId++));
+        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _nextId++));
 
         bytes memory positionActionsHash = abi.encode(actions);
 
         strategies[strategyID] = StrategyData({
             key: key,
-            owner: msg.sender,
+            owner: _msgSender(),
             actions: positionActionsHash,
             actionStatus: "",
             isCompound: isCompound,
@@ -377,16 +380,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         );
     }
 
-    function updateStrategyBase(NewState calldata state) external {
-        StrategyData storage strategy = strategies[state.strategyId];
-        if (strategy.owner != msg.sender) revert InvalidCaller();
+    function updateStrategyBase(bytes32 strategyId, StrategyKey memory newKey, bytes memory newActions) external {
+        StrategyData storage strategy = strategies[strategyId];
+        if (strategy.owner != _msgSender()) revert InvalidCaller();
 
         /// should we remove previous actions state?
-        strategy.updateStrategyState(state.newKey, state.newActions);
+        strategy.updateStrategyState(newKey, newActions);
     }
 
-    function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOperator {
-        if (value >= Constants.MAX_PROTOCOL_FEE) revert InvalidInput();
+    function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOwner {
+        if (value >= Constants.MAX_FEE) revert InvalidInput();
 
         if (strategyID == 0) {
             emit ProtocolFeeOverallUpdated(protocolFee = value);
@@ -400,15 +403,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @param moduleKey Hash of the module for which is need to be updated
     /// @param modeVault New address of mode's vault
     /// @param newModule Array of new mode ids to be added against advance modes
-    function addModule(
-        bytes32 moduleKey,
-        bytes32 newModule,
-        address modeVault,
-        bool isActivated
-    )
-        external
-        onlyOperator
-    {
+    function addModule(bytes32 moduleKey, bytes32 newModule, address modeVault, bool isActivated) external onlyOwner {
         if (
             moduleKey == Constants.MODE || moduleKey == Constants.REBASE_STRATEGY
                 || moduleKey == Constants.EXIT_STRATEGY || moduleKey == Constants.LIQUIDITY_DISTRIBUTION
@@ -456,8 +451,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             if (share < Constants.MIN_INITIAL_SHARES) revert InvalidShare();
         }
 
-        pay(strategy.key.pool.token0(), msg.sender, address(this), amount0);
-        pay(strategy.key.pool.token1(), msg.sender, address(this), amount1);
+        pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
+        pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);
 
         // bug we need to track the liquidity amounts of all users in a single strategy & that value will be used in
         // shifting of liquidity for each strategy

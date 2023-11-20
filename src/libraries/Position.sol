@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import { Constants } from "./Constants.sol";
 import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
@@ -9,8 +10,6 @@ import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 /// @notice Positions represent an owner in A51 liquidity
 library Position {
-    uint128 internal constant MAX_UINT128 = type(uint128).max;
-
     struct Data {
         bytes32 strategyId;
         uint256 liquidityShare;
@@ -29,7 +28,7 @@ library Position {
         uint256 amount0Added,
         uint256 amount1Added
     )
-        internal
+        public
     {
         uint256 balance0 = amount0Desired - amount0Added;
         uint256 balance1 = amount1Desired - amount1Added;
@@ -53,7 +52,7 @@ library Position {
         uint256 balance0,
         uint256 balance1
     )
-        internal
+        public
     {
         self.key = key;
 
@@ -69,17 +68,17 @@ library Position {
         ICLTBase.StrategyKey memory newKey,
         bytes memory newActions
     )
-        internal
+        public
     {
         self.key = newKey;
         self.actions = newActions; // this can effect balances and actionStatus?
     }
 
-    function updatePositionFee(ICLTBase.StrategyData storage self) internal {
+    function updatePositionFee(ICLTBase.StrategyData storage self) public {
         PoolActions.updatePosition(self.key);
 
         (uint256 fees0, uint256 fees1) =
-            PoolActions.collectPendingFees(self.key, MAX_UINT128, MAX_UINT128, address(this));
+            PoolActions.collectPendingFees(self.key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
 
         self.feeGrowthInside0LastX128 += FullMath.mulDiv(fees0, FixedPoint128.Q128, self.uniswapLiquidity);
         self.feeGrowthInside1LastX128 += FullMath.mulDiv(fees1, FixedPoint128.Q128, self.uniswapLiquidity);
