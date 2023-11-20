@@ -7,6 +7,8 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "./mocks/ERC20Mock.sol";
+import { RebaseModuleMock } from "./mocks/RebaseModule.mock.sol";
+
 import { UniswapDeployer } from "./lib/UniswapDeployer.sol";
 
 import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
@@ -25,8 +27,7 @@ contract CLTBaseTest is Test, UniswapDeployer {
     CLTBase base;
     WETH weth;
 
-    ICLTBase.StrategyKey key;
-    ICLTBase.PositionActions actions;
+    RebaseModuleMock rebaseModule;
 
     function setUp() public {
         token0 = new ERC20Mock();
@@ -43,19 +44,21 @@ contract CLTBaseTest is Test, UniswapDeployer {
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         router = new SwapRouter(address(factory), address(weth));
 
-        // initialize base contract: 0.01% protocol fee
+        // initialize base contract with 0.01% protocol fee
         base = new CLTBase("ALP Base", "ALP", msg.sender, address(0), 10e14, factory);
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        rebaseModule = new RebaseModuleMock(msg.sender, address(base));
+
+        ICLTBase.StrategyKey memory key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
 
         ICLTBase.StrategyPayload[] memory exitStrategyActions = new ICLTBase.StrategyPayload[](0);
         ICLTBase.StrategyPayload[] memory rebaseStrategyActions = new ICLTBase.StrategyPayload[](1);
         ICLTBase.StrategyPayload[] memory liquidityDistributionActions = new ICLTBase.StrategyPayload[](0);
 
-        rebaseStrategyActions[1].actionName = keccak256("REBASE_INACTIVITY");
-        rebaseStrategyActions[1].data = abi.encode(2);
+        rebaseStrategyActions[0].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseStrategyActions[0].data = abi.encode(4);
 
-        actions = ICLTBase.PositionActions({
+        ICLTBase.PositionActions memory actions = ICLTBase.PositionActions({
             mode: 2,
             exitStrategy: exitStrategyActions,
             rebaseStrategy: rebaseStrategyActions,
