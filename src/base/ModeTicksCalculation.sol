@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
+import { console } from "forge-std/console.sol";
+
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -19,8 +21,8 @@ abstract contract ModeTicksCalculation {
 
             int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
 
-            tickLower = currentTick - tickSpacing;
-            tickUpper = floorTick(tickLower - positionWidth, tickSpacing);
+            tickLower = currentTick + tickSpacing;
+            tickUpper = floorTick(tickLower + positionWidth, tickSpacing);
         }
     }
 
@@ -42,7 +44,6 @@ abstract contract ModeTicksCalculation {
 
     function shiftBothSide(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
         int24 currentTick = getTwap(key.pool);
-
         if (currentTick < key.tickLower) return shiftLeft(key);
         if (currentTick > key.tickUpper) return shiftRight(key);
     }
