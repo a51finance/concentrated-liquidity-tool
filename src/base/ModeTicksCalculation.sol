@@ -19,8 +19,8 @@ abstract contract ModeTicksCalculation {
 
             int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
 
-            tickLower = currentTick - tickSpacing;
-            tickUpper = floorTick(tickLower - positionWidth, tickSpacing);
+            tickLower = currentTick + tickSpacing;
+            tickUpper = floorTick(tickLower + positionWidth, tickSpacing);
         }
     }
 
