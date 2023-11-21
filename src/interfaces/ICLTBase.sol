@@ -116,10 +116,10 @@ interface ICLTBase {
 
     /// @notice Emitted when strategy is created
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
-    /// @param positionActions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @param key A51 position's key details associated with this strategy
+    /// @param positionActions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @param isCompound Bool weather the strategy has compunding activated or not
-    event StrategyCreated(bytes32 strategyId, bytes positionActions, StrategyKey key, bool isCompound);
+    event StrategyCreated(bytes32 indexed strategyId, StrategyKey indexed key, bytes positionActions, bool isCompound);
 
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized
