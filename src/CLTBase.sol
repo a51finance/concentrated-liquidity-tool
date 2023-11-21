@@ -31,7 +31,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     using Position for StrategyData;
     using UserPositions for Position.Data;
 
-    uint256 private _nextId = 1;
+    uint256 private _sharesId = 1;
+    uint256 private _strategyId = 1;
 
     uint256 public protocolFee;
 
@@ -96,7 +97,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
         }
 
-        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _nextId++));
+        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _strategyId++));
 
         bytes memory positionActionsHash = abi.encode(actions);
 
@@ -116,7 +117,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         strategyFees[strategyID] = StrategyFees({ protocolFee: protocolFee, strategistFee: strategistFee });
 
-        emit StrategyCreated(strategyID, positionActionsHash, key, isCompound);
+        emit StrategyCreated(strategyID, key, positionActionsHash, isCompound);
     }
 
     /// @inheritdoc ICLTBase
@@ -135,7 +136,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
             _deposit(params.strategyId, params.amount0Desired, params.amount1Desired);
 
-        _mint(params.recipient, (tokenId = _nextId++));
+        _mint(params.recipient, (tokenId = _sharesId++));
 
         positions[tokenId] = Position.Data({
             strategyId: params.strategyId,
@@ -233,7 +234,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
 
-        // mint liquidity here for compounders with balances || reuse userShare vars
+        // mint liquidity here for compounders with balances || reuse userShare vars || compound in deposit & shift
+        // only?
         if (strategy.isCompound) {
             /// if opposite assets left?
             (, userShare0, userShare1) = PoolActions.mintLiquidity(strategy.key, balance0, balance1);
