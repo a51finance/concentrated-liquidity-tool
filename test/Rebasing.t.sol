@@ -868,7 +868,51 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
      * random actions
      */
 
-    function testExecuteStrategiesWithMode1AllRandomStrategy1() public { }
+    function testExecuteStrategiesWithMode1AllRandomStrategy1() public {
+        ICLTBase.PositionActions memory positionActions;
+
+        ICLTBase.StrategyPayload[] memory exitStrategy = new ICLTBase.StrategyPayload[](0);
+        ICLTBase.StrategyPayload[] memory rebaseStrategy = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        rebaseStrategy[0].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        rebaseStrategy[0].data = abi.encode(30, 6);
+
+        positionActions.mode = 1;
+        positionActions.exitStrategy = exitStrategy;
+        positionActions.rebaseStrategy = rebaseStrategy;
+        positionActions.liquidityDistribution = liquidityDistribution;
+
+        (bytes32 strategyID) = depositInRangeLiquidity(positionActions);
+        // check position
+        (bytes32 strategyId,,,,,) = baseContract.positions(2);
+        assertEq(strategyID, strategyId);
+        assertEq(false, CheckPosition()); // inrange position
+
+        // get poition out of range
+        executeSwap(token0, token1, 500, owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        assertEq(true, CheckPosition());
+
+        bytes32[] memory strategiesArray = new bytes32[](1);
+        strategiesArray[0] = strategyID;
+
+        baseContract.toggleOperator(address(rebaseModuleMockContract));
+        rebaseModuleMockContract.toggleOperator(address(this));
+
+        // ticks before rebase
+        int24 tickLower = strategyKey.tickLower;
+        int24 tickUpper = strategyKey.tickUpper;
+        (int24 newLowerTick, int24 newUpperTick) = getNewTicks(1, tickLower, tickUpper);
+
+        rebaseModuleMockContract.executeStrategies(strategiesArray);
+
+        (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) = baseContract.strategies(strategyID);
+
+        assertEq(key.tickUpper, newUpperTick);
+        assertEq(key.tickLower, newLowerTick);
+    }
 
     /**
      * executeStrategies
@@ -877,7 +921,59 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
      * All three actions
      */
 
-    function testExecuteStrategiesWithMode1Alltrategy1WrongSide() public { }
+    function testExecuteStrategiesWithMode1Allstrategy1WrongSide() public {
+        ICLTBase.PositionActions memory positionActions;
+
+        ICLTBase.StrategyPayload[] memory exitStrategy = new ICLTBase.StrategyPayload[](0);
+        ICLTBase.StrategyPayload[] memory rebaseStrategy = new ICLTBase.StrategyPayload[](3);
+        ICLTBase.StrategyPayload[] memory liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        rebaseStrategy[0].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        rebaseStrategy[0].data = abi.encode(20, 10);
+
+        rebaseStrategy[1].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
+        rebaseStrategy[1].data = abi.encode(3);
+
+        rebaseStrategy[2].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        rebaseStrategy[2].data = abi.encode(block.timestamp + 400_000);
+
+        positionActions.mode = 1;
+        positionActions.exitStrategy = exitStrategy;
+        positionActions.rebaseStrategy = rebaseStrategy;
+        positionActions.liquidityDistribution = liquidityDistribution;
+
+        (bytes32 strategyID) = depositInRangeLiquidity(positionActions);
+        // check position
+        (bytes32 strategyId,,,,,) = baseContract.positions(2);
+        assertEq(strategyID, strategyId);
+        assertEq(false, CheckPosition()); // inrange position
+
+        // get poition out of range
+        executeSwap(token1, token0, 500, owner, 1000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        assertEq(true, CheckPosition());
+
+        bytes32[] memory strategiesArray = new bytes32[](1);
+        strategiesArray[0] = strategyID;
+
+        baseContract.toggleOperator(address(rebaseModuleMockContract));
+        rebaseModuleMockContract.toggleOperator(address(this));
+
+        // ticks before rebase
+        int24 tickLower = strategyKey.tickLower;
+        int24 tickUpper = strategyKey.tickUpper;
+
+        rebaseModuleMockContract.executeStrategies(strategiesArray);
+
+        (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) = baseContract.strategies(strategyID);
+
+        assertEq(key.tickUpper, tickUpper);
+        assertEq(key.tickLower, tickLower);
+
+        // check if the rebase count increases
+        assertEq("", actionStatus);
+    }
 
     /**
      * executeStrategies
@@ -886,7 +982,7 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
      * All three actions
      */
 
-    function testExecuteStrategiesWithMode2Alltrategy1WrongSide() public {
+    function testExecuteStrategiesWithMode2Allstrategy1WrongSide() public {
         ICLTBase.PositionActions memory positionActions;
 
         ICLTBase.StrategyPayload[] memory exitStrategy = new ICLTBase.StrategyPayload[](0);
@@ -954,10 +1050,110 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
      * Random actions
      */
 
+    function testExecuteStrategiesWithMode1RandomStrategy1WrongSide() public {
+        ICLTBase.PositionActions memory positionActions;
+
+        ICLTBase.StrategyPayload[] memory exitStrategy = new ICLTBase.StrategyPayload[](0);
+        ICLTBase.StrategyPayload[] memory rebaseStrategy = new ICLTBase.StrategyPayload[](2);
+        ICLTBase.StrategyPayload[] memory liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        rebaseStrategy[0].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
+        rebaseStrategy[0].data = abi.encode(10, 30);
+
+        rebaseStrategy[1].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        rebaseStrategy[1].data = abi.encode(block.timestamp + 400_000);
+
+        positionActions.mode = 1;
+        positionActions.exitStrategy = exitStrategy;
+        positionActions.rebaseStrategy = rebaseStrategy;
+        positionActions.liquidityDistribution = liquidityDistribution;
+
+        (bytes32 strategyID) = depositInRangeLiquidity(positionActions);
+
+        // check position
+        (bytes32 strategyId,,,,,) = baseContract.positions(2);
+        assertEq(strategyID, strategyId);
+        assertEq(false, CheckPosition()); // inrange position
+
+        // get poition out of range
+        executeSwap(token1, token0, 500, owner, 1000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        assertEq(true, CheckPosition());
+
+        bytes32[] memory strategiesArray = new bytes32[](1);
+        strategiesArray[0] = strategyID;
+
+        baseContract.toggleOperator(address(rebaseModuleMockContract));
+        rebaseModuleMockContract.toggleOperator(address(this));
+
+        int24 tickLower = strategyKey.tickLower;
+        int24 tickUpper = strategyKey.tickUpper;
+
+        rebaseModuleMockContract.executeStrategies(strategiesArray);
+
+        (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) = baseContract.strategies(strategyID);
+
+        assertEq(key.tickUpper, tickUpper);
+        assertEq(key.tickLower, tickLower);
+
+        // check if the rebase count increases
+        assertEq("", actionStatus);
+    }
+
     /**
      * executeStrategies
      * Single Strategy ID
      * With mode 2 with out of range on wrong side
      * Random actions
      */
+
+    function testExecuteStrategiesWithMode2RandomStrategy2WrongSide() public {
+        ICLTBase.PositionActions memory positionActions;
+
+        ICLTBase.StrategyPayload[] memory exitStrategy = new ICLTBase.StrategyPayload[](0);
+        ICLTBase.StrategyPayload[] memory rebaseStrategy = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        rebaseStrategy[0].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
+        rebaseStrategy[0].data = abi.encode(block.timestamp + 400_000);
+
+        positionActions.mode = 2;
+        positionActions.exitStrategy = exitStrategy;
+        positionActions.rebaseStrategy = rebaseStrategy;
+        positionActions.liquidityDistribution = liquidityDistribution;
+
+        (bytes32 strategyID) = depositInRangeLiquidity(positionActions);
+
+        // check position
+        (bytes32 strategyId,,,,,) = baseContract.positions(2);
+        assertEq(strategyID, strategyId);
+        assertEq(false, CheckPosition()); // inrange position
+
+        // get poition out of range
+        executeSwap(token0, token1, 500, owner, 1000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        assertEq(true, CheckPosition());
+
+        bytes32[] memory strategiesArray = new bytes32[](1);
+        strategiesArray[0] = strategyID;
+
+        baseContract.toggleOperator(address(rebaseModuleMockContract));
+        rebaseModuleMockContract.toggleOperator(address(this));
+
+        int24 tickLower = strategyKey.tickLower;
+        int24 tickUpper = strategyKey.tickUpper;
+
+        // wont rebalance because time hasnot passed yet
+        rebaseModuleMockContract.executeStrategies(strategiesArray);
+
+        (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) = baseContract.strategies(strategyID);
+
+        assertEq(key.tickUpper, tickUpper);
+        assertEq(key.tickLower, tickLower);
+
+        // check if the rebase count increases
+        assertEq("", actionStatus);
+    }
 }
