@@ -62,7 +62,7 @@ contract CLTBaseTest is Test, UniswapDeployer {
         router = new SwapRouter(address(factory), address(weth));
 
         // initialize base contract with 0.01% protocol fee
-        base = new CLTBase("ALP Base", "ALP", msg.sender, address(0), 10e14, factory);
+        base = new CLTBase("ALP Base", "ALP", address(this), address(0), 10e14, factory);
 
         rebaseModule = new RebaseModuleMock(msg.sender, address(base));
 
@@ -96,16 +96,15 @@ contract CLTBaseTest is Test, UniswapDeployer {
             liquidityDistribution: liquidityDistributionActions
         });
 
-        bytes32 strategyId = _getStrategyID(msg.sender, 1);
-
         // vm.expectEmit(true, true, false, true);
         // emit StrategyCreated(strategyId, key, abi.encode(actions), true);
         base.createStrategy(key, actions, 10e15, true);
+        bytes32 strategyId = _getStrategyID(0xDB8cFf278adCCF9E9b5da745B44E754fC4EE3C76, 1);
 
         (ICLTBase.StrategyKey memory keyAdded, address owner, bytes memory actionsAdded,, bool isCompound,,,,,,) =
             base.strategies(strategyId);
 
-        console.logBytes32(strategyId);
+        assertEq(isCompound, true);
     }
 
     function test() public { }
