@@ -56,10 +56,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
                     || _queue[i].actionNames[2] == REBASE_INACTIVITY
             ) {
                 hasRebaseInactivity = true;
-                if (actionStatus.length > 0) {
-                    rebaseCount = abi.decode(actionStatus, (uint256));
-                }
-                rebaseCount = 0;
+                actionStatus.length > 0 ? rebaseCount = abi.decode(actionStatus, (uint256)) : rebaseCount = 0;
             }
 
             params.strategyId = _queue[i].strategyID;
@@ -223,7 +220,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
         int24 tick = getTwap(key.pool);
 
-        if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower) {
+        if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower || mode == 3) {
             if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
                 return true;
             }

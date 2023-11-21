@@ -42,7 +42,6 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     function executeStrategies(bytes32[] memory strategyIDs) external onlyOperator {
         checkStrategiesArray(strategyIDs);
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
-
         for (uint256 i = 0; i < _queue.length; i++) {
             uint256 rebaseCount;
             bool hasRebaseInactivity = false;
@@ -55,10 +54,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
                     || _queue[i].actionNames[2] == REBASE_INACTIVITY
             ) {
                 hasRebaseInactivity = true;
-                if (actionStatus.length > 0) {
-                    rebaseCount = abi.decode(actionStatus, (uint256));
-                }
-                rebaseCount = 0;
+                actionStatus.length > 0 ? rebaseCount = abi.decode(actionStatus, (uint256)) : rebaseCount = 0;
             }
 
             params.strategyId = _queue[i].strategyID;
@@ -66,13 +62,11 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
             params.swapAmount = 0;
 
             for (uint256 j = 0; j < _queue[i].actionNames.length; j++) {
-                console.logBytes32(_queue[i].actionNames[j]);
                 if (_queue[i].actionNames[j] == bytes32(0) || _queue[i].actionNames[j] == REBASE_INACTIVITY) {
                     continue;
                 }
 
                 (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].mode);
-
                 key.tickLower = tickLower;
                 key.tickUpper = tickUpper;
                 params.key = key;
@@ -222,7 +216,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
             _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
         int24 tick = getTwap(key.pool);
 
-        if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower) {
+        if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower || mode == 3) {
             if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
                 return true;
             }
