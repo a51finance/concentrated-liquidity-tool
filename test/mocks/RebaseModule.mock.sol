@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { AccessControl } from "../../base/AccessControl.sol";
-import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
-
-import { ICLTBase } from "../../interfaces/ICLTBase.sol";
-import { IPreference } from "../../interfaces/modules/IPreference.sol";
+// Importing foundational and interfaced contracts
+import { console } from "forge-std/console.sol";
+import "../../src/base/ModeTicksCalculation.sol";
+import "../../src/base/AccessControl.sol";
+import "../../src/interfaces/modules/IPreference.sol";
+import "../../src/interfaces/ICLTBase.sol";
+import "forge-std/console.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
+contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     ICLTBase _cltBase;
 
     /// @notice Threshold for liquidity consideration
@@ -364,7 +366,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         pure
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
-        // need to check alot of scenarios for this logic
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
     }
