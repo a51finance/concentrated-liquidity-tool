@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-// Importing foundational and interfaced contracts
-import "../../src/base/ModeTicksCalculation.sol";
-import "../../src/base/AccessControl.sol";
-import "../../src/interfaces/modules/IPreference.sol";
-import "../../src/interfaces/ICLTBase.sol";
-import "forge-std/console.sol";
+import { AccessControl } from "../../base/AccessControl.sol";
+import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
+
+import { ICLTBase } from "../../interfaces/ICLTBase.sol";
+import { IPreference } from "../../interfaces/modules/IPreference.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
+contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
+    ICLTBase _cltBase;
 
-contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Threshold for liquidity consideration
     uint256 public liquidityThreshold = 1e3;
     /// @notice Maximum allowable time period
-    uint256 public maxTimePeriod;
+    uint256 public constant MAX_TIME_PERIOD = 31_536_000;
+    /// @notice Minimum allowable time period
+    uint256 public constant MIN_TIME_PERIOD = 1;
 
     // 0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b
     bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
@@ -26,22 +28,23 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     // 0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893
     bytes32 public constant REBASE_INACTIVITY = keccak256("REBASE_INACTIVITY");
 
-    ICLTBase _cltBase; // Instance of the ICLTBase interface
-
     /// @notice Constructs the RebaseModule with the provided parameters.
     /// @param _owner Address of the owner.
     /// @param _baseContractAddress Address of the base contract.
     constructor(address _owner, address _baseContractAddress) AccessControl(_owner) {
         _cltBase = ICLTBase(payable(_baseContractAddress));
-        maxTimePeriod = 31_536_000; // Represents seconds in a year.
     }
 
     /// @notice Executes given strategies.
     /// @dev Can only be called by the operator.
     /// @param strategyIDs Array of strategy IDs to be executed.
-    function executeStrategies(bytes32[] memory strategyIDs) external onlyOperator {
+    /// @notice Executes given strategies.
+    /// @dev Can only be called by the operator.
+    /// @param strategyIDs Array of strategy IDs to be executed.
+    function executeStrategies(StrategyInputData[] memory strategyIDs) external onlyOperator {
         checkStrategiesArray(strategyIDs);
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
+
         for (uint256 i = 0; i < _queue.length; i++) {
             uint256 rebaseCount;
             bool hasRebaseInactivity = false;
@@ -67,6 +70,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
                 }
 
                 (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].mode);
+
                 key.tickLower = tickLower;
                 key.tickUpper = tickUpper;
                 params.key = key;
@@ -83,7 +87,6 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @param key Strategy key.
     /// @param mode Mode to calculate ticks.
     /// @return tickLower and tickUpper values.
-
     function getTicksForMode(
         ICLTBase.StrategyKey memory key,
         uint256 mode
@@ -106,7 +109,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @dev Returns an array of valid strategies.
     /// @param strategyIDs Array of strategy IDs to check and process.
     /// @return ExecutableStrategiesData[] array containing valid strategies.
-    function checkAndProcessStrategies(bytes32[] memory strategyIDs)
+    function checkAndProcessStrategies(StrategyInputData[] memory strategyIDs)
         public
         returns (ExecutableStrategiesData[] memory)
     {
@@ -124,9 +127,9 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     }
 
     // /// @notice Retrieves strategy data based on strategy ID.
-    /// @param strategyID The ID of the strategy to retrieve.
+    /// @param strategyData The Data of the strategy to retrieve.
     /// @return ExecutableStrategiesData representing the retrieved strategy.
-    function getStrategyData(bytes32 strategyID) public returns (ExecutableStrategiesData memory) {
+    function getStrategyData(StrategyInputData memory strategyData) public returns (ExecutableStrategiesData memory) {
         (
             ICLTBase.StrategyKey memory key,
             ,
@@ -138,13 +141,14 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
             uint256 totalShares,
             ,
             ,
-        ) = _cltBase.strategies(strategyID);
+        ) = _cltBase.strategies(strategyData.strategyID);
 
         if (totalShares <= liquidityThreshold) {
             return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
         }
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
+
         for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
             if (
                 strategyActionsData.rebaseStrategy[i].actionName == REBASE_INACTIVITY
@@ -156,9 +160,10 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
 
         ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
+
         for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
             ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
-            if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode)) {
+            if (shouldAddToQueue(rebaseAction, key, strategyData.rebaseOptions, strategyActionsData.mode)) {
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
             }
         }
@@ -168,7 +173,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         }
 
         executableStrategiesData.mode = strategyActionsData.mode;
-        executableStrategiesData.strategyID = strategyID;
+        executableStrategiesData.strategyID = strategyData.strategyID;
         return executableStrategiesData;
     }
 
@@ -180,6 +185,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     function shouldAddToQueue(
         ICLTBase.StrategyPayload memory rebaseAction,
         ICLTBase.StrategyKey memory key,
+        bytes memory rebaseOptions,
         uint256 mode
     )
         public
@@ -189,7 +195,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         if (rebaseAction.actionName == PRICE_PREFERENCE) {
             return _checkRebasePreferenceStrategies(key, rebaseAction.data, mode);
         } else if (rebaseAction.actionName == TIME_PREFERENCE) {
-            return _checkRebaseTimePreferenceStrategies(rebaseAction.data);
+            return _checkRebaseTimePreferenceStrategies(rebaseAction.data, rebaseOptions);
         } else if (rebaseAction.actionName == REBASE_INACTIVITY) {
             return true;
         }
@@ -227,12 +233,25 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks if the rebase time preference strategies are satisfied.
     /// @param actionsData The actions data that includes the rebase strategy data.
     /// @return true if the conditions are met.
-    function _checkRebaseTimePreferenceStrategies(bytes memory actionsData) public view returns (bool) {
+    function _checkRebaseTimePreferenceStrategies(
+        bytes memory actionsData,
+        bytes memory rebaseOptions
+    )
+        public
+        view
+        returns (bool)
+    {
+        //   In seconds
         uint256 timePreference = abi.decode(actionsData, (uint256));
 
-        if (block.timestamp > timePreference || block.timestamp > block.timestamp + maxTimePeriod) {
-            return true;
+        if (rebaseOptions.length > 0) {
+            uint256 startTime = abi.decode(rebaseOptions, (uint256));
+            uint256 maxTime = startTime + MAX_TIME_PERIOD;
+            if (startTime + timePreference > block.timestamp && block.timestamp < maxTime) {
+                return true;
+            }
         }
+
         return false;
     }
 
@@ -258,11 +277,12 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         return true;
     }
 
-    function checkInputData(ICLTBase.StrategyPayload memory actionsData) external view returns (bool) {
+    function checkInputData(ICLTBase.StrategyPayload memory actionsData) external pure override returns (bool) {
         bool hasDiffPreference = actionsData.actionName == PRICE_PREFERENCE;
         bool hasTimePreference = actionsData.actionName == TIME_PREFERENCE;
         bool hasInActivity = actionsData.actionName == REBASE_INACTIVITY;
 
+        // need to check here whether the preference ticks are outside of range
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
             if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
@@ -272,11 +292,9 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         }
 
         if (hasTimePreference && isNonZero(actionsData.data)) {
+            // In seconds
             uint256 timePreference = abi.decode(actionsData.data, (uint256));
-            if (
-                timePreference <= block.timestamp || timePreference >= block.timestamp + maxTimePeriod
-                    || timePreference == 0
-            ) {
+            if (timePreference < MIN_TIME_PERIOD || timePreference >= MAX_TIME_PERIOD) {
                 revert InvalidTimePreference();
             }
             return true;
@@ -308,20 +326,20 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks the strategies array for validity.
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
-    function checkStrategiesArray(bytes32[] memory data) public pure returns (bool) {
+    function checkStrategiesArray(StrategyInputData[] memory data) public pure returns (bool) {
         // this function has a comlexity of O(n^2).
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }
         // check 0 strategyId
         for (uint256 i = 0; i < data.length; i++) {
-            if (data[i] == bytes32(0)) {
+            if (data[i].strategyID == bytes32(0)) {
                 revert StrategyIdCannotBeZero();
             }
             // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {
-                if (data[i] == data[j]) {
-                    revert DuplicateStrategyId(data[i]);
+                if (data[i].strategyID == data[j].strategyID) {
+                    revert DuplicateStrategyId(data[i].strategyID);
                 }
             }
         }
