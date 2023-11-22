@@ -25,6 +25,11 @@ interface IPreference {
         bytes32[3] actionNames; // Array to hold multiple valid modes
     }
 
+    struct StrategyInputData {
+        bytes32 strategyID;
+        bytes rebaseOptions;
+    }
+
     function checkInputData(ICLTBase.StrategyPayload memory data) external returns (bool);
 
     event Executed(ExecutableStrategiesData[] strategyIds);
