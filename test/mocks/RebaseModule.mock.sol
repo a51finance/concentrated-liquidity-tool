@@ -243,13 +243,11 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         view
         returns (bool)
     {
-        //   In seconds
-        uint256 timePreference = abi.decode(actionsData, (uint256));
-
         if (rebaseOptions.length > 0) {
+            uint256 timePreference = abi.decode(actionsData, (uint256));
             uint256 startTime = abi.decode(rebaseOptions, (uint256));
             uint256 maxTime = startTime + MAX_TIME_PERIOD;
-            if (startTime + timePreference > block.timestamp && block.timestamp < maxTime) {
+            if (startTime + timePreference < block.timestamp && block.timestamp < maxTime) {
                 return true;
             }
         }
