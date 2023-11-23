@@ -6,7 +6,7 @@ import { Vm } from "forge-std/Vm.sol";
 
 //common utilities for forge tests
 contract Utilities is DSTest {
-    Vm internal immutable vm = Vm(HEVM_ADDRESS);
+    Vm internal immutable _hevm = Vm(HEVM_ADDRESS);
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
 
     function getNextUserAddress() external returns (address payable) {
@@ -17,11 +17,11 @@ contract Utilities is DSTest {
     }
 
     //create users with 100 ether balance
-    function createUsers(uint256 userNum) external returns (address payable[] memory) {
+    function createUsers(uint256 userNum) public returns (address payable[] memory) {
         address payable[] memory users = new address payable[](userNum);
         for (uint256 i = 0; i < userNum; i++) {
             address payable user = this.getNextUserAddress();
-            vm.deal(user, 100 ether);
+            _hevm.deal(user, 100 ether);
             users[i] = user;
         }
         return users;
@@ -37,6 +37,12 @@ contract Utilities is DSTest {
     //move block.number forward by a given number of blocks
     function mineBlocks(uint256 numBlocks) external {
         uint256 targetBlock = block.number + numBlocks;
-        vm.roll(targetBlock);
+        _hevm.roll(targetBlock);
+    }
+
+    function floorTicks(int24 tick, int24 tickSpacing) public pure returns (int24) {
+        int24 compressed = tick / tickSpacing;
+        if (tick < 0 && tick % tickSpacing != 0) compressed--;
+        return compressed * tickSpacing;
     }
 }
