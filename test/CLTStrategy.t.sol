@@ -9,9 +9,7 @@ import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-contract StrategyCreationTest is Test, Fixtures {
-    CLTBase base;
-    IUniswapV3Pool pool;
+contract CLTStrategyTest is Test, Fixtures {
     ICLTBase.StrategyKey key;
 
     event StrategyCreated(
@@ -19,7 +17,7 @@ contract StrategyCreationTest is Test, Fixtures {
     );
 
     function setUp() public {
-        (base, pool) = initBase();
+        deployFreshState();
 
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
     }
@@ -49,6 +47,4 @@ contract StrategyCreationTest is Test, Fixtures {
     function test_strategy_succeedsWithValidInputsForPreference() public { }
 
     function test_strategy_succeedsWithValidInputsForTime() public { }
-
-    function test() public { }
 }
