@@ -145,4 +145,39 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.prank(recepient);
         baseContract.createStrategy(strategyKey, positionActions, 1000, true);
     }
+
+    function createStrategyAndDeposit(
+        ICLTBase.StrategyPayload[] memory rebaseActions,
+        CLTBase baseContract,
+        IUniswapV3Pool poolContract,
+        int24 difference,
+        address recepient,
+        uint256 positionId,
+        uint256 mode
+    )
+        public
+        returns (bytes32 strategyID)
+    {
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+
+        positionActions.mode = mode;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(baseContract, poolContract, difference, recepient, positionActions);
+
+        strategyID = getStrategyID(recepient, positionId);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 100e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = recepient;
+
+        _hevm.prank(recepient);
+        baseContract.deposit(depositParams);
+    }
 }
