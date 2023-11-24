@@ -44,6 +44,22 @@ library Position {
         }
     }
 
+    function updateForCompound(
+        ICLTBase.StrategyData storage self,
+        uint128 liquidityAdded,
+        uint256 amount0Added,
+        uint256 amount1Added
+    )
+        public
+    {
+        if (liquidityAdded > 0) {
+            self.balance0 -= amount0Added;
+            self.balance1 -= amount1Added;
+
+            self.uniswapLiquidity += liquidityAdded;
+        }
+    }
+
     function updateStrategy(
         ICLTBase.StrategyData storage self,
         ICLTBase.StrategyKey memory key,
