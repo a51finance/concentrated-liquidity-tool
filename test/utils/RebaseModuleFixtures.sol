@@ -85,11 +85,56 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         token1.approve(address(positionManager), type(uint256).max);
 
         _hevm.prank(recepient);
+        token0.approve(address(router), type(uint256).max);
+        _hevm.prank(recepient);
+        token1.approve(address(router), type(uint256).max);
+
+        _hevm.prank(recepient);
         positionManager.mint(mintParams);
-        console.log("Position minted with nft id", positionManager.tokenOfOwnerByIndex(recepient, 0));
     }
 
-    function initPostion() internal { }
+    function executeSwap(
+        ERC20Mock tokenIn,
+        ERC20Mock tokenOut,
+        uint24 fee,
+        address recipient,
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        uint160 sqrtPriceLimitX96
+    )
+        public
+    {
+        ISwapRouter.ExactInputSingleParams memory swapParams;
+
+        swapParams.tokenIn = address(tokenIn);
+        swapParams.tokenOut = address(tokenOut);
+        swapParams.fee = fee;
+        swapParams.recipient = recipient;
+        swapParams.deadline = block.timestamp + 100;
+        swapParams.amountIn = amountIn;
+        swapParams.amountOutMinimum = amountOutMinimum;
+        swapParams.sqrtPriceLimitX96 = sqrtPriceLimitX96;
+
+        _hevm.prank(recipient);
+        router.exactInputSingle(swapParams);
+    }
+
+    function generateMultipleSwapsWithTime(address recipient) public {
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token0, token1, 500, recipient, 10e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token1, token0, 500, recipient, 5e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token0, token1, 500, recipient, 10e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+        executeSwap(token1, token0, 500, recipient, 5e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(block.number + 30);
+    }
 
     function initBase(address recepient) internal returns (CLTBase base, IUniswapV3Pool pool) {
         IUniswapV3Factory factory;
@@ -104,6 +149,12 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         token1.approve(address(base), type(uint256).max);
 
         rebaseModule = new RebaseModuleMock(recepient, address(base));
+
+        _hevm.prank(recepient);
+        rebaseModule.toggleOperator(recepient);
+
+        _hevm.prank(recepient);
+        base.toggleOperator(address(rebaseModule));
 
         _hevm.prank(recepient);
         base.addModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModule), true);
