@@ -78,28 +78,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         external
         override
     {
-        if (strategistFee >= Constants.MAX_FEE) revert InvalidInput();
-
-        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
-
-        if (actions.exitStrategy.length > 0) {
-            _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
-            _validateInputData(Constants.EXIT_STRATEGY, actions.exitStrategy);
-        }
-
-        if (actions.rebaseStrategy.length > 0) {
-            _checkModeIds(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
-            _validateInputData(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
-        }
-
-        if (actions.liquidityDistribution.length > 0) {
-            _checkModeIds(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-            _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-        }
-
-        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _strategyId++));
+        _validateModes(actions, strategistFee);
 
         bytes memory positionActionsHash = abi.encode(actions);
+        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _strategyId++));
 
         strategies[strategyID] = StrategyData({
             key: key,
@@ -325,12 +307,20 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         );
     }
 
-    function updateStrategyBase(bytes32 strategyId, StrategyKey memory newKey, bytes memory newActions) external {
+    function updateStrategyBase(
+        bytes32 strategyId,
+        address owner,
+        uint256 newFee,
+        PositionActions calldata actions
+    )
+        external
+    {
         StrategyData storage strategy = strategies[strategyId];
         if (strategy.owner != _msgSender()) revert InvalidCaller();
+        _validateModes(actions, newFee);
 
-        /// should we remove previous actions state?
-        strategy.updateStrategyState(newKey, newActions);
+        strategyFees[strategyId].strategistFee = newFee;
+        strategy.updateStrategyState(owner, abi.encode(actions));
     }
 
     function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOwner {
@@ -450,5 +440,26 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     function _authorization(uint256 tokenID) private view {
         require(ownerOf(tokenID) == _msgSender());
+    }
+
+    function _validateModes(PositionActions calldata actions, uint256 strategistFee) private {
+        if (strategistFee >= Constants.MAX_FEE) revert InvalidInput();
+
+        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
+
+        if (actions.exitStrategy.length > 0) {
+            _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
+            _validateInputData(Constants.EXIT_STRATEGY, actions.exitStrategy);
+        }
+
+        if (actions.rebaseStrategy.length > 0) {
+            _checkModeIds(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
+            _validateInputData(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
+        }
+
+        if (actions.liquidityDistribution.length > 0) {
+            _checkModeIds(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
+            _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
+        }
     }
 }

@@ -81,13 +81,14 @@ library Position {
 
     function updateStrategyState(
         ICLTBase.StrategyData storage self,
-        ICLTBase.StrategyKey memory newKey,
+        address newOwner,
         bytes memory newActions
     )
         public
     {
-        self.key = newKey;
+        self.owner = newOwner;
         self.actions = newActions; // this can effect balances and actionStatus?
+        self.actionStatus = ""; // alert user during update that all previous data will be cleared
     }
 
     function updatePositionFee(ICLTBase.StrategyData storage self) public {
