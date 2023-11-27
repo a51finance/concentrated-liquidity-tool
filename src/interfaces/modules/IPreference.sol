@@ -12,7 +12,8 @@ interface IPreference {
     error InvalidTimePreference();
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();
-    error DuplicateStrategyId(bytes32 strategyId);
+    error DuplicateStrategyId(bytes32);
+    error StrategyIdDonotExist(bytes32);
     error TimePreferenceConstraint();
     error BothTicksCannotBeZero();
     error RebaseStrategyDataCannotBeZero();
