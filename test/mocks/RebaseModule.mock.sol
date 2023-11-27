@@ -326,8 +326,9 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks the strategies array for validity.
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
-    function checkStrategiesArray(StrategyInputData[] memory data) public pure returns (bool) {
+    function checkStrategiesArray(StrategyInputData[] memory data) public returns (bool) {
         // this function has a comlexity of O(n^2).
+        console.log(data.length);
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }
@@ -336,6 +337,12 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
             if (data[i].strategyID == bytes32(0)) {
                 revert StrategyIdCannotBeZero();
             }
+            (, address strategyOwner,,,,,,,,,) = _cltBase.strategies(data[i].strategyID);
+
+            if (strategyOwner == address(0)) {
+                revert StrategyIdDonotExist(data[i].strategyID);
+            }
+
             // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {
                 if (data[i].strategyID == data[j].strategyID) {
