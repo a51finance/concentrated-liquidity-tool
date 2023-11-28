@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { AccessControl } from "../../base/AccessControl.sol";
-import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
-
-import { ICLTBase } from "../../interfaces/ICLTBase.sol";
-import { IPreference } from "../../interfaces/modules/IPreference.sol";
+// Importing foundational and interfaced contracts
+import { console } from "forge-std/console.sol";
+import "../../src/base/ModeTicksCalculation.sol";
+import "../../src/base/AccessControl.sol";
+import "../../src/interfaces/modules/IPreference.sol";
+import "../../src/interfaces/ICLTBase.sol";
+import "forge-std/console.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
+contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
     ICLTBase _cltBase;
 
     /// @notice Threshold for liquidity consideration
@@ -241,13 +243,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         view
         returns (bool)
     {
-        //   In seconds
-        uint256 timePreference = abi.decode(actionsData, (uint256));
-
         if (rebaseOptions.length > 0) {
+            uint256 timePreference = abi.decode(actionsData, (uint256));
             uint256 startTime = abi.decode(rebaseOptions, (uint256));
             uint256 maxTime = startTime + MAX_TIME_PERIOD;
-            if (startTime + timePreference > block.timestamp && block.timestamp < maxTime) {
+            if (startTime + timePreference < block.timestamp && block.timestamp < maxTime) {
                 return true;
             }
         }
@@ -326,8 +326,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks the strategies array for validity.
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
-    function checkStrategiesArray(StrategyInputData[] memory data) public pure returns (bool) {
+    function checkStrategiesArray(StrategyInputData[] memory data) public returns (bool) {
         // this function has a comlexity of O(n^2).
+        console.log(data.length);
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }
@@ -336,6 +337,12 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             if (data[i].strategyID == bytes32(0)) {
                 revert StrategyIdCannotBeZero();
             }
+            (, address strategyOwner,,,,,,,,,) = _cltBase.strategies(data[i].strategyID);
+
+            if (strategyOwner == address(0)) {
+                revert StrategyIdDonotExist(data[i].strategyID);
+            }
+
             // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {
                 if (data[i].strategyID == data[j].strategyID) {
@@ -364,7 +371,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         pure
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
-        // need to check alot of scenarios for this logic
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
     }
