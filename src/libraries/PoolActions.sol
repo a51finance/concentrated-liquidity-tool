@@ -81,20 +81,22 @@ library PoolActions {
     {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
 
-        (amount0, amount1) = key.pool.mint(
-            address(this),
-            key.tickLower,
-            key.tickUpper,
-            liquidity,
-            abi.encode(
-                ICLTPayments.MintCallbackData({
-                    token0: key.pool.token0(),
-                    token1: key.pool.token1(),
-                    fee: key.pool.fee(),
-                    payer: address(this)
-                })
-            )
-        );
+        if (liquidity > 0) {
+            (amount0, amount1) = key.pool.mint(
+                address(this),
+                key.tickLower,
+                key.tickUpper,
+                liquidity,
+                abi.encode(
+                    ICLTPayments.MintCallbackData({
+                        token0: key.pool.token0(),
+                        token1: key.pool.token1(),
+                        fee: key.pool.fee(),
+                        payer: address(this)
+                    })
+                )
+            );
+        }
     }
 
     function swapToken(

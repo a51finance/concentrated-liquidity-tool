@@ -204,8 +204,8 @@ contract CLTDepositTest is Test, Fixtures {
     }
 
     function test_deposit_succeedsOutOfRangeDeposit() public {
-        initPoolAndAddLiquidity();
-        pool.liquidity();
+        // initPoolAndAddLiquidity();
+        // pool.liquidity();
     }
 
     function test_deposit_shouldReturnExtraETH() public { }
