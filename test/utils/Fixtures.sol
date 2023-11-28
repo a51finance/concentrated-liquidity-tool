@@ -4,8 +4,6 @@ pragma solidity =0.8.15;
 import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
-import { Utilities } from "./Utilities.sol";
-
 import { CLTBase } from "../../src/CLTBase.sol";
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
@@ -18,6 +16,8 @@ import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRou
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import "forge-std/console.sol";
 
@@ -25,6 +25,7 @@ contract Fixtures is UniswapDeployer {
     IUniswapV3Factory factory;
     IUniswapV3Pool pool;
     SwapRouter router;
+    INonfungiblePositionManager manager;
     WETH weth;
 
     CLTBase base;
@@ -47,6 +48,29 @@ contract Fixtures is UniswapDeployer {
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
 
+    function initPoolAndAddLiquidity() internal {
+        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
+
+        token0.approve(address(manager), 1e30);
+        token1.approve(address(manager), 1e30);
+
+        manager.mint(
+            INonfungiblePositionManager.MintParams({
+                token0: address(token0),
+                token1: address(token1),
+                fee: 500,
+                tickLower: TickMath.MIN_TICK,
+                tickUpper: TickMath.MAX_TICK,
+                amount0Desired: 1e20,
+                amount1Desired: 1e20,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days
+            })
+        );
+    }
+
     function initBase() internal {
         weth = new WETH();
         base = new CLTBase("ALP Base", "ALP", address(this), address(weth), 10e14, factory);
@@ -58,7 +82,7 @@ contract Fixtures is UniswapDeployer {
     }
 
     function deployFreshState() internal {
-        ERC20Mock[] memory tokens = deployTokens(2, 1e50);
+        ERC20Mock[] memory tokens = deployTokens(2, 1000e50);
 
         if (address(tokens[0]) >= address(tokens[1])) {
             (token0, token1) = (tokens[1], tokens[0]);
