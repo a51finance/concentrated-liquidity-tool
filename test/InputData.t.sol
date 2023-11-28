@@ -108,9 +108,6 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         baseContract.addModule(
             keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModuleMockContract), true
         );
-        baseContract.addModule(
-            keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModuleMockContract), true
-        );
 
         baseContract.addModule(
             keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModuleMockContract), true
@@ -260,41 +257,37 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     // checkStrategiesArray Testing
 
     function testEmptyArrayReverts() public {
-        IPreference.StrategyInputData[] memory data = new IPreference.StrategyInputData[](1);
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[0].strategyID);
+        bytes32[] memory data = new bytes32[](1);
+        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[0]);
         vm.expectRevert(encodedError);
         rebaseModuleMockContract.checkStrategiesArray(data);
     }
 
     function testArrayWithDuplicatesReverts() public {
         bytes32 duplicateId = keccak256("strategy1");
-        IPreference.StrategyInputData[] memory data = new IPreference.StrategyInputData[](2);
-        data[0].strategyID = duplicateId;
-        data[1].strategyID = duplicateId;
-        data[0].rebaseOptions = "";
-        data[1].rebaseOptions = "";
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = duplicateId;
+        data[1] = duplicateId;
         // bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", duplicateId);
         vm.expectRevert();
         rebaseModuleMockContract.checkStrategiesArray(data);
     }
 
     function testArrayWithAllElementsZeroReverts() public {
-        IPreference.StrategyInputData[] memory data = new IPreference.StrategyInputData[](2);
-        data[0].strategyID = bytes32(0);
-        data[0].rebaseOptions = "";
-        data[1].strategyID = bytes32(0);
-        data[1].rebaseOptions = "";
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1].strategyID);
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = bytes32(0);
+        data[1] = bytes32(0);
+        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1]);
         vm.expectRevert(encodedError);
         rebaseModuleMockContract.checkStrategiesArray(data);
     }
 
     function testArrayWithAllElementsIdenticalReverts() public {
         bytes32 identicalId = keccak256(abi.encodePacked("strategy"));
-        IPreference.StrategyInputData[] memory data = new IPreference.StrategyInputData[](3);
-        data[0].strategyID = identicalId;
-        data[1].strategyID = identicalId;
-        data[2].strategyID = identicalId;
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = identicalId;
+        data[1] = identicalId;
+        data[2] = identicalId;
         // bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", identicalId);
         vm.expectRevert();
         rebaseModuleMockContract.checkStrategiesArray(data);
@@ -354,34 +347,6 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         rebaseModuleMockContract.checkInputData(strategyDetail);
     }
 
-    // Time preference
-
-    function test_fuzz_TimePreferenceWithValidInputs(uint256 time) public {
-        ICLTBase.StrategyPayload memory strategyDetail;
-        vm.assume((time >= 1 && time < 31_513_000));
-        strategyDetail.data = abi.encode(uint256(time));
-        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-        assertTrue(rebaseModuleMockContract.checkInputData(strategyDetail));
-    }
-
-    function testTimePreferenceWithFarFutureTime() public {
-        ICLTBase.StrategyPayload memory strategyDetail;
-        strategyDetail.data = abi.encode(31_536_002);
-        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-        bytes4 selector = bytes4(keccak256("InvalidTimePreference()"));
-        _hevm.expectRevert(selector);
-        rebaseModuleMockContract.checkInputData(strategyDetail);
-    }
-
-    function testTimePreferenceWithZeroTime() public {
-        ICLTBase.StrategyPayload memory strategyDetail;
-        strategyDetail.data = "";
-        strategyDetail.actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-        _hevm.expectRevert(selector);
-        rebaseModuleMockContract.checkInputData(strategyDetail);
-    }
-
     // Rebase Inactivity
 
     function testInputDataRebaseInActivityWithValidInputs(uint256 amount) public {
@@ -409,18 +374,14 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](arrayLength);
 
         for (uint256 i = 0; i < arrayLength; i++) {
-            if (i % 3 == 0) {
+            if (i % 2 == 0) {
                 vm.assume(_value1 > 0);
                 strategyDetailArray[i].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
                 strategyDetailArray[i].data = abi.encode(_value1);
-            } else if (i % 3 == 1) {
+            } else if (i % 2 == 1) {
                 vm.assume(_value1 > 0 && _value1 < 8_388_608 && _value2 < 8_388_608 && _value2 > 0);
                 strategyDetailArray[i].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
                 strategyDetailArray[i].data = abi.encode(_value1, _value2);
-            } else {
-                vm.assume((_value1 >= 1 && _value1 < 31_536_000));
-                strategyDetailArray[i].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-                strategyDetailArray[i].data = abi.encode(_value1);
             }
         }
 
@@ -436,18 +397,14 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
 
         // Fuzzing different action names with intentionally invalid data
         for (uint256 i = 0; i < arrayLength; i++) {
-            if (i % 3 == 0) {
+            if (i % 2 == 0) {
                 vm.assume(_value1 <= 0);
                 strategyDetailArray[i].actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
                 strategyDetailArray[i].data = abi.encode(0);
-            } else if (i % 3 == 1) {
+            } else if (i % 2 == 1) {
                 vm.assume(_value1 <= 0 && _value2 <= 0);
                 strategyDetailArray[i].actionName = rebaseModuleMockContract.PRICE_PREFERENCE();
                 strategyDetailArray[i].data = abi.encode(_value1, _value2);
-            } else {
-                vm.assume((_value1 < 1 || _value1 >= 31_536_000));
-                strategyDetailArray[i].actionName = rebaseModuleMockContract.TIME_PREFERENCE();
-                strategyDetailArray[i].data = abi.encode(0);
             }
         }
 
@@ -608,57 +565,6 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         assertEq(
             rebaseModuleMockContract._checkRebasePreferenceStrategies(strategyKey, data, 1), (tick < tl || tick > tu)
         );
-    }
-
-    // _checkRebaseTimePreferenceStrategies
-    function testCheckRebaseTimePreferenceStrategiesWithValidInputs() public {
-        bytes memory data = abi.encode(uint256(3600));
-        bytes memory options = abi.encode(uint256(block.timestamp + 300));
-        // user defined time hasnot passed yet
-        vm.warp(block.timestamp + 500);
-        assertFalse(rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data, options));
-
-        // user defined time has passed
-        vm.warp(block.timestamp + 3601);
-        assertTrue(rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data, options));
-    }
-
-    function testCheckRebaseTimePreferenceStrategiesWithInValidInputs() public {
-        bytes memory data = abi.encode(uint256(650));
-        bytes memory options = "";
-
-        assertFalse(rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data, options));
-
-        data = abi.encode(uint256(block.timestamp + 31_536_000));
-        options = abi.encode(uint256(block.timestamp + 56));
-        assertFalse(rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(data, options));
-    }
-
-    function testCheckRebaseTimePreferenceStrategiesFuzzing(uint256 actionDataFuzz, uint256 rebaseOptionsFuzz) public {
-        vm.assume(actionDataFuzz >= 1 && actionDataFuzz < 10 ** 8);
-        vm.assume(rebaseOptionsFuzz > 0 && rebaseOptionsFuzz < 10 ** 8);
-
-        bytes memory actionsData = abi.encode(uint256(actionDataFuzz));
-        bytes memory rebaseOptions = abi.encode(uint256(rebaseOptionsFuzz));
-
-        if (actionDataFuzz > 10 && actionDataFuzz < 500) {
-            rebaseOptions = "";
-        }
-
-        bool result = rebaseModuleMockContract._checkRebaseTimePreferenceStrategies(actionsData, rebaseOptions);
-
-        if (rebaseOptions.length > 0) {
-            uint256 timePreference = abi.decode(actionsData, (uint256));
-            uint256 startTime = abi.decode(rebaseOptions, (uint256));
-            uint256 maxTime = startTime + rebaseModuleMockContract.MAX_TIME_PERIOD();
-
-            assertTrue(
-                (startTime + timePreference < block.timestamp && block.timestamp < maxTime) == result,
-                "The function output does not match the expected result."
-            );
-        } else {
-            assertFalse(result, "Function should return false when rebaseOptions length is 0.");
-        }
     }
 
     // _checkRebaseInactivityStrategies
