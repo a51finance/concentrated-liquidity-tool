@@ -60,10 +60,9 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyId = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 1, 1);
 
-        IPreference.StrategyInputData[] memory strategyIDs = new IPreference.StrategyInputData[](1);
+        bytes32[] memory strategyIDs = new bytes32[]( 1);
 
-        strategyIDs[0].strategyID = strategyId;
-        strategyIDs[0].rebaseOptions = "";
+        strategyIDs[0] = strategyId;
 
         vm.expectRevert();
         rebaseModule.executeStrategies(strategyIDs);
@@ -76,10 +75,9 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyId = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 1, 1);
 
-        IPreference.StrategyInputData[] memory strategyIDs = new IPreference.StrategyInputData[](1);
+        bytes32[] memory strategyIDs = new bytes32[]( 1);
 
-        strategyIDs[0].strategyID = strategyId;
-        strategyIDs[0].rebaseOptions = "";
+        strategyIDs[0] = strategyId;
 
         generateMultipleSwapsWithTime(owner);
 
@@ -89,7 +87,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
     }
 
     function testExecutingStrategyWithEmptyID() public {
-        IPreference.StrategyInputData[] memory strategyIDs = new IPreference.StrategyInputData[](10);
+        bytes32[] memory strategyIDs = new bytes32[]( 10);
         vm.expectRevert();
         rebaseModule.executeStrategies(strategyIDs);
     }
@@ -101,12 +99,11 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 1, 1);
 
-        IPreference.StrategyInputData[] memory strategyIDs = new IPreference.StrategyInputData[](1);
+        bytes32[] memory strategyIDs = new bytes32[]( 1);
 
         bytes32 strategyID = keccak256(abi.encode(users[2], 1));
 
-        strategyIDs[0].strategyID = strategyID;
-        strategyIDs[0].rebaseOptions = "";
+        strategyIDs[0] = strategyID;
 
         vm.expectRevert();
         rebaseModule.executeStrategies(strategyIDs);
@@ -123,10 +120,9 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 1, mode);
 
-        IPreference.StrategyInputData[] memory strategyIDs = new IPreference.StrategyInputData[](1);
+        bytes32[] memory strategyIDs = new bytes32[]( 1);
 
-        strategyIDs[0].strategyID = strategyID;
-        strategyIDs[0].rebaseOptions = "";
+        strategyIDs[0] = strategyID;
 
         (ICLTBase.StrategyKey memory keyBefore,,,,,,,,,,) = baseContract.strategies(strategyID);
 
@@ -154,10 +150,9 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         executeSwap(token0, token1, poolContract.fee(), owner, 100e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
-        IPreference.StrategyInputData[] memory strategyIDs = new IPreference.StrategyInputData[](1);
+        bytes32[] memory strategyIDs = new bytes32[]( 1);
 
-        strategyIDs[0].strategyID = strategyID;
-        strategyIDs[0].rebaseOptions = "";
+        strategyIDs[0] = strategyID;
 
         rebaseModule.executeStrategies(strategyIDs);
 
@@ -176,8 +171,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         executeSwap(token0, token1, poolContract.fee(), owner, 200e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
-        strategyIDs[0].strategyID = strategyID;
-        strategyIDs[0].rebaseOptions = "";
+        strategyIDs[0] = strategyID;
 
         rebaseModule.executeStrategies(strategyIDs);
 
