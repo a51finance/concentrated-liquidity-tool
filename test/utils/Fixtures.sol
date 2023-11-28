@@ -16,40 +16,80 @@ import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRou
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+
+import "forge-std/console.sol";
 
 contract Fixtures is UniswapDeployer {
+    IUniswapV3Factory factory;
+    IUniswapV3Pool pool;
     SwapRouter router;
+    INonfungiblePositionManager manager;
     WETH weth;
+
+    CLTBase base;
+    RebaseModule rebaseModule;
+    ERC20Mock token0;
+    ERC20Mock token1;
 
     function deployTokens(uint8 count, uint256 totalSupply) public returns (ERC20Mock[] memory tokens) {
         tokens = new ERC20Mock[](count);
         for (uint8 i = 0; i < count; i++) {
             tokens[i] = new ERC20Mock();
-            tokens[i].mint(msg.sender, totalSupply);
+            tokens[i].mint(address(this), totalSupply);
         }
     }
 
-    function initPool() internal returns (IUniswapV3Factory factory, IUniswapV3Pool pool) {
-        ERC20Mock[] memory tokens = deployTokens(2, 1e50);
-
+    function initPool() internal {
         // intialize uniswap contracts
         factory = IUniswapV3Factory(deployUniswapV3Factory());
-        pool = IUniswapV3Pool(factory.createPool(address(tokens[0]), address(tokens[1]), 500));
+        pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
 
-    function initBase() internal returns (CLTBase base, IUniswapV3Pool pool) {
-        IUniswapV3Factory factory;
+    function initPoolAndAddLiquidity() internal {
+        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
 
-        (factory, pool) = initPool();
+        token0.approve(address(manager), 1e30);
+        token1.approve(address(manager), 1e30);
 
-        base = new CLTBase("ALP Base", "ALP", address(this), address(0), 10e14, factory);
+        manager.mint(
+            INonfungiblePositionManager.MintParams({
+                token0: address(token0),
+                token1: address(token1),
+                fee: 500,
+                tickLower: TickMath.MIN_TICK,
+                tickUpper: TickMath.MAX_TICK,
+                amount0Desired: 1e20,
+                amount1Desired: 1e20,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days
+            })
+        );
+    }
 
-        RebaseModule rebaseModule = new RebaseModule(msg.sender, address(base));
+    function initBase() internal {
+        weth = new WETH();
+        base = new CLTBase("ALP Base", "ALP", address(this), address(weth), 10e14, factory);
+        rebaseModule = new RebaseModule(msg.sender, address(base));
 
         base.addModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModule), true);
         base.addModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModule), true);
         base.addModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModule), true);
+    }
+
+    function deployFreshState() internal {
+        ERC20Mock[] memory tokens = deployTokens(2, 1000e50);
+
+        if (address(tokens[0]) >= address(tokens[1])) {
+            (token0, token1) = (tokens[1], tokens[0]);
+        }
+
+        initPool();
+        initBase();
     }
 
     function getStrategyID(address user, uint256 strategyCount) internal pure returns (bytes32 strategyID) {

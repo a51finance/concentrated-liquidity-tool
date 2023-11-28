@@ -78,28 +78,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         external
         override
     {
-        if (strategistFee >= Constants.MAX_FEE) revert InvalidInput();
-
-        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
-
-        if (actions.exitStrategy.length > 0) {
-            _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
-            _validateInputData(Constants.EXIT_STRATEGY, actions.exitStrategy);
-        }
-
-        if (actions.rebaseStrategy.length > 0) {
-            _checkModeIds(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
-            _validateInputData(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
-        }
-
-        if (actions.liquidityDistribution.length > 0) {
-            _checkModeIds(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-            _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-        }
-
-        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _strategyId++));
+        _validateModes(actions, strategistFee);
 
         bytes memory positionActionsHash = abi.encode(actions);
+        bytes32 strategyID = keccak256(abi.encode(_msgSender(), _strategyId++));
 
         strategies[strategyID] = StrategyData({
             key: key,
@@ -193,12 +175,23 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         uint256 fees0;
         uint256 fees1;
 
+        /// these vars used for multipurpose || strategist fee & contract balance
+        uint256 balance0;
+        uint256 balance1;
+
         (amount0, amount1, fees0, fees1) = PoolActions.burnUserLiquidity(
             strategy.key,
             strategy.uniswapLiquidity,
             strategy.isCompound ? FullMath.mulDiv(params.liquidity, 1e18, strategy.totalShares) : params.liquidity,
             strategy.isCompound
         );
+
+        // deduct any fees if required for strategist
+        (balance0, balance1) =
+            transferFee(strategy.key, strategyFees[position.strategyId].strategistFee, fees0, fees0, strategy.owner);
+
+        fees0 -= balance0;
+        fees1 -= balance1;
 
         if (!strategy.isCompound) {
             (uint256 claimable0, uint256 claimable1) = position.claimPositionAmounts(
@@ -212,8 +205,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             amount1 += claimable1;
         }
 
-        uint256 balance0 = strategy.balance0 + fees0;
-        uint256 balance1 = strategy.balance1 + fees1;
+        balance0 = strategy.balance0 + fees0;
+        balance1 = strategy.balance1 + fees1;
 
         uint256 userShare0 = FullMath.mulDiv(balance0, params.liquidity, strategy.totalShares);
         uint256 userShare1 = FullMath.mulDiv(balance1, params.liquidity, strategy.totalShares);
@@ -231,23 +224,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         balance0 -= userShare0;
         balance1 -= userShare1;
+        position.liquidityShare = positionLiquidity - params.liquidity;
 
         emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
-
-        // mint liquidity here for compounders with balances || reuse userShare vars || compound in deposit & shift
-        // only?
-        if (strategy.isCompound) {
-            /// if opposite assets left?
-            (, userShare0, userShare1) = PoolActions.mintLiquidity(strategy.key, balance0, balance1);
-        }
-
-        // recheck for both scenerios
-        // ✔ mint additional fees for compounders
-        // ✔ update state.balance[0, 1] again after compounding fee from balance and collected fee
-        // ✔ update feeGrowth for non compounders
-        strategy.balance0 = balance0 - userShare0;
-        strategy.balance1 = balance1 - userShare1;
-        position.liquidityShare = positionLiquidity - params.liquidity;
     }
 
     /// @inheritdoc ICLTBase
@@ -296,18 +275,12 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1) =
             PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity);
 
-        // deduct any fees if required for protocol & strategist
+        // deduct any fees if required for protocol
         (amount0Added, amount1Added) =
             transferFee(strategy.key, strategyFees[params.strategyId].protocolFee, amount0, amount1, owner);
 
         amount0 -= amount0Added;
         amount1 -= amount1Added;
-
-        (amount0Added, amount1Added) =
-            transferFee(strategy.key, strategyFees[params.strategyId].strategistFee, fees0, fees0, strategy.owner);
-
-        fees0 -= amount0Added;
-        fees1 -= amount1Added;
 
         if (strategy.isCompound) {
             amount0 += fees0 + strategy.balance0;
@@ -334,12 +307,20 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         );
     }
 
-    function updateStrategyBase(bytes32 strategyId, StrategyKey memory newKey, bytes memory newActions) external {
+    function updateStrategyBase(
+        bytes32 strategyId,
+        address owner,
+        uint256 newFee,
+        PositionActions calldata actions
+    )
+        external
+    {
         StrategyData storage strategy = strategies[strategyId];
         if (strategy.owner != _msgSender()) revert InvalidCaller();
+        _validateModes(actions, newFee);
 
-        /// should we remove previous actions state?
-        strategy.updateStrategyState(newKey, newActions);
+        strategyFees[strategyId].strategistFee = newFee;
+        strategy.updateStrategyState(owner, abi.encode(actions));
     }
 
     function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOwner {
@@ -415,10 +396,20 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         // but here multiple positions could be open at a time for same ticks so if we do
         // (TL, TU, Owner) => uniswapLiquidity: it will pull all other strategies liquidity which is having the same
         // ticks that are not meant to be pulled.
+
+        // now contract balance has: new user asset + previous user unused assets
         (uint128 liquidityAdded, uint256 amount0Added, uint256 amount1Added) =
             PoolActions.mintLiquidity(strategy.key, amount0, amount1);
 
         strategy.update(liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
+
+        // optimize above and below states
+        if (strategy.isCompound) {
+            (liquidityAdded, amount0Added, amount1Added) =
+                PoolActions.mintLiquidity(strategy.key, strategy.balance0, strategy.balance1);
+        }
+
+        strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
 
         feeGrowthInside0LastX128 = strategy.feeGrowthInside0LastX128;
         feeGrowthInside1LastX128 = strategy.feeGrowthInside1LastX128;
@@ -449,5 +440,26 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     function _authorization(uint256 tokenID) private view {
         require(ownerOf(tokenID) == _msgSender());
+    }
+
+    function _validateModes(PositionActions calldata actions, uint256 strategistFee) private {
+        if (strategistFee >= Constants.MAX_FEE) revert InvalidInput();
+
+        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
+
+        if (actions.exitStrategy.length > 0) {
+            _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
+            _validateInputData(Constants.EXIT_STRATEGY, actions.exitStrategy);
+        }
+
+        if (actions.rebaseStrategy.length > 0) {
+            _checkModeIds(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
+            _validateInputData(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
+        }
+
+        if (actions.liquidityDistribution.length > 0) {
+            _checkModeIds(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
+            _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
+        }
     }
 }
