@@ -10,6 +10,7 @@ interface IPreference {
     error InvalidMode();
     error InvalidPricePreferenceDifference();
     error InvalidTimePreference();
+    error InvalidStrategyId(bytes32);
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();
     error DuplicateStrategyId(bytes32);

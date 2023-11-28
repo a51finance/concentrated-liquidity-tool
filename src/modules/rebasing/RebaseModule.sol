@@ -79,7 +79,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
                 _cltBase.shiftLiquidity(params);
             }
         }
-        emit Executed(_queue);
     }
 
     /// @notice Computes ticks for a given mode.
@@ -329,21 +328,18 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     /// @notice Checks the strategies array for validity.
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
-    function checkStrategiesArray(StrategyInputData[] memory data) internal returns (bool) {
+    function checkStrategiesArray(StrategyInputData[] memory data) public returns (bool) {
         // this function has a comlexity of O(n^2).
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }
         // check 0 strategyId
         for (uint256 i = 0; i < data.length; i++) {
-            if (data[i].strategyID == bytes32(0)) {
-                revert StrategyIdCannotBeZero();
-            }
             (, address strategyOwner,,,,,,,,,) = _cltBase.strategies(data[i].strategyID);
-
-            if (strategyOwner == address(0)) {
-                revert StrategyIdDonotExist(data[i].strategyID);
+            if (data[i].strategyID == bytes32(0) || strategyOwner == address(0)) {
+                revert InvalidStrategyId(data[i].strategyID);
             }
+
             // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {
                 if (data[i].strategyID == data[j].strategyID) {

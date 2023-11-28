@@ -334,13 +334,10 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         }
         // check 0 strategyId
         for (uint256 i = 0; i < data.length; i++) {
-            if (data[i].strategyID == bytes32(0)) {
-                revert StrategyIdCannotBeZero();
-            }
             (, address strategyOwner,,,,,,,,,) = _cltBase.strategies(data[i].strategyID);
-
-            if (strategyOwner == address(0)) {
-                revert StrategyIdDonotExist(data[i].strategyID);
+            if (data[i].strategyID == bytes32(0) || strategyOwner == address(0)) {
+                // revert StrategyIdCannotBeZero();
+                revert InvalidStrategyId(data[i].strategyID);
             }
 
             // check duplicacy
