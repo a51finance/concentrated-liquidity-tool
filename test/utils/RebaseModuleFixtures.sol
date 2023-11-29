@@ -66,6 +66,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         router = new SwapRouter(address(factory), address(weth));
         positionManager = new
     NonfungiblePositionManager(address(factory),address(weth),address(factory));
+        pool.increaseObservationCardinalityNext(80);
 
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);

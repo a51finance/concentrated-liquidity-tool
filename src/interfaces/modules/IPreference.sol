@@ -8,14 +8,12 @@ interface IPreference {
     error InvalidThreshold();
     error InvalidModesLength();
     error InvalidMode();
-    error InvalidPricePreferenceDifference();
-    error InvalidTimePreference();
     error InvalidStrategyId(bytes32);
+    error InvalidPricePreferenceDifference();
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();
     error DuplicateStrategyId(bytes32);
     error StrategyIdDonotExist(bytes32);
-    error TimePreferenceConstraint();
     error BothTicksCannotBeZero();
     error RebaseStrategyDataCannotBeZero();
     error OnlyRebaseInactivityCannotBeSelected();
@@ -24,7 +22,7 @@ interface IPreference {
     struct ExecutableStrategiesData {
         bytes32 strategyID;
         uint256 mode;
-        bytes32[3] actionNames; // Array to hold multiple valid modes
+        bytes32[2] actionNames; // Array to hold multiple valid modes
     }
 
     struct StrategyInputData {
@@ -33,6 +31,16 @@ interface IPreference {
     }
 
     function checkInputData(ICLTBase.StrategyPayload memory data) external returns (bool);
+
+    struct ExectuteStrategyParams {
+        IUniswapV3Pool pool;
+        bytes32 strategyID;
+        int24 tickLower;
+        int24 tickUpper;
+        bool shouldMint;
+        bool zeroForOne;
+        int256 swapAmount;
+    }
 
     event Executed(ExecutableStrategiesData[] strategyIds);
 }
