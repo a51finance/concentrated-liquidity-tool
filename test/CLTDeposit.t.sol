@@ -12,8 +12,9 @@ import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { Constants } from "../src/libraries/Constants.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -191,7 +192,22 @@ contract CLTDepositTest is Test, Fixtures {
         assertEq(shares, (depositAmount * 2) + 1);
         assertEq(liquidityShareUser1, depositAmount + 1);
 
-        /// try swapping here to check contract balances
+        /// try swapping here to check contract balances || approval needed
+        // router.exactInputSingle(
+        //     ISwapRouter.ExactInputSingleParams({
+        //         tokenIn: address(token0),
+        //         tokenOut: address(token1),
+        //         fee: 500,
+        //         recipient: address(this),
+        //         deadline: block.timestamp + 1 days,
+        //         amountIn: 1 ether,
+        //         amountOutMinimum: 0,
+        //         sqrtPriceLimitX96: 0
+        //     })
+        // );
+
+        // (, int24 t,,,,,) = pool.slot0();
+        // console.logInt(t);
 
         vm.prank(users[1]);
         base.deposit(params);
@@ -204,8 +220,43 @@ contract CLTDepositTest is Test, Fixtures {
     }
 
     function test_deposit_succeedsOutOfRangeDeposit() public {
-        // initPoolAndAddLiquidity();
-        // pool.liquidity();
+        initPoolAndAddLiquidity();
+        initRouter();
+
+        bytes32 strategyID = getStrategyID(address(this), 1);
+        uint256 depositAmount = 1 ether;
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        base.deposit(params);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        base.deposit(params);
+
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+        (,,,,, uint256 balance0, uint256 balance1, uint256 shares, uint256 uniswapShare,,) = base.strategies(strategyID);
+
+        console.log(liquidityShareUser2, shares, uniswapShare);
+        console.log(balance0, balance1);
     }
 
     function test_deposit_shouldReturnExtraETH() public { }
