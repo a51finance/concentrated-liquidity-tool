@@ -38,7 +38,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         createStrategyActions(baseContract, poolContract, 1500, owner, positionActions);
 
         bytes32 strategyID = getStrategyID(owner, 1);
-        (ICLTBase.StrategyKey memory key,,,,,,,,,,) = baseContract.strategies(strategyID);
+        (ICLTBase.StrategyKey memory key,,,,,,) = baseContract.strategies(strategyID);
 
         assertEq(address(strategyKey.pool), address(key.pool));
     }
@@ -128,11 +128,11 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         strategyIDs[0].strategyID = strategyID;
         strategyIDs[0].rebaseOptions = "";
 
-        (ICLTBase.StrategyKey memory keyBefore,,,,,,,,,,) = baseContract.strategies(strategyID);
+        (ICLTBase.StrategyKey memory keyBefore,,,,,,) = baseContract.strategies(strategyID);
 
         rebaseModule.executeStrategies(strategyIDs);
 
-        (ICLTBase.StrategyKey memory keyAfter,,,,,,,,,,) = baseContract.strategies(strategyID);
+        (ICLTBase.StrategyKey memory keyAfter,,,,,,) = baseContract.strategies(strategyID);
 
         assertEq(keyBefore.tickLower, keyAfter.tickLower);
         assertEq(keyBefore.tickUpper, keyAfter.tickUpper);
@@ -161,7 +161,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         rebaseModule.executeStrategies(strategyIDs);
 
-        (,,, bytes memory actionStatus,,,,,,,) = baseContract.strategies(strategyID);
+        (,,, bytes memory actionStatus,,,) = baseContract.strategies(strategyID);
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
@@ -181,7 +181,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         rebaseModule.executeStrategies(strategyIDs);
 
-        (,,, actionStatus,,,,,,,) = baseContract.strategies(strategyID);
+        (,,, actionStatus,,,) = baseContract.strategies(strategyID);
 
         assertEq(abi.decode(actionStatus, (uint256)), 2);
     }

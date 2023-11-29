@@ -194,7 +194,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         positionActions.rebaseStrategy = positionActions.rebaseStrategy;
         positionActions.liquidityDistribution = positionActions.liquidityDistribution;
         _hevm.prank(recepient);
-        baseContract.createStrategy(strategyKey, positionActions, 1000, true);
+        baseContract.createStrategy(strategyKey, positionActions, 1000, true, true);
     }
 
     function createStrategyAndDeposit(

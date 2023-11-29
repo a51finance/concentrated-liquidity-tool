@@ -51,7 +51,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
             uint256 rebaseCount;
             bool hasRebaseInactivity = false;
             ICLTBase.ShiftLiquidityParams memory params;
-            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,,,) =
+            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,) =
                 _cltBase.strategies(_queue[i].strategyID);
 
             if (
@@ -139,13 +139,10 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
             bytes memory actionStatus,
             ,
             ,
-            ,
-            uint256 totalShares,
-            ,
-            ,
+            ICLTBase.Account memory account
         ) = _cltBase.strategies(strategyData.strategyID);
 
-        if (totalShares <= liquidityThreshold) {
+        if (account.totalShares <= liquidityThreshold) {
             return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
         }
 
@@ -334,7 +331,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         }
         // check 0 strategyId
         for (uint256 i = 0; i < data.length; i++) {
-            (, address strategyOwner,,,,,,,,,) = _cltBase.strategies(data[i].strategyID);
+            (, address strategyOwner,,,,,) = _cltBase.strategies(data[i].strategyID);
             if (data[i].strategyID == bytes32(0) || strategyOwner == address(0)) {
                 // revert StrategyIdCannotBeZero();
                 revert InvalidStrategyId(data[i].strategyID);

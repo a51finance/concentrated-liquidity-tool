@@ -34,13 +34,13 @@ library Position {
         uint256 balance1 = amount1Desired - amount1Added;
 
         if (balance0 > 0 || balance1 > 0) {
-            self.balance0 += balance0;
-            self.balance1 += balance1;
+            self.account.balance0 += balance0;
+            self.account.balance1 += balance1;
         }
 
         if (share > 0) {
-            self.totalShares += share;
-            self.uniswapLiquidity += liquidityAdded;
+            self.account.totalShares += share;
+            self.account.uniswapLiquidity += liquidityAdded;
         }
     }
 
@@ -53,10 +53,10 @@ library Position {
         public
     {
         if (liquidityAdded > 0) {
-            self.balance0 -= amount0Added;
-            self.balance1 -= amount1Added;
+            self.account.balance0 -= amount0Added;
+            self.account.balance1 -= amount1Added;
 
-            self.uniswapLiquidity += liquidityAdded;
+            self.account.uniswapLiquidity += liquidityAdded;
         }
     }
 
@@ -72,11 +72,11 @@ library Position {
     {
         self.key = key;
 
-        self.balance0 = balance0;
-        self.balance1 = balance1;
+        self.account.balance0 = balance0;
+        self.account.balance1 = balance1;
 
         self.actionStatus = status;
-        self.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
+        self.account.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
     }
 
     function updateStrategyState(
@@ -97,7 +97,10 @@ library Position {
         (uint256 fees0, uint256 fees1) =
             PoolActions.collectPendingFees(self.key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
 
-        self.feeGrowthInside0LastX128 += FullMath.mulDiv(fees0, FixedPoint128.Q128, self.uniswapLiquidity);
-        self.feeGrowthInside1LastX128 += FullMath.mulDiv(fees1, FixedPoint128.Q128, self.uniswapLiquidity);
+        self.account.feeGrowthInside0LastX128 +=
+            FullMath.mulDiv(fees0, FixedPoint128.Q128, self.account.uniswapLiquidity);
+
+        self.account.feeGrowthInside1LastX128 +=
+            FullMath.mulDiv(fees1, FixedPoint128.Q128, self.account.uniswapLiquidity);
     }
 }

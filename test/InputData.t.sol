@@ -116,11 +116,11 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
             keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModuleMockContract), true
         );
 
-        baseContract.createStrategy(strategyKey, positionActions, 1000, true);
+        baseContract.createStrategy(strategyKey, positionActions, 1000, true, true);
 
         // check if strategy is created
         strategyID = keccak256(abi.encode(address(this), 1));
-        (ICLTBase.StrategyKey memory key, address _owner,,, bool isCompound,,,,,,) = baseContract.strategies(strategyID);
+        (ICLTBase.StrategyKey memory key, address _owner,,, bool isCompound,,) = baseContract.strategies(strategyID);
         assertEq(key.tickLower, strategyKey.tickLower);
         assertEq(key.tickUpper, strategyKey.tickUpper);
         assertEq(address(this), _owner);

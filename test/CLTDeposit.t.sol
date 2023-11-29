@@ -33,7 +33,7 @@ contract CLTDepositTest is Test, Fixtures {
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
-        base.createStrategy(key, actions, 10e15, true);
+        base.createStrategy(key, actions, 10e15, true, true);
         token0.approve(address(base), UINT256_MAX);
         token1.approve(address(base), UINT256_MAX);
     }
@@ -57,14 +57,14 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
-        (,,,,, uint256 balance0, uint256 balance1, uint256 shares, uint256 uniswapShare,,) = base.strategies(strategyID);
+        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        assertEq(balance0, 0);
-        assertEq(balance1, 0);
-        assertEq(shares, depositAmount);
+        assertEq(account.balance0, 0);
+        assertEq(account.balance1, 0);
+        assertEq(account.totalShares, depositAmount);
         assertEq(base.balanceOf(msg.sender), 1);
         assertEq(liquidityShare, depositAmount);
-        assertEq(uniswapShare, 200_510_416_479_002_803_287);
+        assertEq(account.uniswapLiquidity, 200_510_416_479_002_803_287);
     }
 
     function test_deposit_revertsIfZeroAmount() public {
@@ -108,7 +108,7 @@ contract CLTDepositTest is Test, Fixtures {
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
-        base.createStrategy(key, actions, 10e15, true);
+        base.createStrategy(key, actions, 10e15, true, true);
 
         bytes32 strategyID = getStrategyID(address(this), 2);
         uint256 depositAmount = 3 ether;
@@ -125,11 +125,11 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit{ value: depositAmount }(params);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
-        (,,,,,,, uint256 shares, uint256 uniswapShare,,) = base.strategies(strategyID);
+        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        assertEq(shares, depositAmount);
+        assertEq(account.totalShares, depositAmount);
         assertEq(liquidityShare, depositAmount);
-        assertEq(uniswapShare, 601_531_249_437_008_409_863);
+        assertEq(account.uniswapLiquidity, 601_531_249_437_008_409_863);
     }
 
     function test_deposit_revertsWithInSufficientFunds() public {
@@ -187,9 +187,9 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShareUser1,,,,) = base.positions(2);
-        (,,,,, uint256 balance0, uint256 balance1, uint256 shares, uint256 uniswapShare,,) = base.strategies(strategyID);
+        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        assertEq(shares, (depositAmount * 2) + 1);
+        assertEq(account.totalShares, (depositAmount * 2) + 1);
         assertEq(liquidityShareUser1, depositAmount + 1);
 
         /// try swapping here to check contract balances || approval needed
@@ -213,9 +213,9 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
-        (,,,,, balance0, balance1, shares, uniswapShare,,) = base.strategies(strategyID);
+        (,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(shares, (depositAmount * 3) + 2);
+        assertEq(account.totalShares, (depositAmount * 3) + 2);
         assertEq(liquidityShareUser2, depositAmount + 1);
     }
 
@@ -253,10 +253,10 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
-        (,,,,, uint256 balance0, uint256 balance1, uint256 shares, uint256 uniswapShare,,) = base.strategies(strategyID);
+        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        console.log(liquidityShareUser2, shares, uniswapShare);
-        console.log(balance0, balance1);
+        console.log(liquidityShareUser2, account.totalShares, account.uniswapLiquidity);
+        console.log(account.balance0, account.balance1);
     }
 
     function test_deposit_shouldReturnExtraETH() public { }
