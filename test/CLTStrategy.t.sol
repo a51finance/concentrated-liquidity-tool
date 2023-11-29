@@ -33,7 +33,7 @@ contract CLTStrategyTest is Test, Fixtures {
 
         vm.expectEmit(true, true, false, true);
         emit StrategyCreated(strategyId, key, abi.encode(actions), true);
-        base.createStrategy(key, actions, 10e15, true, true);
+        base.createStrategy(key, actions, 10e15, true, false);
 
         (ICLTBase.StrategyKey memory keyAdded, address owner, bytes memory actionsAdded,, bool isCompound,,) =
             base.strategies(strategyId);

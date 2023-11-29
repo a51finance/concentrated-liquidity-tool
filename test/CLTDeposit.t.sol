@@ -33,7 +33,7 @@ contract CLTDepositTest is Test, Fixtures {
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
-        base.createStrategy(key, actions, 10e15, true, true);
+        base.createStrategy(key, actions, 10e15, true, false);
         token0.approve(address(base), UINT256_MAX);
         token1.approve(address(base), UINT256_MAX);
     }
@@ -108,7 +108,7 @@ contract CLTDepositTest is Test, Fixtures {
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
-        base.createStrategy(key, actions, 10e15, true, true);
+        base.createStrategy(key, actions, 10e15, true, false);
 
         bytes32 strategyID = getStrategyID(address(this), 2);
         uint256 depositAmount = 3 ether;

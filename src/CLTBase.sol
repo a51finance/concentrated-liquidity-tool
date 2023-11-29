@@ -74,7 +74,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         PositionActions calldata actions,
         uint256 strategistFee,
         bool isCompound,
-        bool isPublic
+        bool isPrivate
     )
         external
         override
@@ -90,7 +90,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             actions: positionActionsHash,
             actionStatus: "",
             isCompound: isCompound,
-            isPublic: isPublic,
+            isPrivate: isPrivate,
             account: Account({
                 balance0: 0,
                 balance1: 0,
@@ -113,6 +113,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         override
         returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
+        _authorizationOfStrategy(params.strategyId);
+
         StrategyData storage strategy = strategies[params.strategyId];
         if (!strategy.isCompound && strategy.account.totalShares > 0) strategy.updatePositionFee();
 
@@ -144,6 +146,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     {
         Position.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
+
+        _authorizationOfStrategy(position.strategyId);
 
         if (!strategy.isCompound) strategy.updatePositionFee();
 
@@ -323,6 +327,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     {
         StrategyData storage strategy = strategies[strategyId];
         if (strategy.owner != _msgSender()) revert InvalidCaller();
+
         _validateModes(actions, newFee);
 
         strategyFees[strategyId].strategistFee = newFee;
@@ -446,6 +451,12 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     function _authorization(uint256 tokenID) private view {
         require(ownerOf(tokenID) == _msgSender());
+    }
+
+    function _authorizationOfStrategy(bytes32 strategyId) private view {
+        if (strategies[strategyId].isPrivate) {
+            require(strategies[strategyId].owner == _msgSender());
+        }
     }
 
     function _validateModes(PositionActions calldata actions, uint256 strategistFee) private {
