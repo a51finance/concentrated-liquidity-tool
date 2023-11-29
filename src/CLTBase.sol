@@ -73,7 +73,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         StrategyKey calldata key,
         PositionActions calldata actions,
         uint256 strategistFee,
-        bool isCompound
+        bool isCompound,
+        bool isPublic
     )
         external
         override
@@ -89,12 +90,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             actions: positionActionsHash,
             actionStatus: "",
             isCompound: isCompound,
-            balance0: 0,
-            balance1: 0,
-            totalShares: 0,
-            uniswapLiquidity: 0,
-            feeGrowthInside0LastX128: 0,
-            feeGrowthInside1LastX128: 0
+            isPublic: isPublic,
+            account: Account({
+                balance0: 0,
+                balance1: 0,
+                totalShares: 0,
+                uniswapLiquidity: 0,
+                feeGrowthInside0LastX128: 0,
+                feeGrowthInside1LastX128: 0
+            })
         });
 
         strategyFees[strategyID] = StrategyFees({ protocolFee: protocolFee, strategistFee: strategistFee });
@@ -110,7 +114,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
         StrategyData storage strategy = strategies[params.strategyId];
-        if (!strategy.isCompound && strategy.totalShares > 0) strategy.updatePositionFee();
+        if (!strategy.isCompound && strategy.account.totalShares > 0) strategy.updatePositionFee();
 
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
@@ -181,8 +185,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         (amount0, amount1, fees0, fees1) = PoolActions.burnUserLiquidity(
             strategy.key,
-            strategy.uniswapLiquidity,
-            strategy.isCompound ? FullMath.mulDiv(params.liquidity, 1e18, strategy.totalShares) : params.liquidity,
+            strategy.account.uniswapLiquidity,
+            strategy.isCompound
+                ? FullMath.mulDiv(params.liquidity, 1e18, strategy.account.totalShares)
+                : params.liquidity,
             strategy.isCompound
         );
 
@@ -197,19 +203,19 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             (uint256 claimable0, uint256 claimable1) = position.claimPositionAmounts(
                 position.tokensOwed0,
                 position.tokensOwed1,
-                strategy.feeGrowthInside0LastX128,
-                strategy.feeGrowthInside1LastX128
+                strategy.account.feeGrowthInside0LastX128,
+                strategy.account.feeGrowthInside1LastX128
             );
 
             amount0 += claimable0;
             amount1 += claimable1;
         }
 
-        balance0 = strategy.balance0 + fees0;
-        balance1 = strategy.balance1 + fees1;
+        balance0 = strategy.account.balance0 + fees0;
+        balance1 = strategy.account.balance1 + fees1;
 
-        uint256 userShare0 = FullMath.mulDiv(balance0, params.liquidity, strategy.totalShares);
-        uint256 userShare1 = FullMath.mulDiv(balance1, params.liquidity, strategy.totalShares);
+        uint256 userShare0 = FullMath.mulDiv(balance0, params.liquidity, strategy.account.totalShares);
+        uint256 userShare1 = FullMath.mulDiv(balance1, params.liquidity, strategy.account.totalShares);
 
         amount0 += userShare0;
         amount1 += userShare1;
@@ -242,7 +248,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         (uint128 tokensOwed0, uint128 tokensOwed1) = (position.tokensOwed0, position.tokensOwed1);
 
         (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
-            (strategy.feeGrowthInside0LastX128, strategy.feeGrowthInside1LastX128);
+            (strategy.account.feeGrowthInside0LastX128, strategy.account.feeGrowthInside1LastX128);
 
         (tokensOwed0, tokensOwed1) =
             position.claimPositionAmounts(tokensOwed0, tokensOwed1, feeGrowthInside0LastX128, feeGrowthInside1LastX128);
@@ -273,7 +279,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         // only burn this strategy liquidity not others
         (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1) =
-            PoolActions.burnLiquidity(strategy.key, strategy.uniswapLiquidity);
+            PoolActions.burnLiquidity(strategy.key, strategy.account.uniswapLiquidity);
 
         // deduct any fees if required for protocol
         (amount0Added, amount1Added) =
@@ -283,8 +289,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         amount1 -= amount1Added;
 
         if (strategy.isCompound) {
-            amount0 += fees0 + strategy.balance0;
-            amount1 += fees1 + strategy.balance1;
+            amount0 += fees0 + strategy.account.balance0;
+            amount1 += fees1 + strategy.account.balance1;
         }
 
         if (params.swapAmount != 0) {
@@ -371,18 +377,18 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
             strategy.key,
             strategy.isCompound,
-            strategy.uniswapLiquidity,
+            strategy.account.uniswapLiquidity,
             amount0Desired,
             amount1Desired,
-            strategy.balance0,
-            strategy.balance1,
-            strategy.totalShares
+            strategy.account.balance0,
+            strategy.account.balance1,
+            strategy.account.totalShares
         );
 
         // liquidity frontrun checks here
         if (share == 0) revert InvalidShare();
 
-        if (strategy.totalShares == 0) {
+        if (strategy.account.totalShares == 0) {
             if (share < Constants.MIN_INITIAL_SHARES) revert InvalidShare();
         }
 
@@ -406,13 +412,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         // optimize above and below states
         if (strategy.isCompound) {
             (liquidityAdded, amount0Added, amount1Added) =
-                PoolActions.mintLiquidity(strategy.key, strategy.balance0, strategy.balance1);
+                PoolActions.mintLiquidity(strategy.key, strategy.account.balance0, strategy.account.balance1);
         }
 
         strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
 
-        feeGrowthInside0LastX128 = strategy.feeGrowthInside0LastX128;
-        feeGrowthInside1LastX128 = strategy.feeGrowthInside1LastX128;
+        feeGrowthInside0LastX128 = strategy.account.feeGrowthInside0LastX128;
+        feeGrowthInside1LastX128 = strategy.account.feeGrowthInside1LastX128;
     }
 
     /// @notice Validates the strategy encoded input data

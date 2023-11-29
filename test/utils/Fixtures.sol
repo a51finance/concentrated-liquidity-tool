@@ -10,10 +10,9 @@ import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
+import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
@@ -51,24 +50,37 @@ contract Fixtures is UniswapDeployer {
     function initPoolAndAddLiquidity() internal {
         manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
 
-        token0.approve(address(manager), 1e30);
-        token1.approve(address(manager), 1e30);
+        token0.approve(address(manager), type(uint256).max);
+        token1.approve(address(manager), type(uint256).max);
 
         manager.mint(
             INonfungiblePositionManager.MintParams({
                 token0: address(token0),
                 token1: address(token1),
                 fee: 500,
-                tickLower: TickMath.MIN_TICK,
-                tickUpper: TickMath.MAX_TICK,
-                amount0Desired: 1e20,
-                amount1Desired: 1e20,
+                tickLower: -300,
+                tickUpper: 300,
+                amount0Desired: 1e30,
+                amount1Desired: 1e30,
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days
             })
         );
+    }
+
+    function initRouter() internal {
+        router = new SwapRouter(address(factory), address(weth));
+
+        token0.approve(address(router), type(uint256).max);
+        token1.approve(address(router), type(uint256).max);
+    }
+
+    function initManagerRoutersAndPoolsWithLiq() internal {
+        deployFreshState();
+        initRouter();
+        initPoolAndAddLiquidity();
     }
 
     function initBase() internal {

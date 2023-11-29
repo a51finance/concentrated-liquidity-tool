@@ -46,6 +46,15 @@ interface ICLTBase {
         StrategyPayload[] liquidityDistribution;
     }
 
+    struct Account {
+        uint256 balance0;
+        uint256 balance1;
+        uint256 totalShares;
+        uint128 uniswapLiquidity;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+    }
+
     /// @param key A51 position's key details
     /// @param actions Ids of all modes selected by the strategist encoded together in a single hash
     /// @param actionStatus The encoded data for each of the strategy to track any detail for futher actions
@@ -64,12 +73,8 @@ interface ICLTBase {
         bytes actions;
         bytes actionStatus;
         bool isCompound;
-        uint256 balance0;
-        uint256 balance1;
-        uint256 totalShares;
-        uint128 uniswapLiquidity;
-        uint256 feeGrowthInside0LastX128;
-        uint256 feeGrowthInside1LastX128;
+        bool isPublic;
+        Account account;
     }
 
     /// @notice Explain to an end user what this does
@@ -128,7 +133,8 @@ interface ICLTBase {
         StrategyKey calldata key,
         PositionActions calldata actions,
         uint256 strategistFee,
-        bool isCompound
+        bool isCompound,
+        bool isPublic
     )
         external;
 
@@ -139,14 +145,14 @@ interface ICLTBase {
     /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @return actionStatus It is a hash of a additional data of strategy for further required actions
     /// @return isCompound Bool weather the strategy has compunding activated or not
-    /// @return balance0 Amount of token0 left that are not added on AMM's position
-    /// @return balance1 Amount of token0 left that are not added on AMM's position
-    /// @return totalShares Total no of shares minted for this A51's strategy
-    /// @return uniswapLiquidity Total no of liquidity added on AMM for this strategy
-    /// @return feeGrowthInside0LastX128 The fee growth of token0 collected per unit of liquidity for
-    /// the entire life of the A51's position
-    /// @return feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
-    /// the entire life of the A51's position
+    // / @return balance0 Amount of token0 left that are not added on AMM's position
+    // / @return balance1 Amount of token0 left that are not added on AMM's position
+    // / @return totalShares Total no of shares minted for this A51's strategy
+    // / @return uniswapLiquidity Total no of liquidity added on AMM for this strategy
+    // / @return feeGrowthInside0LastX128 The fee growth of token0 collected per unit of liquidity for
+    // / the entire life of the A51's position
+    // / @return feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
+    // / the entire life of the A51's position
     function strategies(bytes32 strategyId)
         external
         returns (
@@ -155,12 +161,8 @@ interface ICLTBase {
             bytes memory actions,
             bytes memory actionStatus,
             bool isCompound,
-            uint256 balance0,
-            uint256 balance1,
-            uint256 totalShares,
-            uint128 uniswapLiquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128
+            bool isPublic,
+            Account memory account
         );
 
     /// @notice Returns the position information associated with a given token ID.
