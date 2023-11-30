@@ -115,7 +115,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     {
         StrategyData storage strategy = strategies[params.strategyId];
         if (!strategy.isCompound && strategy.account.totalShares > 0) strategy.updatePositionFee();
-
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
 
@@ -413,9 +412,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         if (strategy.isCompound) {
             (liquidityAdded, amount0Added, amount1Added) =
                 PoolActions.mintLiquidity(strategy.key, strategy.account.balance0, strategy.account.balance1);
+            strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
         }
-
-        strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
 
         feeGrowthInside0LastX128 = strategy.account.feeGrowthInside0LastX128;
         feeGrowthInside1LastX128 = strategy.account.feeGrowthInside1LastX128;
