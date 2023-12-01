@@ -2,6 +2,7 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
+import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 import { IPreference } from "./interfaces/modules/IPreference.sol";
 import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
 import { ILiquidityDistribution } from "./interfaces/modules/ILiquidityDistribution.sol";
@@ -32,19 +33,18 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     using UserPositions for Position.Data;
 
     uint256 private _sharesId = 1;
+
     uint256 private _strategyId = 1;
 
-    uint256 public protocolFee;
+    IGovernanceFeeHandler public immutable feeHandler;
 
-    /// @inheritdoc ICLTBase
-    mapping(uint256 => Position.Data) public override positions;
+    mapping(bytes32 => address) public modeVaults;
 
     /// @inheritdoc ICLTBase
     mapping(bytes32 => StrategyData) public override strategies;
 
-    mapping(bytes32 => StrategyFees) public strategyFees;
-
-    mapping(bytes32 => address) public modeVaults;
+    /// @inheritdoc ICLTBase
+    mapping(uint256 => Position.Data) public override positions;
 
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
@@ -58,28 +58,29 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         string memory _symbol,
         address _owner,
         address _weth9,
-        uint256 _protocolFee,
+        address _feeHandler,
         IUniswapV3Factory _factory
     )
         AccessControl(_owner)
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
     {
-        protocolFee = _protocolFee;
+        feeHandler = IGovernanceFeeHandler(_feeHandler);
     }
 
     /// @inheritdoc ICLTBase
     function createStrategy(
         StrategyKey calldata key,
         PositionActions calldata actions,
-        uint256 strategistFee,
+        uint256 managementFee,
+        uint256 performanceFee,
         bool isCompound,
         bool isPrivate
     )
         external
         override
     {
-        _validateModes(actions, strategistFee);
+        _validateModes(actions, managementFee, performanceFee);
 
         bytes memory positionActionsHash = abi.encode(actions);
         bytes32 strategyID = keccak256(abi.encode(_msgSender(), _strategyId++));
@@ -91,6 +92,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             actionStatus: "",
             isCompound: isCompound,
             isPrivate: isPrivate,
+            managementFee: managementFee,
+            performanceFee: performanceFee,
             account: Account({
                 balance0: 0,
                 balance1: 0,
@@ -101,7 +104,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             })
         });
 
-        strategyFees[strategyID] = StrategyFees({ protocolFee: protocolFee, strategistFee: strategistFee });
+        (uint256 strategyCreationFeeAmount,,,) = getGovernanceFee(isPrivate);
+
+        if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
 
         emit StrategyCreated(strategyID, key, positionActionsHash, isCompound);
     }
@@ -174,10 +179,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         Position.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
-        uint256 positionLiquidity = position.liquidityShare;
-
-        if (positionLiquidity == 0) revert NoLiquidity();
-        if (positionLiquidity < params.liquidity) revert InvalidShare();
+        if (position.liquidityShare == 0) revert NoLiquidity();
+        if (position.liquidityShare < params.liquidity) revert InvalidShare();
         if (!strategy.isCompound) strategy.updatePositionFee();
 
         uint256 fees0;
@@ -197,11 +200,36 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         );
 
         // deduct any fees if required for strategist
-        (balance0, balance1) =
-            transferFee(strategy.key, strategyFees[position.strategyId].strategistFee, fees0, fees0, strategy.owner);
+        IGovernanceFeeHandler.ProtocolFeeRegistry memory protocolFee;
+
+        (,, protocolFee.protcolFeeOnManagement, protocolFee.protcolFeeOnPerformance) =
+            getGovernanceFee(strategy.isPrivate);
+
+        (balance0, balance1) = transferFee(
+            strategy.key,
+            protocolFee.protcolFeeOnPerformance,
+            strategy.performanceFee,
+            fees0,
+            fees0,
+            owner,
+            strategy.owner
+        );
 
         fees0 -= balance0;
         fees1 -= balance1;
+
+        (balance0, balance1) = transferFee(
+            strategy.key,
+            protocolFee.protcolFeeOnManagement,
+            strategy.managementFee,
+            amount0,
+            amount1,
+            owner,
+            strategy.owner
+        );
+
+        amount0 -= balance0;
+        amount1 -= balance1;
 
         if (!strategy.isCompound) {
             (uint256 claimable0, uint256 claimable1) = position.claimPositionAmounts(
@@ -234,7 +262,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         balance0 -= userShare0;
         balance1 -= userShare1;
-        position.liquidityShare = positionLiquidity - params.liquidity;
+        position.liquidityShare -= params.liquidity;
 
         emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
     }
@@ -286,8 +314,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             PoolActions.burnLiquidity(strategy.key, strategy.account.uniswapLiquidity);
 
         // deduct any fees if required for protocol
-        (amount0Added, amount1Added) =
-            transferFee(strategy.key, strategyFees[params.strategyId].protocolFee, amount0, amount1, owner);
+        (uint256 automationFee,,,) = getGovernanceFee(strategy.isPrivate);
+
+        (amount0Added, amount1Added) = transferFee(strategy.key, 0, automationFee, amount0, amount1, address(0), owner);
 
         amount0 -= amount0Added;
         amount1 -= amount1Added;
@@ -320,28 +349,18 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     function updateStrategyBase(
         bytes32 strategyId,
         address owner,
-        uint256 newFee,
+        uint256 managementFee,
+        uint256 performanceFee,
         PositionActions calldata actions
     )
         external
     {
+        _validateModes(actions, managementFee, performanceFee);
+
         StrategyData storage strategy = strategies[strategyId];
         if (strategy.owner != _msgSender()) revert InvalidCaller();
 
-        _validateModes(actions, newFee);
-
-        strategyFees[strategyId].strategistFee = newFee;
-        strategy.updateStrategyState(owner, abi.encode(actions));
-    }
-
-    function setProtocolFee(bytes32 strategyID, uint256 value) external onlyOwner {
-        if (value >= Constants.MAX_FEE) revert InvalidInput();
-
-        if (strategyID == 0) {
-            emit ProtocolFeeOverallUpdated(protocolFee = value);
-        } else {
-            emit ProtocolFeeStrategyUpdated(strategyFees[strategyID].protocolFee = value);
-        }
+        strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
     }
 
     /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault
@@ -416,14 +435,37 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         // optimize above and below states
         if (strategy.isCompound) {
+            /// should set these vars zero if not added : above values should not use
             (liquidityAdded, amount0Added, amount1Added) =
                 PoolActions.mintLiquidity(strategy.key, strategy.account.balance0, strategy.account.balance1);
+
+            strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
         }
 
-        strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
+        if (address(this).balance > 0) {
+            TransferHelper.safeTransferETH(_msgSender(), address(this).balance);
+        }
 
         feeGrowthInside0LastX128 = strategy.account.feeGrowthInside0LastX128;
         feeGrowthInside1LastX128 = strategy.account.feeGrowthInside1LastX128;
+    }
+
+    function getGovernanceFee(bool isPrivate)
+        private
+        returns (
+            uint256 lpAutomationFee,
+            uint256 strategyCreationFee,
+            uint256 protcolFeeOnManagement,
+            uint256 protcolFeeOnPerformance
+        )
+    {
+        if (isPrivate) {
+            (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) =
+                feeHandler.privateStrategyFeeRegistry();
+        } else {
+            (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) =
+                feeHandler.publicStrategyFeeRegistry();
+        }
     }
 
     /// @notice Validates the strategy encoded input data
@@ -459,8 +501,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         }
     }
 
-    function _validateModes(PositionActions calldata actions, uint256 strategistFee) private {
-        if (strategistFee >= Constants.MAX_FEE) revert InvalidInput();
+    function _validateModes(PositionActions calldata actions, uint256 managementFee, uint256 performanceFee) private {
+        if (managementFee > Constants.MAX_MANAGEMENT_FEE) revert IGovernanceFeeHandler.ManagementFeeLimitExceed();
+
+        if (performanceFee > Constants.MAX_PERFORMANCE_FEE) revert IGovernanceFeeHandler.PerformanceFeeLimitExceed();
 
         if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
 

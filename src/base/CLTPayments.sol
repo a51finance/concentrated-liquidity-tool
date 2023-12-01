@@ -64,10 +64,12 @@ abstract contract CLTPayments is ICLTPayments {
 
     function transferFee(
         ICLTBase.StrategyKey memory key,
+        uint256 protcolPercentage,
         uint256 percentage,
         uint256 amount0,
         uint256 amount1,
-        address owner
+        address governance,
+        address strategyOwner
     )
         internal
         returns (uint256 fee0, uint256 fee1)
@@ -75,12 +77,20 @@ abstract contract CLTPayments is ICLTPayments {
         if (percentage > 0) {
             if (amount0 > 0) {
                 fee0 = (amount0 * percentage) / Constants.WAD;
-                TransferHelper.safeTransfer(key.pool.token0(), owner, fee0);
+
+                uint256 protcolShare0 = (fee0 * protcolPercentage) / Constants.WAD;
+
+                TransferHelper.safeTransfer(key.pool.token0(), strategyOwner, fee0 - protcolShare0);
+                if (protcolShare0 > 0) TransferHelper.safeTransfer(key.pool.token0(), governance, protcolShare0);
             }
 
             if (amount1 > 0) {
                 fee1 = (amount1 * percentage) / Constants.WAD;
-                TransferHelper.safeTransfer(key.pool.token1(), owner, fee1);
+
+                uint256 protcolShare1 = (fee1 * protcolPercentage) / Constants.WAD;
+
+                TransferHelper.safeTransfer(key.pool.token1(), strategyOwner, fee1 - protcolShare1);
+                if (protcolShare1 > 0) TransferHelper.safeTransfer(key.pool.token1(), governance, protcolShare1);
             }
         }
     }

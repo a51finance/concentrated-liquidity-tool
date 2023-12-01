@@ -43,7 +43,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             uint256 rebaseCount;
             bool hasRebaseInactivity = false;
             ICLTBase.ShiftLiquidityParams memory params;
-            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,) =
+            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) =
                 _cltBase.strategies(_queue[i].strategyID);
 
             if (_queue[i].actionNames[0] == REBASE_INACTIVITY || _queue[i].actionNames[1] == REBASE_INACTIVITY) {
@@ -73,7 +73,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
     }
 
     function executeStrategy(ExectuteStrategyParams calldata executeParams) external {
-        (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,) =
+        (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
         if (strategyOwner != msg.sender) revert InvalidCaller();
@@ -146,6 +146,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
             ,
             bytes memory actionsData,
             bytes memory actionStatus,
+            ,
+            ,
             ,
             ,
             ICLTBase.Account memory account
@@ -303,7 +305,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         }
         // check 0 strategyId
         for (uint256 i = 0; i < data.length; i++) {
-            (, address strategyOwner,,,,,) = _cltBase.strategies(data[i]);
+            (, address strategyOwner,,,,,,,) = _cltBase.strategies(data[i]);
             if (data[i] == bytes32(0) || strategyOwner == address(0)) {
                 revert InvalidStrategyId(data[i]);
             }

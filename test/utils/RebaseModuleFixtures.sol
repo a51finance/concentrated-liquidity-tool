@@ -8,6 +8,9 @@ import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { CLTBase } from "../../src/CLTBase.sol";
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
+import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandler.sol";
+
+import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModuleMock } from "../mocks/RebaseModule.mock.sol";
 
 import { Utilities } from "./Utilities.sol";
@@ -142,7 +145,16 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         (factory, pool) = initPool(recepient);
 
-        base = new CLTBase("ALP Base", "ALP", recepient, address(0), 10e14, factory);
+        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+            lpAutomationFee: 0,
+            strategyCreationFee: 0,
+            protcolFeeOnManagement: 0,
+            protcolFeeOnPerformance: 0
+        });
+
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+
+        base = new CLTBase("ALP Base", "ALP", recepient, address(0), address(feeHandler), factory);
 
         _hevm.prank(recepient);
         token0.approve(address(base), type(uint256).max);
@@ -195,7 +207,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         positionActions.rebaseStrategy = positionActions.rebaseStrategy;
         positionActions.liquidityDistribution = positionActions.liquidityDistribution;
         _hevm.prank(recepient);
-        baseContract.createStrategy(strategyKey, positionActions, 1000, true, true);
+        baseContract.createStrategy(strategyKey, positionActions, 0, 0, true, false);
     }
 
     function createStrategyAndDeposit(

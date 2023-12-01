@@ -4,9 +4,19 @@ pragma solidity >=0.5.0;
 library Constants {
     uint256 public constant WAD = 1e18;
 
-    uint256 public constant MAX_FEE = 5e17;
-
     uint256 public constant MIN_INITIAL_SHARES = 1e3;
+
+    uint256 public constant MAX_MANAGEMENT_FEE = 5e17;
+
+    uint256 public constant MAX_PERFORMANCE_FEE = 5e17;
+
+    uint256 public constant MAX_PROTCOL_MANAGEMENT_FEE = 5e17;
+
+    uint256 public constant MAX_PROTCOL_PERFORMANCE_FEE = 5e17;
+
+    uint256 public constant MAX_AUTOMATION_FEE = 5e17;
+
+    uint256 public constant MAX_STRATEGY_CREATION_FEE = 5e17;
 
     uint128 public constant MAX_UINT128 = type(uint128).max;
 

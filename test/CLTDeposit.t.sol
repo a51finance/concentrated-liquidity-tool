@@ -33,7 +33,8 @@ contract CLTDepositTest is Test, Fixtures {
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
-        base.createStrategy(key, actions, 10e15, true, false);
+        base.createStrategy(key, actions, 0, 0, true, false);
+
         token0.approve(address(base), UINT256_MAX);
         token1.approve(address(base), UINT256_MAX);
     }
@@ -57,7 +58,7 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
-        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         assertEq(account.balance0, 0);
         assertEq(account.balance1, 0);
@@ -108,7 +109,7 @@ contract CLTDepositTest is Test, Fixtures {
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
-        base.createStrategy(key, actions, 10e15, true, false);
+        base.createStrategy(key, actions, 0, 0, true, false);
 
         bytes32 strategyID = getStrategyID(address(this), 2);
         uint256 depositAmount = 3 ether;
@@ -125,7 +126,7 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit{ value: depositAmount }(params);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
-        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         assertEq(account.totalShares, depositAmount);
         assertEq(liquidityShare, depositAmount);
@@ -187,7 +188,7 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShareUser1,,,,) = base.positions(2);
-        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         assertEq(account.totalShares, (depositAmount * 2) + 1);
         assertEq(liquidityShareUser1, depositAmount + 1);
@@ -213,7 +214,7 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
-        (,,,,,, account) = base.strategies(strategyID);
+        (,,,,,,,, account) = base.strategies(strategyID);
 
         assertEq(account.totalShares, (depositAmount * 3) + 2);
         assertEq(liquidityShareUser2, depositAmount + 1);
@@ -253,7 +254,7 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
-        (,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         console.log(liquidityShareUser2, account.totalShares, account.uniswapLiquidity);
         console.log(account.balance0, account.balance1);

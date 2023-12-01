@@ -6,6 +6,9 @@ import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { CLTBase } from "../../src/CLTBase.sol";
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
+import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandler.sol";
+
+import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
@@ -29,6 +32,7 @@ contract Fixtures is UniswapDeployer {
 
     CLTBase base;
     RebaseModule rebaseModule;
+    GovernanceFeeHandler feeHandler;
     ERC20Mock token0;
     ERC20Mock token1;
 
@@ -85,7 +89,18 @@ contract Fixtures is UniswapDeployer {
 
     function initBase() internal {
         weth = new WETH();
-        base = new CLTBase("ALP Base", "ALP", address(this), address(weth), 10e14, factory);
+
+        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+            lpAutomationFee: 0,
+            strategyCreationFee: 0,
+            protcolFeeOnManagement: 0,
+            protcolFeeOnPerformance: 0
+        });
+
+        feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+
+        base = new CLTBase("ALP Base", "ALP", address(this), address(weth), address(feeHandler), factory);
+
         rebaseModule = new RebaseModule(msg.sender, address(base));
 
         base.addModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModule), true);

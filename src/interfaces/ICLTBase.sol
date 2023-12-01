@@ -28,13 +28,6 @@ interface ICLTBase {
         bytes data;
     }
 
-    /// @param protocolFee Encoded name of whitelisted advance module
-    /// @param strategistFee input as encoded data for selected module
-    struct StrategyFees {
-        uint256 protocolFee;
-        uint256 strategistFee;
-    }
-
     /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
     /// @param exitStrategy Array of whitelistd ids for advance mode exit strategy selection
     /// @param rebaseStrategy Array of whitelistd ids for advance mode rebase strategy selection
@@ -76,6 +69,8 @@ interface ICLTBase {
         bytes actionStatus;
         bool isCompound;
         bool isPrivate;
+        uint256 managementFee;
+        uint256 performanceFee;
         Account account;
     }
 
@@ -129,13 +124,15 @@ interface ICLTBase {
     /// otherwise it will revert
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
     /// @param actions It is hash of all encoded data of whitelisted IDs which are being passed
-    /// @param strategistFee b
+    /// @param managementFee b
+    /// @param performanceFee b
     /// @param isCompound Bool weather the strategy should have compunding activated or not
     /// @param isPrivate Bool weather strategy is open for all users or not
     function createStrategy(
         StrategyKey calldata key,
         PositionActions calldata actions,
-        uint256 strategistFee,
+        uint256 managementFee,
+        uint256 performanceFee,
         bool isCompound,
         bool isPrivate
     )
@@ -149,6 +146,8 @@ interface ICLTBase {
     /// @return actionStatus It is a hash of a additional data of strategy for further required actions
     /// @return isCompound Bool weather the strategy has compunding activated or not
     /// @return isPrivate Bool weather strategy is open for all users or not
+    /// @return managementFee b
+    /// @return performanceFee b
     /// @return account Strategy values of balances and fee accounting details
     function strategies(bytes32 strategyId)
         external
@@ -159,6 +158,8 @@ interface ICLTBase {
             bytes memory actionStatus,
             bool isCompound,
             bool isPrivate,
+            uint256 managementFee,
+            uint256 performanceFee,
             Account memory account
         );
 
