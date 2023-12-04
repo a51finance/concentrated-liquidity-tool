@@ -95,6 +95,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         _hevm.prank(recepient);
         positionManager.mint(mintParams);
+
+        generateMultipleSwapsWithTime(recepient);
     }
 
     function executeSwap(
@@ -180,7 +182,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     function initStrategy(IUniswapV3Pool pool, int24 difference) public {
         (, int24 tick,,,,,) = pool.slot0();
 
-        int24 tickLower = floorTicks(tick, pool.tickSpacing());
+        int24 tickLower = floorTicks(tick - difference, pool.tickSpacing());
         int24 tickUpper = floorTicks(tick + difference, pool.tickSpacing());
 
         strategyKey.pool = pool;
