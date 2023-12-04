@@ -28,13 +28,6 @@ interface ICLTBase {
         bytes data;
     }
 
-    /// @param protocolFee Encoded name of whitelisted advance module
-    /// @param strategistFee input as encoded data for selected module
-    struct StrategyFees {
-        uint256 protocolFee;
-        uint256 strategistFee;
-    }
-
     /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
     /// @param exitStrategy Array of whitelistd ids for advance mode exit strategy selection
     /// @param rebaseStrategy Array of whitelistd ids for advance mode rebase strategy selection
@@ -46,6 +39,14 @@ interface ICLTBase {
         StrategyPayload[] liquidityDistribution;
     }
 
+    /// @param balance0 Amount of token0 left that are not added on AMM's position
+    /// @param balance1 Amount of token0 left that are not added on AMM's position
+    /// @param totalShares Total no of shares minted for this A51's strategy
+    /// @param uniswapLiquidity Total no of liquidity added on AMM for this strategy
+    /// @param feeGrowthInside0LastX128 The fee growth of token0 collected per unit of liquidity for
+    /// the entire life of the A51's position
+    /// @param feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
+    /// the entire life of the A51's position
     struct Account {
         uint256 balance0;
         uint256 balance1;
@@ -59,21 +60,17 @@ interface ICLTBase {
     /// @param actions Ids of all modes selected by the strategist encoded together in a single hash
     /// @param actionStatus The encoded data for each of the strategy to track any detail for futher actions
     /// @param isCompound Bool weather the strategy has compunding activated or not
-    /// @param balance0 Amount of token0 left that are not added on AMM's position
-    /// @param balance1 Amount of token0 left that are not added on AMM's position
-    /// @param totalShares Total no of shares minted for this A51's strategy
-    /// @param uniswapLiquidity Total no of liquidity added on AMM for this strategy
-    /// @param feeGrowthInside0LastX128 The fee growth of token0 collected per unit of liquidity for
-    /// the entire life of the A51's position
-    /// @param feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
-    /// the entire life of the A51's position
+    /// @param isPrivate Bool weather strategy is open for all users or not
+    /// @param account Strategy accounts of balances and fee account details
     struct StrategyData {
         StrategyKey key;
         address owner;
         bytes actions;
         bytes actionStatus;
         bool isCompound;
-        bool isPublic;
+        bool isPrivate;
+        uint256 managementFee;
+        uint256 performanceFee;
         Account account;
     }
 
@@ -127,14 +124,17 @@ interface ICLTBase {
     /// otherwise it will revert
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
     /// @param actions It is hash of all encoded data of whitelisted IDs which are being passed
-    /// @param strategistFee b
+    /// @param managementFee b
+    /// @param performanceFee b
     /// @param isCompound Bool weather the strategy should have compunding activated or not
+    /// @param isPrivate Bool weather strategy is open for all users or not
     function createStrategy(
         StrategyKey calldata key,
         PositionActions calldata actions,
-        uint256 strategistFee,
+        uint256 managementFee,
+        uint256 performanceFee,
         bool isCompound,
-        bool isPublic
+        bool isPrivate
     )
         external;
 
@@ -145,14 +145,10 @@ interface ICLTBase {
     /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @return actionStatus It is a hash of a additional data of strategy for further required actions
     /// @return isCompound Bool weather the strategy has compunding activated or not
-    // / @return balance0 Amount of token0 left that are not added on AMM's position
-    // / @return balance1 Amount of token0 left that are not added on AMM's position
-    // / @return totalShares Total no of shares minted for this A51's strategy
-    // / @return uniswapLiquidity Total no of liquidity added on AMM for this strategy
-    // / @return feeGrowthInside0LastX128 The fee growth of token0 collected per unit of liquidity for
-    // / the entire life of the A51's position
-    // / @return feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
-    // / the entire life of the A51's position
+    /// @return isPrivate Bool weather strategy is open for all users or not
+    /// @return managementFee b
+    /// @return performanceFee b
+    /// @return account Strategy values of balances and fee accounting details
     function strategies(bytes32 strategyId)
         external
         returns (
@@ -161,7 +157,9 @@ interface ICLTBase {
             bytes memory actions,
             bytes memory actionStatus,
             bool isCompound,
-            bool isPublic,
+            bool isPrivate,
+            uint256 managementFee,
+            uint256 performanceFee,
             Account memory account
         );
 

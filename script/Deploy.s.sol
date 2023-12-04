@@ -3,6 +3,8 @@ pragma solidity =0.8.15;
 
 import "forge-std/Script.sol";
 import "../src/CLTBase.sol";
+import "../src/GovernanceFeeHandler.sol";
+import "../src/interfaces/IGovernanceFeeHandler.sol";
 import "../src/modules/rebasing/RebaseModule.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
@@ -15,7 +17,16 @@ contract DeployALP is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, 1000000000000000, _factoryAddress);
+        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+            lpAutomationFee: 0,
+            strategyCreationFee: 0,
+            protcolFeeOnManagement: 0,
+            protcolFeeOnPerformance: 0
+        });
+
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+
+        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler), _factoryAddress);
 
         vm.stopBroadcast();
     }

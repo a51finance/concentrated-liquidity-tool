@@ -3,7 +3,9 @@ pragma solidity =0.8.15;
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IPreference } from "../src/interfaces/modules/IPreference.sol";
+import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 
+import { GovernanceFeeHandler } from "../src/GovernanceFeeHandler.sol";
 import { RebaseModuleMock } from "./mocks/RebaseModule.mock.sol";
 import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
 import { Vm } from "forge-std/Vm.sol";
@@ -75,8 +77,17 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
 
         positionManager.mint(mintParams);
 
+        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+            lpAutomationFee: 0,
+            strategyCreationFee: 0,
+            protcolFeeOnManagement: 0,
+            protcolFeeOnPerformance: 0
+        });
+
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+
         // initialize base contract
-        baseContract = new CLTBase("ALP Base", "ALP", owner, address(0), 1000000000000000, uniswapV3FactoryContract);
+        baseContract = new CLTBase("ALP Base", "ALP", owner, address(0), address(feeHandler), uniswapV3FactoryContract);
 
         // approve tokens
         token0.approve(address(baseContract), type(uint256).max);
@@ -113,11 +124,11 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
             keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModuleMockContract), true
         );
 
-        baseContract.createStrategy(strategyKey, positionActions, 1000, true, true);
+        baseContract.createStrategy(strategyKey, positionActions, 0, 0, true, false);
 
         // check if strategy is created
         strategyID = keccak256(abi.encode(address(this), 1));
-        (ICLTBase.StrategyKey memory key, address _owner,,, bool isCompound,,) = baseContract.strategies(strategyID);
+        (ICLTBase.StrategyKey memory key, address _owner,,, bool isCompound,,,,) = baseContract.strategies(strategyID);
         assertEq(key.tickLower, strategyKey.tickLower);
         assertEq(key.tickUpper, strategyKey.tickUpper);
         assertEq(address(this), _owner);
