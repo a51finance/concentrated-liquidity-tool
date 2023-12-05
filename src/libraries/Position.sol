@@ -53,8 +53,8 @@ library Position {
         public
     {
         if (liquidityAdded > 0) {
-            self.account.balance0 -= amount0Added;
-            self.account.balance1 -= amount1Added;
+            self.account.balance0 = amount0Added;
+            self.account.balance1 = amount1Added;
 
             self.account.uniswapLiquidity += liquidityAdded;
         }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import { Constants } from "./Constants.sol";
+
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { SafeCastExtended } from "./SafeCastExtended.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
@@ -76,7 +78,7 @@ library PoolActions {
         uint256 amount0Desired,
         uint256 amount1Desired
     )
-        external
+        public
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
@@ -125,10 +127,28 @@ library PoolActions {
         uint128 tokensOwed1,
         address recipient
     )
-        external
+        public
         returns (uint256 collect0, uint256 collect1)
     {
         (collect0, collect1) = key.pool.collect(recipient, key.tickLower, key.tickUpper, tokensOwed0, tokensOwed1);
+    }
+
+    function compoundFees(
+        ICLTBase.StrategyKey memory key,
+        uint256 balance0,
+        uint256 balance1
+    )
+        external
+        returns (uint128 liquidity, uint256 balance0AfterMint, uint256 balance1AfterMint)
+    {
+        (uint256 collect0, uint256 collect1) =
+            collectPendingFees(key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
+
+        (uint256 total0, uint256 total1) = (collect0 + balance0, collect1 + balance1);
+
+        (liquidity, collect0, collect1) = mintLiquidity(key, total0, total1);
+
+        (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
     }
 
     function getPositionLiquidity(ICLTBase.StrategyKey memory key)

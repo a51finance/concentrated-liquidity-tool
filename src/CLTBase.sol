@@ -2,9 +2,9 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
-import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 import { IPreference } from "./interfaces/modules/IPreference.sol";
 import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
+import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 import { ILiquidityDistribution } from "./interfaces/modules/ILiquidityDistribution.sol";
 
 import { CLTPayments } from "./base/CLTPayments.sol";
@@ -78,6 +78,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         bool isPrivate
     )
         external
+        payable
         override
     {
         _validateModes(actions, managementFee, performanceFee);
@@ -437,7 +438,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         if (strategy.isCompound) {
             /// should set these vars zero if not added : above values should not use
             (liquidityAdded, amount0Added, amount1Added) =
-                PoolActions.mintLiquidity(strategy.key, strategy.account.balance0, strategy.account.balance1);
+                PoolActions.compoundFees(strategy.key, strategy.account.balance0, strategy.account.balance1);
 
             strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
         }
@@ -499,6 +500,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         if (strategies[strategyId].isPrivate) {
             require(strategies[strategyId].owner == _msgSender());
         }
+    }
+
+    function updateFees(StrategyKey memory key) external {
+        key.pool.burn(key.tickLower, key.tickUpper, 0);
     }
 
     function _validateModes(PositionActions calldata actions, uint256 managementFee, uint256 performanceFee) private {
