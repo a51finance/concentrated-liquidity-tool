@@ -9,12 +9,17 @@ import "../src/modules/rebasing/RebaseModule.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 contract DeployALP is Script {
-    address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+    // address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
+    // address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+
+    // mainnet
+    address _owner = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
+    address _weth9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     IUniswapV3Factory _factoryAddress = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
         vm.startBroadcast(deployerPrivateKey);
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
@@ -33,11 +38,11 @@ contract DeployALP is Script {
 }
 
 contract DeployRebaseModule is Script {
-    address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    address _baseContract = 0xC86DC3ebd0A20Bc4EE1105ec336408D6F168FE3F;
+    address _owner = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
+    address _baseContract = 0xfF8A6a263cee0E19C8b8E814a7f6Efff5C3853f0;
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
         vm.startBroadcast(deployerPrivateKey);
 
         RebaseModule rebaseModule = new RebaseModule(_owner,_baseContract);

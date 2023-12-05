@@ -5,8 +5,6 @@ import { RebaseFixtures } from "./utils/RebaseModuleFixtures.sol";
 import { CLTBase } from "../src/CLTBase.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
-import { IPreference } from "../src/interfaces/modules/IPreference.sol";
-import { console } from "forge-std/console.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
 

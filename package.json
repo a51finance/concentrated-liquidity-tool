@@ -24,7 +24,9 @@
     "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
     "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",
     "deploy-alp-goerli": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://rpc.ankr.com/eth_goerli --broadcast --verify -vvvv",
-    "deploy-rebaseModule-goerli": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://rpc.ankr.com/eth_goerli --broadcast --verify -vvvv"
+    "deploy-rebaseModule-goerli": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://rpc.ankr.com/eth_goerli --broadcast --verify -vvvv",
+    "deploy-alp-fork": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://rpc.tenderly.co/fork/a165d674-1ca8-42be-a8d6-98ddd17f36af --broadcast --verify -vvvv",
+    "deploy-rebaseModule-fork": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://rpc.tenderly.co/fork/a165d674-1ca8-42be-a8d6-98ddd17f36af --broadcast --verify -vvvv"
   },
   "main": "contract.js",
   "repository": "https://github.com/a51finance/concentrated-liquidity-tool.git",
