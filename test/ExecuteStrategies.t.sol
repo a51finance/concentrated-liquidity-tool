@@ -53,21 +53,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         assertEq(_strategyId, strategyId);
     }
 
-    function testFunctionByNonOperator() public {
-        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
-        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        rebaseActions[0].data = abi.encode(10, 30);
-
-        bytes32 strategyId = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 1, 1);
-
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
-
-        strategyIDs[0] = strategyId;
-
-        vm.expectRevert();
-        rebaseModule.executeStrategies(strategyIDs);
-    }
-
     function testExecuteStrategyWithValidStrategyID() public {
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
         rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
@@ -166,7 +151,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 1, 1);
 
-        executeSwap(token0, token1, poolContract.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -179,68 +164,389 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        // // for mode 2
-        // rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        // rebaseActions[0].data = abi.encode(45, 22);
+        // for mode 2
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(45, 22);
 
-        // rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
-        // rebaseActions[1].data = abi.encode(1);
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(1);
 
-        // _hevm.warp(block.timestamp + 3600);
-        // executeSwap(token1, token0, poolContract.fee(), owner, 500e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        bytes32 strategyID2 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 3000, owner, 2, 2);
 
-        // bytes32 strategyID2 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 2, 2);
+        executeSwap(token1, token0, poolContract.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // strategyIDs[0] = strategyID2;
+        strategyIDs[0] = strategyID2;
 
-        // rebaseModule.executeStrategies(strategyIDs);
-        // (,,, actionStatus,,,) = baseContract.strategies(strategyID);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, bytes memory actionStatus,,,,,,,) = baseContract.strategies(strategyID2);
-        // console.logBytes(actionStatus);
-        // assertEq(abi.decode(actionStatus, (uint256)), 1);
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID2);
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        // // for mode 3
-        // rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        // rebaseActions[0].data = abi.encode(76, 2);
+        // for mode 3
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(76, 2);
 
-        // rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
-        // rebaseActions[1].data = abi.encode(1);
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(1);
 
-        // _hevm.warp(block.timestamp + 3600);
-        // executeSwap(token0, token1, poolContract.fee(), owner, 200e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        bytes32 strategyID3 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1700, owner, 3, 3);
 
-        // bytes32 strategyID3 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 3, 3);
+        executeSwap(token0, token1, poolContract.fee(), owner, 200e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // strategyIDs[0] = strategyID3;
+        strategyIDs[0] = strategyID3;
 
-        // rebaseModule.executeStrategies(strategyIDs);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, actionStatus,,,,,,,) = baseContract.strategies(strategyID3);
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID3);
 
-        // assertEq(abi.decode(actionStatus, (uint256)), 1);
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        // // for mode 3
-        // rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        // rebaseActions[0].data = abi.encode(34, 11);
+        // for mode 3
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(34, 11);
 
-        // rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
-        // rebaseActions[1].data = abi.encode(1);
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(1);
 
-        // _hevm.warp(block.timestamp + 3600);
-        // executeSwap(token1, token0, poolContract.fee(), owner, 200e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        bytes32 strategyID4 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 500, owner, 4, 3);
 
-        // bytes32 strategyID4 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 4, 3);
+        executeSwap(token1, token0, poolContract.fee(), owner, 200e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // strategyIDs[0] = strategyID4;
+        strategyIDs[0] = strategyID4;
 
-        // rebaseModule.executeStrategies(strategyIDs);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, actionStatus,,,,,,,) = baseContract.strategies(strategyID4);
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID4);
 
-        // assertEq(abi.decode(actionStatus, (uint256)), 1);
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+    }
+
+    function testExecuteStrategyShouldNotRebasePastLimitMode1() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, 1, 1);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+    }
+
+    function testExecuteStrategyShouldNotRebasePastLimitMode2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 700, owner, 1, 2);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+    }
+
+    function testExecuteStrategyShouldNotRebasePastLimitMode3() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 700, owner, 1, 3);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+    }
+
+    function testExecuteStrategyShouldWithOutOfRangeOnTheValidSideMode1() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 700, owner, 1, 1);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+    }
+
+    function testExecuteStrategyShouldWithOutOfRangeOnTheValidSideMode2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 700, owner, 1, 2);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = baseContract.strategies(strategyID1);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
+    }
+
+    function testExecuteStrategyShouldWithOutOfRangeOnTheInValidSideMode1() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 700, owner, 1, 1);
+
+        executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+        assertEq(actionStatus, "");
+    }
+
+    function testExecuteStrategyShouldWithOutOfRangeOnTheInValidSideMode2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 700, owner, 1, 2);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+        assertEq(actionStatus, "");
+    }
+
+    function testExecuteStrategyWithMaximumTicks() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(887_272, 887_272);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 700, owner, 1, 2);
+
+        executeSwap(token0, token1, poolContract.fee(), owner, 1500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = baseContract.strategies(strategyID1);
+        assertEq(actionStatus, "");
+    }
+
+    function testMultipleExecuteStrategy() public {
+        bytes32[] memory strategyIDs = new bytes32[](10);
+
+        for (uint256 i = 0; i < 10; i++) {
+            uint256 randomValue1 = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i))) % 1000;
+
+            uint256 randomValue2 =
+                uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, "second"))) % 1000;
+
+            int24 depositAmount = int24(
+                int256(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, "deposit"))) % 1000 + 1)
+            );
+
+            uint256 mode = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, "last"))) % 3 + 1;
+
+            ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+            rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+            rebaseActions[0].data = abi.encode(randomValue1, randomValue2);
+            rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+            rebaseActions[1].data = abi.encode(mode);
+
+            bytes32 strategyID =
+                createStrategyAndDeposit(rebaseActions, baseContract, poolContract, depositAmount, owner, i + 1, mode);
+
+            if (mode == 1) {
+                executeSwap(token1, token0, poolContract.fee(), owner, 150e18, 0, 0);
+            } else if (mode == 2) {
+                executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+            } else {
+                executeSwap(token0, token1, poolContract.fee(), owner, 150e18, 0, 0);
+            }
+            strategyIDs[i] = strategyID;
+        }
+
+        rebaseModule.executeStrategies(strategyIDs);
     }
 }

@@ -34,7 +34,7 @@ contract DeployALP is Script {
 
 contract DeployRebaseModule is Script {
     address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    address _baseContract = 0x08c868F6424269B73287fc82109A4c631aae6407;
+    address _baseContract = 0xC86DC3ebd0A20Bc4EE1105ec336408D6F168FE3F;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
