@@ -116,6 +116,16 @@ interface ICLTBase {
     /// @param isCompound Bool weather the strategy has compunding activated or not
     event StrategyCreated(bytes32 indexed strategyId, StrategyKey indexed key, bytes positionActions, bool isCompound);
 
+    /// @notice Emitted when strategy is shifted
+    /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
+    /// @param newKey s
+    /// @param isLiquidityMinted Bool
+    /// @param zeroForOne Bool
+    /// @param swapAmount Amount
+    event ShiftLiquidity(
+        bytes32 indexed strategyId, StrategyKey newKey, bool isLiquidityMinted, bool zeroForOne, int256 swapAmount
+    );
+
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized
     /// List of whitelisted IDs could be fetched by the modules function for each basic & advance mode.
@@ -136,7 +146,8 @@ interface ICLTBase {
         bool isCompound,
         bool isPrivate
     )
-        external;
+        external
+        payable;
 
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID

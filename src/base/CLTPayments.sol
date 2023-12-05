@@ -20,6 +20,8 @@ abstract contract CLTPayments is ICLTPayments {
 
     receive() external payable { }
 
+    fallback() external payable { }
+
     function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
         MintCallbackData memory decodedData = abi.decode(data, (MintCallbackData));
 
