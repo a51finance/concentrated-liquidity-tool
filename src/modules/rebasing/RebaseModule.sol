@@ -5,13 +5,13 @@ import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
-import { IPreference } from "../../interfaces/modules/IPreference.sol";
+import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
+contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     ICLTBase _cltBase;
 
     /// @notice Threshold for liquidity consideration
@@ -76,9 +76,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
+        if (strategyOwner == address(0)) revert StrategyIdDonotExist(executeParams.strategyID);
         if (strategyOwner != msg.sender) revert InvalidCaller();
 
-        key.pool = executeParams.pool;
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
 
@@ -338,7 +338,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IPreference {
         pure
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
-        // need to check alot of scenarios for this logic
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
     }

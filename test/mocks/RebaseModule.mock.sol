@@ -5,7 +5,7 @@ pragma solidity =0.8.15;
 import { console } from "forge-std/console.sol";
 import "../../src/base/ModeTicksCalculation.sol";
 import "../../src/base/AccessControl.sol";
-import "../../src/interfaces/modules/IPreference.sol";
+import "../../src/interfaces/modules/IRebaseStrategy.sol";
 import "../../src/interfaces/ICLTBase.sol";
 import "forge-std/console.sol";
 
@@ -13,7 +13,7 @@ import "forge-std/console.sol";
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
+contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     ICLTBase _cltBase;
 
     /// @notice Threshold for liquidity consideration
@@ -78,9 +78,9 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IPreference {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
+        if (strategyOwner == address(0)) revert StrategyIdDonotExist(executeParams.strategyID);
         if (strategyOwner != msg.sender) revert InvalidCaller();
 
-        key.pool = executeParams.pool;
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
 
