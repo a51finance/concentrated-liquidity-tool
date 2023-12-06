@@ -2,10 +2,10 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
-import { IPreference } from "./interfaces/modules/IPreference.sol";
+import { IRebaseStrategy } from "./interfaces/modules/IRebaseStrategy.sol";
 import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
-import { ILiquidityDistribution } from "./interfaces/modules/ILiquidityDistribution.sol";
+import { ILiquidityDistributionStrategy } from "./interfaces/modules/ILiquidityDistributionStrategy.sol";
 
 import { CLTPayments } from "./base/CLTPayments.sol";
 import { AccessControl } from "./base/AccessControl.sol";
@@ -109,7 +109,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
 
-        emit StrategyCreated(strategyID, key, positionActionsHash, isCompound);
+        emit StrategyCreated(strategyID, key.pool,key.tickLower,key.tickUpper, positionActionsHash, isCompound);
     }
 
     /// @inheritdoc ICLTBase
@@ -474,11 +474,11 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         for (uint256 i = 0; i < array.length; i++) {
             if (mode == Constants.REBASE_STRATEGY) {
-                IPreference(vault).checkInputData(array[i]);
+                IRebaseStrategy(vault).checkInputData(array[i]);
             } else if (mode == Constants.EXIT_STRATEGY) {
                 IExitStrategy(vault).checkInputData(array[i]);
             } else if (mode == Constants.LIQUIDITY_DISTRIBUTION) {
-                ILiquidityDistribution(vault).checkInputData(array[i]);
+                ILiquidityDistributionStrategy(vault).checkInputData(array[i]);
             } else {
                 revert InvalidModule(mode);
             }
