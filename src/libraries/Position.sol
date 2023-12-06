@@ -10,15 +10,6 @@ import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 /// @notice Positions represent an owner in A51 liquidity
 library Position {
-    struct Data {
-        bytes32 strategyId;
-        uint256 liquidityShare;
-        uint256 feeGrowthInside0LastX128;
-        uint256 feeGrowthInside1LastX128;
-        uint128 tokensOwed0;
-        uint128 tokensOwed1;
-    }
-
     function update(
         ICLTBase.StrategyData storage self,
         uint128 liquidityAdded,
@@ -100,6 +91,9 @@ library Position {
 
         (uint256 fees0, uint256 fees1) =
             PoolActions.collectPendingFees(self.key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
+
+        self.account.fee0 += fees0;
+        self.account.fee1 += fees1;
 
         self.account.feeGrowthInside0LastX128 +=
             FullMath.mulDiv(fees0, FixedPoint128.Q128, self.account.uniswapLiquidity);

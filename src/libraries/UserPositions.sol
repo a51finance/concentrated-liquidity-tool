@@ -12,8 +12,17 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 library UserPositions {
+    struct Data {
+        bytes32 strategyId;
+        uint256 liquidityShare;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
+    }
+
     function updateUserPosition(
-        Position.Data storage self,
+        Data storage self,
         uint256 feeGrowthInside0LastX128,
         uint256 feeGrowthInside1LastX128
     )
@@ -36,15 +45,17 @@ library UserPositions {
     }
 
     function claimPositionAmounts(
-        Position.Data storage self,
-        uint128 tokensOwed0,
-        uint128 tokensOwed1,
-        uint256 feeGrowthInside0LastX128,
-        uint256 feeGrowthInside1LastX128
+        Data storage self,
+        ICLTBase.StrategyData storage strategy
     )
         public
         returns (uint128 total0, uint128 total1)
     {
+        (uint128 tokensOwed0, uint128 tokensOwed1) = (self.tokensOwed0, self.tokensOwed1);
+
+        (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
+            (strategy.account.feeGrowthInside0LastX128, strategy.account.feeGrowthInside1LastX128);
+
         total0 = tokensOwed0
             + uint128(
                 FullMath.mulDiv(
@@ -64,5 +75,8 @@ library UserPositions {
 
         self.tokensOwed0 = 0;
         self.tokensOwed1 = 0;
+
+        strategy.account.fee0 -= total0;
+        strategy.account.fee1 -= total1;
     }
 }

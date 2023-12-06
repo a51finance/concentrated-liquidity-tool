@@ -30,7 +30,7 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 /// Holds the state for all strategies and it's users
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     using Position for StrategyData;
-    using UserPositions for Position.Data;
+    using UserPositions for UserPositions.Data;
 
     uint256 private _sharesId = 1;
 
@@ -44,7 +44,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     mapping(bytes32 => StrategyData) public override strategies;
 
     /// @inheritdoc ICLTBase
-    mapping(uint256 => Position.Data) public override positions;
+    mapping(uint256 => UserPositions.Data) public override positions;
 
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
@@ -96,6 +96,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             managementFee: managementFee,
             performanceFee: performanceFee,
             account: Account({
+                fee0: 0,
+                fee1: 0,
                 balance0: 0,
                 balance1: 0,
                 totalShares: 0,
@@ -132,7 +134,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         _mint(params.recipient, (tokenId = _sharesId++));
 
-        positions[tokenId] = Position.Data({
+        positions[tokenId] = UserPositions.Data({
             strategyId: params.strategyId,
             liquidityShare: share,
             feeGrowthInside0LastX128: feeGrowthInside0LastX128,
@@ -150,7 +152,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         override
         returns (uint256 share, uint256 amount0, uint256 amount1)
     {
-        Position.Data storage position = positions[params.tokenId];
+        UserPositions.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
         _authorizationOfStrategy(position.strategyId);
@@ -177,7 +179,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         isAuthorizedForToken(params.tokenId)
         returns (uint256 amount0, uint256 amount1)
     {
-        Position.Data storage position = positions[params.tokenId];
+        UserPositions.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
         if (position.liquidityShare == 0) revert NoLiquidity();
@@ -199,6 +201,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
                 : params.liquidity,
             strategy.isCompound
         );
+
+        if (!strategy.isCompound) (fees0, fees1) = position.claimPositionAmounts(strategy);
 
         // deduct any fees if required for strategist
         IGovernanceFeeHandler.ProtocolFeeRegistry memory protocolFee;
@@ -233,25 +237,24 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         amount1 -= balance1;
 
         if (!strategy.isCompound) {
-            (uint256 claimable0, uint256 claimable1) = position.claimPositionAmounts(
-                position.tokensOwed0,
-                position.tokensOwed1,
-                strategy.account.feeGrowthInside0LastX128,
-                strategy.account.feeGrowthInside1LastX128
-            );
+            amount0 += fees0;
+            amount1 += fees1;
+        } else {
+            balance0 = strategy.account.balance0 + fees0;
+            balance1 = strategy.account.balance1 + fees1;
 
-            amount0 += claimable0;
-            amount1 += claimable1;
+            uint256 userShare0 = FullMath.mulDiv(balance0, params.liquidity, strategy.account.totalShares);
+            uint256 userShare1 = FullMath.mulDiv(balance1, params.liquidity, strategy.account.totalShares);
+
+            amount0 += userShare0;
+            amount1 += userShare1;
+
+            balance0 -= userShare0;
+            balance1 -= userShare1;
+
+            strategy.account.balance0 = balance0;
+            strategy.account.balance1 = balance1;
         }
-
-        balance0 = strategy.account.balance0 + fees0;
-        balance1 = strategy.account.balance1 + fees1;
-
-        uint256 userShare0 = FullMath.mulDiv(balance0, params.liquidity, strategy.account.totalShares);
-        uint256 userShare1 = FullMath.mulDiv(balance1, params.liquidity, strategy.account.totalShares);
-
-        amount0 += userShare0;
-        amount1 += userShare1;
 
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
@@ -261,8 +264,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
         }
 
-        balance0 -= userShare0;
-        balance1 -= userShare1;
         position.liquidityShare -= params.liquidity;
 
         emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
@@ -270,7 +271,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     /// @inheritdoc ICLTBase
     function claimPositionFee(ClaimFeesParams calldata params) external override isAuthorizedForToken(params.tokenId) {
-        Position.Data storage position = positions[params.tokenId];
+        UserPositions.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
         if (strategy.isCompound) revert onlyNonCompounders();
@@ -278,13 +279,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         strategy.updatePositionFee();
 
-        (uint128 tokensOwed0, uint128 tokensOwed1) = (position.tokensOwed0, position.tokensOwed1);
-
-        (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
-            (strategy.account.feeGrowthInside0LastX128, strategy.account.feeGrowthInside1LastX128);
-
-        (tokensOwed0, tokensOwed1) =
-            position.claimPositionAmounts(tokensOwed0, tokensOwed1, feeGrowthInside0LastX128, feeGrowthInside1LastX128);
+        (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimPositionAmounts(strategy);
 
         if (tokensOwed0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), tokensOwed0);

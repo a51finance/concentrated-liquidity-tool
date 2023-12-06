@@ -48,6 +48,8 @@ interface ICLTBase {
     /// @param feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
     /// the entire life of the A51's position
     struct Account {
+        uint256 fee0;
+        uint256 fee1;
         uint256 balance0;
         uint256 balance1;
         uint256 totalShares;

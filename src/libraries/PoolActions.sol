@@ -64,10 +64,12 @@ library PoolActions {
 
         (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
 
-        // collect user liquidity + unclaimed fee both now
+        // collect user liquidity + unclaimed fee both now in compounding
         if (amount0 > 0 || amount1 > 0) {
             (uint256 collect0, uint256 collect1) =
-                key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
+            // bug for non compound here because fee will return zero that is
+            // already claimed thus strategist can't deduct fee [FIXED needs testing]
+             key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
 
             (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
         }
