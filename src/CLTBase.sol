@@ -109,7 +109,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
 
-        emit StrategyCreated(strategyID, key.pool,key.tickLower,key.tickUpper, positionActionsHash, isCompound);
+        emit StrategyCreated(strategyID, key, positionActionsHash, isCompound);
     }
 
     /// @inheritdoc ICLTBase
