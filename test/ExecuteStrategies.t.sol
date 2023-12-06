@@ -28,7 +28,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
         rebaseActions[0].data = abi.encode(10, 30);
 
-        positionActions.mode = positionActions.mode;
+        positionActions.mode = 2;
         positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
         positionActions.rebaseStrategy = rebaseActions;
         positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);

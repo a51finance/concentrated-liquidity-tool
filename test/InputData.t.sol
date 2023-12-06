@@ -2,7 +2,7 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
-import { IPreference } from "../src/interfaces/modules/IPreference.sol";
+import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 
 import { GovernanceFeeHandler } from "../src/GovernanceFeeHandler.sol";
