@@ -7,6 +7,8 @@ import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { CLTBase } from "../../src/CLTBase.sol";
+import { CLTModules } from "../../src/CLTModules.sol";
+
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
 import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandler.sol";
 
@@ -30,6 +32,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
     ICLTBase.StrategyKey strategyKey;
     RebaseModuleMock rebaseModule;
+    CLTModules cltModules;
     SwapRouter router;
     ERC20Mock token0;
     ERC20Mock token1;
@@ -152,9 +155,11 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             protcolFeeOnPerformance: 0
         });
 
+        cltModules = new CLTModules(address(this));
+
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
-        base = new CLTBase("ALP Base", "ALP", recepient, address(0), address(feeHandler), factory);
+        base = new CLTBase("ALP Base", "ALP", recepient, address(0), address(feeHandler), address(cltModules), factory);
 
         _hevm.prank(recepient);
         token0.approve(address(base), type(uint256).max);
@@ -170,11 +175,13 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         base.toggleOperator(address(rebaseModule));
 
         _hevm.prank(recepient);
-        base.addModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModule), true);
+        cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModule));
         _hevm.prank(recepient);
-        base.addModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModule), true);
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
         _hevm.prank(recepient);
-        base.addModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModule), true);
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
+        _hevm.prank(recepient);
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"));
     }
 
     function initStrategy(IUniswapV3Pool pool, int24 difference) public {
