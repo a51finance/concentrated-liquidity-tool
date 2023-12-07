@@ -2,10 +2,8 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
-import { IPreference } from "./interfaces/modules/IPreference.sol";
-import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
+import { ICLTModules } from "./interfaces/ICLTModules.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
-import { ILiquidityDistribution } from "./interfaces/modules/ILiquidityDistribution.sol";
 
 import { CLTPayments } from "./base/CLTPayments.sol";
 import { AccessControl } from "./base/AccessControl.sol";
@@ -36,17 +34,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     uint256 private _strategyId = 1;
 
-    IGovernanceFeeHandler public immutable feeHandler;
+    address public immutable cltModules;
 
-    mapping(bytes32 => address) public modeVaults;
+    address public immutable feeHandler;
 
     /// @inheritdoc ICLTBase
     mapping(bytes32 => StrategyData) public override strategies;
 
     /// @inheritdoc ICLTBase
     mapping(uint256 => UserPositions.Data) public override positions;
-
-    mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         _authorization(tokenId);
@@ -59,13 +55,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         address _owner,
         address _weth9,
         address _feeHandler,
+        address _cltModules,
         IUniswapV3Factory _factory
     )
         AccessControl(_owner)
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
     {
-        feeHandler = IGovernanceFeeHandler(_feeHandler);
+        cltModules = _cltModules;
+        feeHandler = _feeHandler;
     }
 
     /// @inheritdoc ICLTBase
@@ -111,7 +109,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
 
-        emit StrategyCreated(strategyID, key, positionActionsHash, isCompound);
+        emit StrategyCreated(strategyID);
     }
 
     /// @inheritdoc ICLTBase
@@ -340,6 +338,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         strategy.updateStrategy(
             params.key, params.moduleStatus, liquidity, amount0 - amount0Added, amount1 - amount1Added
         );
+
+        emit LiquidityShifted(params.strategyId, params.shouldMint, params.zeroForOne, params.swapAmount);
     }
 
     function updateStrategyBase(
@@ -357,23 +357,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         if (strategy.owner != _msgSender()) revert InvalidCaller();
 
         strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
-    }
 
-    /// @notice Whitlist new ids for advance strategy modes & updates the address of mode's vault
-    /// @dev New id can only be added for only rebase, exit & liquidity advance modes
-    /// @param moduleKey Hash of the module for which is need to be updated
-    /// @param modeVault New address of mode's vault
-    /// @param newModule Array of new mode ids to be added against advance modes
-    function addModule(bytes32 moduleKey, bytes32 newModule, address modeVault, bool isActivated) external onlyOwner {
-        if (
-            moduleKey == Constants.MODE || moduleKey == Constants.REBASE_STRATEGY
-                || moduleKey == Constants.EXIT_STRATEGY || moduleKey == Constants.LIQUIDITY_DISTRIBUTION
-        ) {
-            modeVaults[moduleKey] = modeVault;
-            modulesActions[moduleKey][newModule] = isActivated;
-        } else {
-            revert InvalidModule(moduleKey);
-        }
+        emit StrategyUpdated(strategyId);
     }
 
     function tokenURI(uint256 id) public view override returns (string memory) { }
@@ -448,6 +433,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     function getGovernanceFee(bool isPrivate)
         private
+        view
         returns (
             uint256 lpAutomationFee,
             uint256 strategyCreationFee,
@@ -455,36 +441,11 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             uint256 protcolFeeOnPerformance
         )
     {
-        if (isPrivate) {
-            (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) =
-                feeHandler.privateStrategyFeeRegistry();
-        } else {
-            (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) =
-                feeHandler.publicStrategyFeeRegistry();
-        }
+        return IGovernanceFeeHandler(feeHandler).getGovernanceFee(isPrivate);
     }
 
-    /// @notice Validates the strategy encoded input data
-    function _validateInputData(bytes32 mode, StrategyPayload[] memory array) private {
-        address vault = modeVaults[mode];
-
-        for (uint256 i = 0; i < array.length; i++) {
-            if (mode == Constants.REBASE_STRATEGY) {
-                IPreference(vault).checkInputData(array[i]);
-            } else if (mode == Constants.EXIT_STRATEGY) {
-                IExitStrategy(vault).checkInputData(array[i]);
-            } else if (mode == Constants.LIQUIDITY_DISTRIBUTION) {
-                ILiquidityDistribution(vault).checkInputData(array[i]);
-            } else {
-                revert InvalidModule(mode);
-            }
-        }
-    }
-
-    function _checkModeIds(bytes32 mode, StrategyPayload[] memory array) private view {
-        for (uint256 i = 0; i < array.length; i++) {
-            if (!modulesActions[mode][array[i].actionName]) revert InvalidModule(array[i].actionName);
-        }
+    function _validateModes(PositionActions calldata actions, uint256 managementFee, uint256 performanceFee) private {
+        ICLTModules(cltModules).validateModes(actions, managementFee, performanceFee);
     }
 
     function _authorization(uint256 tokenID) private view {
@@ -499,28 +460,5 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     function updateFees(StrategyKey memory key) external {
         key.pool.burn(key.tickLower, key.tickUpper, 0);
-    }
-
-    function _validateModes(PositionActions calldata actions, uint256 managementFee, uint256 performanceFee) private {
-        if (managementFee > Constants.MAX_MANAGEMENT_FEE) revert IGovernanceFeeHandler.ManagementFeeLimitExceed();
-
-        if (performanceFee > Constants.MAX_PERFORMANCE_FEE) revert IGovernanceFeeHandler.PerformanceFeeLimitExceed();
-
-        if (actions.mode < 0 && actions.mode > 4) revert InvalidInput();
-
-        if (actions.exitStrategy.length > 0) {
-            _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
-            _validateInputData(Constants.EXIT_STRATEGY, actions.exitStrategy);
-        }
-
-        if (actions.rebaseStrategy.length > 0) {
-            _checkModeIds(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
-            _validateInputData(Constants.REBASE_STRATEGY, actions.rebaseStrategy);
-        }
-
-        if (actions.liquidityDistribution.length > 0) {
-            _checkModeIds(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-            _validateInputData(Constants.LIQUIDITY_DISTRIBUTION, actions.liquidityDistribution);
-        }
     }
 }
