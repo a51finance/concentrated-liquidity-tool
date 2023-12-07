@@ -14,17 +14,9 @@ interface IGovernanceFeeHandler {
         uint256 protcolFeeOnPerformance;
     }
 
-    function publicStrategyFeeRegistry()
+    function getGovernanceFee(bool isPrivate)
         external
-        returns (
-            uint256 lpAutomationFee,
-            uint256 strategyCreationFee,
-            uint256 protcolFeeOnManagement,
-            uint256 protcolFeeOnPerformance
-        );
-
-    function privateStrategyFeeRegistry()
-        external
+        view
         returns (
             uint256 lpAutomationFee,
             uint256 strategyCreationFee,

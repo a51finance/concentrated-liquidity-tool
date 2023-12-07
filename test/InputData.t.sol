@@ -7,6 +7,7 @@ import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.s
 
 import { GovernanceFeeHandler } from "../src/GovernanceFeeHandler.sol";
 import { RebaseModuleMock } from "./mocks/RebaseModule.mock.sol";
+import { CLTModules } from "../src/CLTModules.sol";
 import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -31,6 +32,7 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
     IUniswapV3Pool poolContract;
     INonfungiblePositionManager.MintParams mintParams;
     CLTBase baseContract;
+    CLTModules cltModules;
     SwapRouter router;
     ERC20Mock token0;
     ERC20Mock token1;
@@ -84,10 +86,13 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
             protcolFeeOnPerformance: 0
         });
 
+        cltModules = new CLTModules(address(this));
+
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
         // initialize base contract
-        baseContract = new CLTBase("ALP Base", "ALP", owner, address(0), address(feeHandler), uniswapV3FactoryContract);
+        baseContract =
+        new CLTBase("ALP Base", "ALP", owner, address(0), address(feeHandler), address(cltModules), uniswapV3FactoryContract);
 
         // approve tokens
         token0.approve(address(baseContract), type(uint256).max);
@@ -116,13 +121,9 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         _hevm.prank(owner);
         baseContract.toggleOperator(address(this));
 
-        baseContract.addModule(
-            keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModuleMockContract), true
-        );
-
-        baseContract.addModule(
-            keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModuleMockContract), true
-        );
+        cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModuleMockContract));
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
 
         baseContract.createStrategy(strategyKey, positionActions, 0, 0, true, false);
 

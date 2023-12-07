@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
+import { Vm } from "forge-std/Vm.sol";
+
 import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
-import { CLTBase } from "../../src/CLTBase.sol";
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
 import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandler.sol";
 
+import { CLTBase } from "../../src/CLTBase.sol";
+import { CLTModules } from "../../src/CLTModules.sol";
 import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
@@ -18,6 +21,7 @@ import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
@@ -32,6 +36,7 @@ contract Fixtures is UniswapDeployer {
 
     CLTBase base;
     RebaseModule rebaseModule;
+    CLTModules cltModules;
     GovernanceFeeHandler feeHandler;
     ERC20Mock token0;
     ERC20Mock token1;
@@ -90,6 +95,8 @@ contract Fixtures is UniswapDeployer {
     function initBase() internal {
         weth = new WETH();
 
+        rebaseModule = new RebaseModule(msg.sender, address(base));
+
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
             strategyCreationFee: 0,
@@ -97,15 +104,16 @@ contract Fixtures is UniswapDeployer {
             protcolFeeOnPerformance: 0
         });
 
+        cltModules = new CLTModules(address(this));
+
         feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
-        base = new CLTBase("ALP Base", "ALP", address(this), address(weth), address(feeHandler), factory);
+        base =
+        new CLTBase("ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory);
 
-        rebaseModule = new RebaseModule(msg.sender, address(base));
-
-        base.addModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"), address(rebaseModule), true);
-        base.addModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"), address(rebaseModule), true);
-        base.addModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"), address(rebaseModule), true);
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
+        cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModule));
     }
 
     function deployFreshState() internal {
@@ -121,6 +129,24 @@ contract Fixtures is UniswapDeployer {
 
     function getStrategyID(address user, uint256 strategyCount) internal pure returns (bytes32 strategyID) {
         strategyID = keccak256(abi.encode(user, strategyCount));
+    }
+
+    function getStrategyReserves(
+        ICLTBase.StrategyKey memory keyInput,
+        uint128 liquidityDesired
+    )
+        internal
+        view
+        returns (uint256 reserves0, uint256 reserves1)
+    {
+        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.slot0();
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(keyInput.tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(keyInput.tickUpper);
+
+        if (liquidityDesired > 0) {
+            (reserves0, reserves1) =
+                LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, liquidityDesired);
+        }
     }
 
     function createStrategyActions(

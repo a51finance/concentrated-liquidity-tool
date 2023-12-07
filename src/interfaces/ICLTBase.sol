@@ -10,7 +10,6 @@ interface ICLTBase {
     error InvalidCaller();
     error onlyNonCompounders();
     error TransactionTooAged();
-    error InvalidModule(bytes32 module);
 
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
@@ -48,6 +47,8 @@ interface ICLTBase {
     /// @param feeGrowthInside1LastX128 The fee growth of token1 collected per unit of liquidity for
     /// the entire life of the A51's position
     struct Account {
+        uint256 fee0;
+        uint256 fee1;
         uint256 balance0;
         uint256 balance1;
         uint256 totalShares;
@@ -73,14 +74,6 @@ interface ICLTBase {
         uint256 performanceFee;
         Account account;
     }
-
-    /// @notice Explain to an end user what this does
-    /// @param value a parameter just like in doxygen (must be followed by parameter name)
-    event ProtocolFeeStrategyUpdated(uint256 value);
-
-    /// @notice Explain to an end user what this does
-    /// @param value a parameter just like in doxygen (must be followed by parameter name)
-    event ProtocolFeeOverallUpdated(uint256 value);
 
     /// @notice Emitted when tokens are collected for a position NFT
     /// @param tokenId The ID of the token for which underlying tokens were collected
@@ -111,20 +104,16 @@ interface ICLTBase {
 
     /// @notice Emitted when strategy is created
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
-    /// @param key A51 position's key details associated with this strategy
-    /// @param positionActions It is a hash of a preimage composed by all modes IDs selected by the strategist
-    /// @param isCompound Bool weather the strategy has compunding activated or not
-    event StrategyCreated(bytes32 indexed strategyId, StrategyKey indexed key, bytes positionActions, bool isCompound);
+    event StrategyCreated(bytes32 indexed strategyId);
 
     /// @notice Emitted when strategy is shifted
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
-    /// @param newKey s
     /// @param isLiquidityMinted Bool
     /// @param zeroForOne Bool
     /// @param swapAmount Amount
-    event ShiftLiquidity(
-        bytes32 indexed strategyId, StrategyKey newKey, bool isLiquidityMinted, bool zeroForOne, int256 swapAmount
-    );
+    event LiquidityShifted(bytes32 indexed strategyId, bool isLiquidityMinted, bool zeroForOne, int256 swapAmount);
+
+    event StrategyUpdated(bytes32 indexed strategyId);
 
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized
