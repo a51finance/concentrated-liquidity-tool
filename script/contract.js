@@ -91,7 +91,6 @@ async function addModulesTxn() {
 
     const signedTx = await web3.eth.accounts.signTransaction(txData, privateKey);
     const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
     console.log("Transaction successful:", receipt);
   } catch (error) {
     console.error("Error executing createStrategy:", error);
@@ -115,6 +114,7 @@ async function addModulesTxn() {
     const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
     console.log("Transaction successful:", receipt);
+    console.log("Strategy ID:", receipt.logs[0].topics[1]);
   } catch (error) {
     console.error("Error executing createStrategy:", error);
   }
@@ -128,6 +128,16 @@ async function checkOwner() {
   console.log(await baseContract.methods.name().call());
 }
 
+async function txnData() {
+  // baseContract.once("StrategyCreated",{})
+  const block = await web3.eth.getTransactionReceipt(
+    "0x8440cb943400e908cb2cc0aa8d05d47e22dc496eb4799098b5ee547af070812d",
+  );
+
+  console.log(block.logs[0].topics[1]);
+}
+
+// txnData();
 // executeCreateStrategy();
 // addModulesTxn();
 // checkModule();
