@@ -32,6 +32,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
     ICLTBase.StrategyKey strategyKey;
     RebaseModuleMock rebaseModule;
+    CLTBase base;
+    IUniswapV3Pool pool;
     CLTModules cltModules;
     SwapRouter router;
     ERC20Mock token0;
@@ -54,7 +56,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
     }
 
-    function initPool(address recepient) internal returns (IUniswapV3Factory factory, IUniswapV3Pool pool) {
+    function initPool(address recepient) internal returns (IUniswapV3Factory factory) {
         INonfungiblePositionManager.MintParams memory mintParams;
         ERC20Mock[] memory tokens = deployTokens(recepient, 2, 1e50);
 
@@ -145,10 +147,10 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.roll(block.number + 30);
     }
 
-    function initBase(address recepient) internal returns (CLTBase base, IUniswapV3Pool pool) {
+    function initBase(address recepient) internal {
         IUniswapV3Factory factory;
 
-        (factory, pool) = initPool(recepient);
+        (factory) = initPool(recepient);
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
@@ -186,7 +188,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"));
     }
 
-    function initStrategy(IUniswapV3Pool pool, int24 difference) public {
+    function initStrategy(int24 difference) public {
         (, int24 tick,,,,,) = pool.slot0();
 
         int24 tickLower = floorTicks(tick - difference, pool.tickSpacing());
@@ -202,31 +204,29 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function createStrategyActions(
-        CLTBase baseContract,
-        IUniswapV3Pool pool,
         int24 difference,
         address recepient,
+        bool isCompunded,
         ICLTBase.PositionActions memory positionActions
     )
         internal
     {
-        initStrategy(pool, difference);
+        initStrategy(difference);
         positionActions.mode = positionActions.mode;
         positionActions.exitStrategy = positionActions.exitStrategy;
         positionActions.rebaseStrategy = positionActions.rebaseStrategy;
         positionActions.liquidityDistribution = positionActions.liquidityDistribution;
         _hevm.prank(recepient);
-        baseContract.createStrategy(strategyKey, positionActions, 0, 0, true, false);
+        base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
     }
 
     function createStrategyAndDeposit(
         ICLTBase.StrategyPayload[] memory rebaseActions,
-        CLTBase baseContract,
-        IUniswapV3Pool poolContract,
         int24 difference,
         address recepient,
         uint256 positionId,
-        uint256 mode
+        uint256 mode,
+        bool isCompounded
     )
         public
         returns (bytes32 strategyID)
@@ -239,7 +239,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         positionActions.rebaseStrategy = rebaseActions;
         positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
 
-        createStrategyActions(baseContract, poolContract, difference, recepient, positionActions);
+        createStrategyActions(difference, recepient, isCompounded, positionActions);
 
         strategyID = getStrategyID(recepient, positionId);
 
@@ -251,13 +251,12 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         depositParams.recipient = recepient;
 
         _hevm.prank(recepient);
-        baseContract.deposit(depositParams);
+        base.deposit(depositParams);
     }
 
     function createStrategyAndDepositWithActions(
-        CLTBase baseContract,
-        IUniswapV3Pool poolContract,
         address owner,
+        bool isCompunded,
         uint256 mode,
         uint256 positionId
     )
@@ -268,11 +267,11 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
         rebaseActions[0].data = abi.encode(10, 30);
 
-        strategyID = createStrategyAndDeposit(rebaseActions, baseContract, poolContract, 1500, owner, positionId, mode);
-        (key,,,,,,,,) = baseContract.strategies(strategyID);
+        strategyID = createStrategyAndDeposit(rebaseActions, 1500, owner, positionId, mode, isCompunded);
+        (key,,,,,,,,) = base.strategies(strategyID);
     }
 
-    function checkRange(IUniswapV3Pool pool, int24 tickLower, int24 tickUpper) public view returns (bool) {
+    function checkRange(int24 tickLower, int24 tickUpper) public view returns (bool) {
         (, int24 tick,,,,,) = pool.slot0();
 
         if (tick > tickLower && tick < tickUpper) return true;
