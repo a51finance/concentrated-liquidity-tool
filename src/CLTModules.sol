@@ -2,6 +2,7 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
+import { ICLTModules } from "./interfaces/ICLTModules.sol";
 import { IPreference } from "./interfaces/modules/IPreference.sol";
 import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
@@ -10,7 +11,7 @@ import { ILiquidityDistribution } from "./interfaces/modules/ILiquidityDistribut
 import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
 
-contract CLTModules is Owned {
+contract CLTModules is ICLTModules, Owned {
     mapping(bytes32 => address) public modeVaults;
 
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
@@ -54,7 +55,7 @@ contract CLTModules is Owned {
             } else if (mode == Constants.LIQUIDITY_DISTRIBUTION) {
                 ILiquidityDistribution(vault).checkInputData(array[i]);
             } else {
-                revert();
+                revert InvalidStrategy();
             }
         }
     }
@@ -65,12 +66,13 @@ contract CLTModules is Owned {
         uint256 performanceFee
     )
         external
+        override
     {
         if (managementFee > Constants.MAX_MANAGEMENT_FEE) revert IGovernanceFeeHandler.ManagementFeeLimitExceed();
 
         if (performanceFee > Constants.MAX_PERFORMANCE_FEE) revert IGovernanceFeeHandler.PerformanceFeeLimitExceed();
 
-        if (actions.mode < 0 && actions.mode > 4) revert();
+        if (actions.mode < 0 && actions.mode > 4) revert InvalidMode();
 
         if (actions.exitStrategy.length > 0) {
             _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
@@ -90,7 +92,7 @@ contract CLTModules is Owned {
 
     function _checkModeIds(bytes32 mode, ICLTBase.StrategyPayload[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
-            if (!modulesActions[mode][array[i].actionName]) revert();
+            if (!modulesActions[mode][array[i].actionName]) revert InvalidStrategyAction();
         }
     }
 
@@ -98,7 +100,7 @@ contract CLTModules is Owned {
         require(
             moduleKey == Constants.MODE || moduleKey == Constants.REBASE_STRATEGY
                 || moduleKey == Constants.EXIT_STRATEGY || moduleKey == Constants.LIQUIDITY_DISTRIBUTION,
-            "IM"
+            "Invalid Strategy Key"
         );
     }
 }
