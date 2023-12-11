@@ -12,9 +12,7 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 contract CLTStrategyTest is Test, Fixtures {
     ICLTBase.StrategyKey key;
 
-    event StrategyCreated(
-        bytes32 indexed strategyId, ICLTBase.StrategyKey indexed key, bytes positionActions, bool isCompound
-    );
+    event StrategyCreated(bytes32 indexed strategyId);
 
     function setUp() public {
         deployFreshState();
@@ -32,7 +30,7 @@ contract CLTStrategyTest is Test, Fixtures {
         bytes32 strategyId = getStrategyID(0xDB8cFf278adCCF9E9b5da745B44E754fC4EE3C76, 1);
 
         vm.expectEmit(true, true, false, true);
-        emit StrategyCreated(strategyId, key, abi.encode(actions), true);
+        emit StrategyCreated(strategyId);
         base.createStrategy(key, actions, 0, 0, true, false);
 
         (ICLTBase.StrategyKey memory keyAdded, address owner, bytes memory actionsAdded,, bool isCompound,,,,) =
