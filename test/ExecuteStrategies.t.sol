@@ -146,7 +146,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -187,7 +187,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID3 = createStrategyAndDeposit(rebaseActions, 1700, owner, 3, 3, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 200e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         strategyIDs[0] = strategyID3;
@@ -207,7 +207,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID4 = createStrategyAndDeposit(rebaseActions, 500, owner, 4, 3, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 200e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         strategyIDs[0] = strategyID4;
@@ -230,7 +230,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -243,7 +243,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);
@@ -252,7 +252,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 2);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);

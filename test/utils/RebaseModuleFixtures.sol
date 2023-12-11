@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { console } from "forge-std/console.sol";
-
 import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
@@ -21,9 +19,11 @@ import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
 import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import { Quoter } from "@uniswap/v3-periphery/contracts/lens/Quoter.sol";
 import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
+import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -32,6 +32,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
     ICLTBase.StrategyKey strategyKey;
     RebaseModuleMock rebaseModule;
+    Quoter quote;
     CLTBase base;
     IUniswapV3Pool pool;
     CLTModules cltModules;
@@ -75,6 +76,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         positionManager = new
     NonfungiblePositionManager(address(factory),address(weth),address(factory));
         pool.increaseObservationCardinalityNext(80);
+        quote = new Quoter(address(factory),address(weth));
 
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);
@@ -83,7 +85,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         mintParams.fee = 500;
         mintParams.recipient = recepient;
         mintParams.amount0Desired = 1000e18;
-        mintParams.amount1Desired = 100e18;
+        mintParams.amount1Desired = 1000e18;
         mintParams.amount0Min = 0;
         mintParams.amount1Min = 0;
         mintParams.deadline = 2_000_000_000;
@@ -269,6 +271,24 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         strategyID = createStrategyAndDeposit(rebaseActions, 1500, owner, positionId, mode, isCompunded);
         (key,,,,,,,,) = base.strategies(strategyID);
+    }
+
+    function getStrategyReserves(
+        ICLTBase.StrategyKey memory keyInput,
+        uint128 liquidityDesired
+    )
+        internal
+        view
+        returns (uint256 reserves0, uint256 reserves1)
+    {
+        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.slot0();
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(keyInput.tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(keyInput.tickUpper);
+
+        if (liquidityDesired > 0) {
+            (reserves0, reserves1) =
+                LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, liquidityDesired);
+        }
     }
 
     function checkRange(int24 tickLower, int24 tickUpper) public view returns (bool) {
