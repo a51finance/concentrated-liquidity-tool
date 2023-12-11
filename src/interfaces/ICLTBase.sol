@@ -38,6 +38,8 @@ interface ICLTBase {
         StrategyPayload[] liquidityDistribution;
     }
 
+    /// @param fee0 Amount of fees0 collected by strategy
+    /// @param fee1 Amount of fees1 collected by strategy
     /// @param balance0 Amount of token0 left that are not added on AMM's position
     /// @param balance1 Amount of token0 left that are not added on AMM's position
     /// @param totalShares Total no of shares minted for this A51's strategy
