@@ -37,6 +37,20 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external override {
+        SwapCallbackData memory decoded = abi.decode(data, (SwapCallbackData));
+
+        address computedPool = factory.getPool(decoded.token0, decoded.token1, decoded.fee);
+        require(msg.sender == computedPool, "WHO");
+
+        if (amount0Delta > 0) {
+            TransferHelper.safeTransfer(decoded.token0, msg.sender, uint256(amount0Delta));
+        }
+        if (amount1Delta > 0) {
+            TransferHelper.safeTransfer(decoded.token1, msg.sender, uint256(amount1Delta));
+        }
+    }
+
     /// @param token The token to pay
     /// @param payer The entity that must pay
     /// @param recipient The entity that will receive payment
