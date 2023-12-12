@@ -15,6 +15,7 @@ import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
 import { UserPositions } from "./libraries/UserPositions.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
+import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
 import { ERC721 } from "@solmate/tokens/ERC721.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
@@ -29,6 +30,7 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     using Position for StrategyData;
     using UserPositions for UserPositions.Data;
+    using StrategyFeeShares for StrategyFeeShares.GlobalAccount;
 
     uint256 private _sharesId = 1;
 
@@ -37,6 +39,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     address public immutable cltModules;
 
     address public immutable feeHandler;
+
+    mapping(bytes32 => StrategyFeeShares.StrategyAccount) private strategyFees;
+
+    mapping(bytes32 => StrategyFeeShares.GlobalAccount) private strategyGlobalFees;
 
     /// @inheritdoc ICLTBase
     mapping(bytes32 => StrategyData) public override strategies;
@@ -105,7 +111,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             })
         });
 
-        (uint256 strategyCreationFeeAmount,,,) = getGovernanceFee(isPrivate);
+        (uint256 strategyCreationFeeAmount,,,) = _getGovernanceFee(isPrivate);
 
         if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
 
@@ -205,7 +211,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         IGovernanceFeeHandler.ProtocolFeeRegistry memory protocolFee;
 
         (,, protocolFee.protcolFeeOnManagement, protocolFee.protcolFeeOnPerformance) =
-            getGovernanceFee(strategy.isPrivate);
+            _getGovernanceFee(strategy.isPrivate);
 
         (balance0, balance1) = transferFee(
             strategy.key,
@@ -307,7 +313,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             PoolActions.burnLiquidity(strategy.key, strategy.account.uniswapLiquidity);
 
         // deduct any fees if required for protocol
-        (uint256 automationFee,,,) = getGovernanceFee(strategy.isPrivate);
+        (uint256 automationFee,,,) = _getGovernanceFee(strategy.isPrivate);
 
         (amount0Added, amount1Added) = transferFee(strategy.key, 0, automationFee, amount0, amount1, address(0), owner);
 
@@ -430,7 +436,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         feeGrowthInside1LastX128 = strategy.account.feeGrowthInside1LastX128;
     }
 
-    function getGovernanceFee(bool isPrivate)
+    function _getGovernanceFee(bool isPrivate)
         private
         view
         returns (

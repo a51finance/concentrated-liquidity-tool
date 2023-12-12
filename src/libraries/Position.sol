@@ -86,6 +86,7 @@ library Position {
         self.actionStatus = ""; // alert user during update that all previous data will be cleared
     }
 
+    /// update this function after strategy global implementation
     function updatePositionFee(ICLTBase.StrategyData storage self) public {
         PoolActions.updatePosition(self.key);
 

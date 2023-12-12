@@ -119,8 +119,13 @@ library PoolActions {
         uint160 sqrtPriceLimitX96 =
             zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact;
 
-        (amount0, amount1) =
-            pool.swap(address(this), zeroForOne, amountSpecified, sqrtPriceLimitX96, abi.encode(zeroForOne));
+        (amount0, amount1) = pool.swap(
+            address(this),
+            zeroForOne,
+            amountSpecified,
+            sqrtPriceLimitX96,
+            abi.encode(ICLTPayments.SwapCallbackData({ token0: pool.token0(), token1: pool.token1(), fee: pool.fee() }))
+        );
     }
 
     function collectPendingFees(
