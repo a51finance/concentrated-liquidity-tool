@@ -49,3 +49,4 @@
   optimism = "https://optimism-mainnet.infura.io/v3/${API_KEY_INFURA}"
   polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
   sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
+  mainnetFork = "https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0"

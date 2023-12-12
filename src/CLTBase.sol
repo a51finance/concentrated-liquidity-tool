@@ -129,7 +129,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         StrategyData storage strategy = strategies[params.strategyId];
         if (!strategy.isCompound && strategy.account.totalShares > 0) strategy.updatePositionFee();
-
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
 

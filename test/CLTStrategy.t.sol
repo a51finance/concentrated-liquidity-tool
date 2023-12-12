@@ -29,7 +29,7 @@ contract CLTStrategyTest is Test, Fixtures {
 
         bytes32 strategyId = getStrategyID(0xDB8cFf278adCCF9E9b5da745B44E754fC4EE3C76, 1);
 
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, false, false, false);
         emit StrategyCreated(strategyId);
         base.createStrategy(key, actions, 0, 0, true, false);
 

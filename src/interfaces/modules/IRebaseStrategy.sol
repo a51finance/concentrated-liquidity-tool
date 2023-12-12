@@ -3,7 +3,7 @@ pragma solidity =0.8.15;
 
 import "../ICLTBase.sol";
 
-interface IPreference {
+interface IRebaseStrategy {
     error InvalidCaller();
     error InvalidThreshold();
     error InvalidModesLength();
