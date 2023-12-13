@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
@@ -11,7 +13,7 @@ import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
+contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, ReentrancyGuard {
     ICLTBase _cltBase;
 
     /// @notice Threshold for liquidity consideration
@@ -35,11 +37,12 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice Executes given strategies.
     /// @dev Can only be called by the operator.
     /// @param strategyIDs Array of strategy IDs to be executed.
-    function executeStrategies(bytes32[] memory strategyIDs) external {
+    function executeStrategies(bytes32[] calldata strategyIDs) external nonReentrant {
         checkStrategiesArray(strategyIDs);
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
 
-        for (uint256 i = 0; i < _queue.length; i++) {
+        uint256 queueLength = _queue.length;
+        for (uint256 i = 0; i < queueLength; i++) {
             uint256 rebaseCount;
             bool hasRebaseInactivity = false;
             ICLTBase.ShiftLiquidityParams memory params;
@@ -52,10 +55,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
             }
 
             params.strategyId = _queue[i].strategyID;
-            params.shouldMint = false;
+            params.shouldMint = true;
             params.swapAmount = 0;
 
-            for (uint256 j = 0; j < _queue[i].actionNames.length; j++) {
+            uint256 queueActionNames = _queue[i].actionNames.length;
+            for (uint256 j = 0; j < queueActionNames; j++) {
                 if (_queue[i].actionNames[j] == bytes32(0) || _queue[i].actionNames[j] == REBASE_INACTIVITY) {
                     continue;
                 }
@@ -72,7 +76,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         }
     }
 
-    function executeStrategy(ExectuteStrategyParams calldata executeParams) external {
+    function executeStrategy(ExectuteStrategyParams calldata executeParams) external nonReentrant {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
@@ -126,8 +130,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     {
         ExecutableStrategiesData[] memory _queue = new ExecutableStrategiesData[](strategyIDs.length);
         uint256 validEntries = 0;
+        uint256 strategyIdsLength = strategyIDs.length;
 
-        for (uint256 i = 0; i < strategyIDs.length; i++) {
+        for (uint256 i = 0; i < strategyIdsLength; i++) {
             ExecutableStrategiesData memory data = getStrategyData(strategyIDs[i]);
             if (data.strategyID != bytes32(0) && data.mode != 0) {
                 _queue[validEntries++] = data;
@@ -159,7 +164,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
 
-        for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
+        uint256 actionDataLength = strategyActionsData.rebaseStrategy.length;
+        for (uint256 i = 0; i < actionDataLength; i++) {
             if (
                 strategyActionsData.rebaseStrategy[i].actionName == REBASE_INACTIVITY
                     && !_checkRebaseInactivityStrategies(strategyActionsData.rebaseStrategy[i], actionStatus)
@@ -171,7 +177,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
 
-        for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
+        for (uint256 i = 0; i < actionDataLength; i++) {
             ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
             if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode)) {
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
@@ -287,7 +293,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @param data bytes value to be checked.
     /// @return true if the value is nonzero.
     function isNonZero(bytes memory data) internal pure returns (bool) {
-        for (uint256 i = 0; i < data.length; i++) {
+        uint256 dataLength = data.length;
+        for (uint256 i = 0; i < dataLength; i++) {
             if (data[i] != bytes1(0)) {
                 return true;
             }
@@ -298,13 +305,14 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice Checks the strategies array for validity.
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
-    function checkStrategiesArray(bytes32[] memory data) public returns (bool) {
+    function checkStrategiesArray(bytes32[] memory data) internal returns (bool) {
         // this function has a comlexity of O(n^2).
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }
         // check 0 strategyId
-        for (uint256 i = 0; i < data.length; i++) {
+        uint256 dataLength = data.length;
+        for (uint256 i = 0; i < dataLength; i++) {
             (, address strategyOwner,,,,,,,) = _cltBase.strategies(data[i]);
             if (data[i] == bytes32(0) || strategyOwner == address(0)) {
                 revert InvalidStrategyId(data[i]);
@@ -340,20 +348,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     {
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
-    }
-
-    /// @notice Floors the given tick value based on the specified tick spacing.
-    /// @dev The flooring logic ensures that tick values are compliant with the tick spacing set by the pool.
-    /// This is especially necessary for protocols like Uniswap V3 where positions are defined by ticks and the ticks
-    /// have a specific spacing. If a tick is not an exact multiple of the spacing, this function helps to floor it
-    /// to the nearest lower multiple.
-    /// @param tick The tick value to be floored.
-    /// @param tickSpacing The spacing value for flooring.
-    /// @return The floored tick value.
-    function _floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
-        int24 compressed = tick / tickSpacing;
-        if (tick < 0 && tick % tickSpacing != 0) compressed--;
-        return compressed * tickSpacing;
     }
 
     /// @notice Updates the liquidity threshold.

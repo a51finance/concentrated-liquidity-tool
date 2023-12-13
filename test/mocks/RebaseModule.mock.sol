@@ -2,6 +2,7 @@
 pragma solidity =0.8.15;
 
 // Importing foundational and interfaced contracts
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { console } from "forge-std/console.sol";
 import "../../src/base/ModeTicksCalculation.sol";
 import "../../src/base/AccessControl.sol";
@@ -13,7 +14,7 @@ import "forge-std/console.sol";
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrategy {
+contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrategy, ReentrancyGuard {
     ICLTBase _cltBase;
 
     /// @notice Threshold for liquidity consideration
@@ -37,11 +38,12 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
     /// @notice Executes given strategies.
     /// @dev Can only be called by the operator.
     /// @param strategyIDs Array of strategy IDs to be executed.
-    function executeStrategies(bytes32[] memory strategyIDs) external {
+    function executeStrategies(bytes32[] calldata strategyIDs) external nonReentrant {
         checkStrategiesArray(strategyIDs);
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
 
-        for (uint256 i = 0; i < _queue.length; i++) {
+        uint256 queueLength = _queue.length;
+        for (uint256 i = 0; i < queueLength; i++) {
             uint256 rebaseCount;
             bool hasRebaseInactivity = false;
             ICLTBase.ShiftLiquidityParams memory params;
@@ -54,10 +56,11 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
             }
 
             params.strategyId = _queue[i].strategyID;
-            params.shouldMint = false;
+            params.shouldMint = true;
             params.swapAmount = 0;
 
-            for (uint256 j = 0; j < _queue[i].actionNames.length; j++) {
+            uint256 queueActionNames = _queue[i].actionNames.length;
+            for (uint256 j = 0; j < queueActionNames; j++) {
                 if (_queue[i].actionNames[j] == bytes32(0) || _queue[i].actionNames[j] == REBASE_INACTIVITY) {
                     continue;
                 }
@@ -74,7 +77,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
         }
     }
 
-    function executeStrategy(ExectuteStrategyParams calldata executeParams) external {
+    function executeStrategy(ExectuteStrategyParams calldata executeParams) external nonReentrant {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
@@ -128,8 +131,9 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
     {
         ExecutableStrategiesData[] memory _queue = new ExecutableStrategiesData[](strategyIDs.length);
         uint256 validEntries = 0;
+        uint256 strategyIdsLength = strategyIDs.length;
 
-        for (uint256 i = 0; i < strategyIDs.length; i++) {
+        for (uint256 i = 0; i < strategyIdsLength; i++) {
             ExecutableStrategiesData memory data = getStrategyData(strategyIDs[i]);
             if (data.strategyID != bytes32(0) && data.mode != 0) {
                 _queue[validEntries++] = data;
@@ -161,7 +165,8 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
 
-        for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
+        uint256 actionDataLength = strategyActionsData.rebaseStrategy.length;
+        for (uint256 i = 0; i < actionDataLength; i++) {
             if (
                 strategyActionsData.rebaseStrategy[i].actionName == REBASE_INACTIVITY
                     && !_checkRebaseInactivityStrategies(strategyActionsData.rebaseStrategy[i], actionStatus)
@@ -173,7 +178,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
         ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
 
-        for (uint256 i = 0; i < strategyActionsData.rebaseStrategy.length; i++) {
+        for (uint256 i = 0; i < actionDataLength; i++) {
             ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
             if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode)) {
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
@@ -289,7 +294,8 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
     /// @param data bytes value to be checked.
     /// @return true if the value is nonzero.
     function isNonZero(bytes memory data) public pure returns (bool) {
-        for (uint256 i = 0; i < data.length; i++) {
+        uint256 dataLength = data.length;
+        for (uint256 i = 0; i < dataLength; i++) {
             if (data[i] != bytes1(0)) {
                 return true;
             }
@@ -306,10 +312,10 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
             revert StrategyIdsCannotBeEmpty();
         }
         // check 0 strategyId
-        for (uint256 i = 0; i < data.length; i++) {
+        uint256 dataLength = data.length;
+        for (uint256 i = 0; i < dataLength; i++) {
             (, address strategyOwner,,,,,,,) = _cltBase.strategies(data[i]);
             if (data[i] == bytes32(0) || strategyOwner == address(0)) {
-                // revert StrategyIdCannotBeZero();
                 revert InvalidStrategyId(data[i]);
             }
 
@@ -341,7 +347,6 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
         pure
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
-        // need to check alot of scenarios for this logic
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
     }
