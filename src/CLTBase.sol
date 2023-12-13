@@ -315,6 +315,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         // deduct any fees if required for protocol
         (uint256 automationFee,,,) = _getGovernanceFee(strategy.isPrivate);
 
+        // returns protocols feeses
         (amount0Added, amount1Added) = transferFee(strategy.key, 0, automationFee, amount0, amount1, address(0), owner);
 
         amount0 -= amount0Added;
@@ -330,7 +331,11 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
                 PoolActions.swapToken(params.key.pool, params.zeroForOne, params.swapAmount);
 
             (amount0, amount1) = PoolActions.amountsDirection(
-                params.zeroForOne, amount0, amount1, uint256(amount0Swapped), uint256(amount1Swapped)
+                params.zeroForOne,
+                amount0,
+                amount1,
+                uint256(amount0Swapped < 0 ? -amount0Swapped : amount0Swapped),
+                uint256(amount1Swapped < 0 ? -amount1Swapped : amount1Swapped)
             );
         }
 

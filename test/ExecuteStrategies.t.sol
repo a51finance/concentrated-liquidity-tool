@@ -330,7 +330,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);
