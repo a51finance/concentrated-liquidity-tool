@@ -37,7 +37,6 @@ library PoolActions {
         (uint128 liquidity,,,,) = getPositionLiquidity(key);
         // bug we can't use above liquidity value it will pull all other strategies liquidity aswell
         // only use above we need to calculate share of any strategy
-
         if (strategyliquidity > 0) {
             (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, strategyliquidity);
 
@@ -59,19 +58,22 @@ library PoolActions {
         external
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        uint256 liquidityRemoved =
-            isCompound ? FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18) : userSharePercentage;
+        if (strategyliquidity > 0) {
+            uint256 liquidityRemoved = isCompound
+                ? FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18)
+                : userSharePercentage;
 
-        (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
+            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
 
-        // collect user liquidity + unclaimed fee both now in compounding
-        if (amount0 > 0 || amount1 > 0) {
-            (uint256 collect0, uint256 collect1) =
-            // bug for non compound here because fee will return zero that is
-            // already claimed thus strategist can't deduct fee [FIXED needs testing]
-             key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
+            // collect user liquidity + unclaimed fee both now in compounding
+            if (amount0 > 0 || amount1 > 0) {
+                (uint256 collect0, uint256 collect1) =
+                // bug for non compound here because fee will return zero that is
+                // already claimed thus strategist can't deduct fee [FIXED needs testing]
+                 key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
 
-            (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
+                (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
+            }
         }
     }
 
