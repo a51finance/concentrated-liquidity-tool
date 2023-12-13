@@ -315,9 +315,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         // deduct any fees if required for protocol
         (uint256 automationFee,,,) = _getGovernanceFee(strategy.isPrivate);
 
-        // protocol percentage is hardcoded zero?
-        // governance is address 0?
-
         // returns protocols feeses
         (amount0Added, amount1Added) = transferFee(strategy.key, 0, automationFee, amount0, amount1, address(0), owner);
 
