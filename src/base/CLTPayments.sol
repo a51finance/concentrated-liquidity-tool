@@ -25,9 +25,7 @@ abstract contract CLTPayments is ICLTPayments {
     function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
         MintCallbackData memory decodedData = abi.decode(data, (MintCallbackData));
 
-        // verify caller
-        address computedPool = factory.getPool(decodedData.token0, decodedData.token1, decodedData.fee);
-        require(msg.sender == computedPool, "WHO");
+        _verifyCallBack(decodedData.token0, decodedData.token1, decodedData.fee);
 
         if (amount0Owed > 0) {
             TransferHelper.safeTransfer(decodedData.token0, msg.sender, amount0Owed);
@@ -40,8 +38,7 @@ abstract contract CLTPayments is ICLTPayments {
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external override {
         SwapCallbackData memory decoded = abi.decode(data, (SwapCallbackData));
 
-        address computedPool = factory.getPool(decoded.token0, decoded.token1, decoded.fee);
-        require(msg.sender == computedPool, "WHO");
+        _verifyCallBack(decoded.token0, decoded.token1, decoded.fee);
 
         if (amount0Delta > 0) {
             TransferHelper.safeTransfer(decoded.token0, msg.sender, uint256(amount0Delta));
@@ -109,5 +106,9 @@ abstract contract CLTPayments is ICLTPayments {
                 if (protcolShare1 > 0) TransferHelper.safeTransfer(key.pool.token1(), governance, protcolShare1);
             }
         }
+    }
+
+    function _verifyCallBack(address token0, address token1, uint24 fee) private view {
+        require(msg.sender == factory.getPool(token0, token1, fee));
     }
 }
