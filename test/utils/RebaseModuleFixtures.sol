@@ -256,6 +256,20 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         base.deposit(depositParams);
     }
 
+    function depoit(bytes32 strategyID, address recepient, uint256 amount0, uint256 amount1) public {
+        ICLTBase.DepositParams memory depositParams;
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = amount0;
+        depositParams.amount1Desired = amount1;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = recepient;
+
+        _hevm.prank(recepient);
+        base.deposit(depositParams);
+    }
+
     function createStrategyAndDepositWithActions(
         address owner,
         bool isCompunded,
