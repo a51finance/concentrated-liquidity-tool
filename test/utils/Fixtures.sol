@@ -121,6 +121,8 @@ contract Fixtures is UniswapDeployer {
 
         if (address(tokens[0]) >= address(tokens[1])) {
             (token0, token1) = (tokens[1], tokens[0]);
+        } else {
+            (token0, token1) = (tokens[0], tokens[1]);
         }
 
         initPool();
