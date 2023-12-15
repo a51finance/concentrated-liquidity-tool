@@ -56,14 +56,16 @@ library PoolActions {
         bool isCompound
     )
         external
-        returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
         if (strategyliquidity > 0) {
             uint256 liquidityRemoved = isCompound
                 ? FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18)
                 : userSharePercentage;
 
-            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
+            liquidity = liquidityRemoved.toUint128();
+
+            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
 
             // collect user liquidity + unclaimed fee both now in compounding
             if (amount0 > 0 || amount1 > 0) {
