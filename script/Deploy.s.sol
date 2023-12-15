@@ -7,6 +7,7 @@ import "../src/CLTModules.sol";
 import "../src/utils/CLTHelper.sol";
 import "../src/GovernanceFeeHandler.sol";
 import "../src/interfaces/IGovernanceFeeHandler.sol";
+import "../src/modules/rebasing/Modes.sol";
 import "../src/modules/rebasing/RebaseModule.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
@@ -34,7 +35,7 @@ contract DeployALP is Script {
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
-        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler), address(cltModules),
+        new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler), address(cltModules),
         _factoryAddress);
 
         new CLTHelper();
@@ -45,13 +46,14 @@ contract DeployALP is Script {
 
 contract DeployRebaseModule is Script {
     address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    address _baseContract = 0xbC8431c404469747780b067695492b56a91F172E;
+    address _baseContract = 0x63fb6c5145F28Fab88F08A725cc305828aEA01eC;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
         vm.startBroadcast(deployerPrivateKey);
 
-        RebaseModule rebaseModule = new RebaseModule(_owner,_baseContract);
+        new Modes(_baseContract,_owner);
+        // new RebaseModule(_owner,_baseContract);
 
         vm.stopBroadcast();
     }
