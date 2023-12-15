@@ -195,8 +195,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         /// these vars used for multipurpose || strategist fee & contract balance
         uint256 balance0;
         uint256 balance1;
+        uint128 liquidity;
 
-        (amount0, amount1, fees0, fees1) = PoolActions.burnUserLiquidity(
+        (liquidity, amount0, amount1, fees0, fees1) = PoolActions.burnUserLiquidity(
             strategy.key,
             strategy.account.uniswapLiquidity,
             strategy.isCompound
@@ -268,6 +269,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         }
 
         position.liquidityShare -= params.liquidity;
+        strategy.account.uniswapLiquidity -= liquidity;
 
         emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
     }
@@ -303,7 +305,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         StrategyData storage strategy = strategies[params.strategyId];
 
         if (!strategy.isCompound) strategy.updatePositionFee();
-
         uint128 liquidity;
         uint256 amount0Added;
         uint256 amount1Added;
@@ -439,6 +440,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         feeGrowthInside0LastX128 = strategy.account.feeGrowthInside0LastX128;
         feeGrowthInside1LastX128 = strategy.account.feeGrowthInside1LastX128;
+    }
+
+    function getUserfee(uint256 tokenId) external returns (uint256 fee0, uint256 fee1) {
+        UserPositions.Data storage position = positions[tokenId];
+        StrategyData storage strategy = strategies[position.strategyId];
+
+        strategy.updatePositionFee();
+
+        (fee0, fee1) = position.claimPositionAmounts(strategy);
     }
 
     function _getGovernanceFee(bool isPrivate)
