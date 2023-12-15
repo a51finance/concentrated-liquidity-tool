@@ -5,6 +5,7 @@ import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { CLTBase } from "../../src/CLTBase.sol";
+import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { CLTModules } from "../../src/CLTModules.sol";
 
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
@@ -30,13 +31,16 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
+    IUniswapV3Pool pool;
+    SwapRouter router;
+    Quoter quote;
+
     ICLTBase.StrategyKey strategyKey;
     RebaseModuleMock rebaseModule;
-    Quoter quote;
-    CLTBase base;
-    IUniswapV3Pool pool;
     CLTModules cltModules;
-    SwapRouter router;
+    CLTBase base;
+    Modes modes;
+
     ERC20Mock token0;
     ERC20Mock token1;
     WETH weth;
@@ -174,11 +178,16 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         rebaseModule = new RebaseModuleMock(recepient, address(base));
 
+        modes = new Modes(address(base),recepient);
+
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);
 
         _hevm.prank(recepient);
         base.toggleOperator(address(rebaseModule));
+
+        _hevm.prank(recepient);
+        base.toggleOperator(address(modes));
 
         _hevm.prank(recepient);
         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModule));
@@ -218,6 +227,19 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         positionActions.exitStrategy = positionActions.exitStrategy;
         positionActions.rebaseStrategy = positionActions.rebaseStrategy;
         positionActions.liquidityDistribution = positionActions.liquidityDistribution;
+        _hevm.prank(recepient);
+        base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
+    }
+
+    function createBasicStrategy(int24 difference, address recepient, bool isCompunded, uint256 mode) public {
+        initStrategy(difference);
+        ICLTBase.PositionActions memory positionActions;
+
+        positionActions.mode = mode;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
         _hevm.prank(recepient);
         base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
     }
@@ -310,5 +332,17 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         if (tick > tickLower && tick < tickUpper) return true;
         return false;
+    }
+
+    function allowNewUser(address user, address owner, uint256 amount) public {
+        _hevm.prank(owner);
+        token0.transfer(user, amount);
+        _hevm.prank(owner);
+        token1.transfer(user, amount);
+
+        _hevm.prank(user);
+        token0.approve(address(base), type(uint256).max);
+        _hevm.prank(user);
+        token1.approve(address(base), type(uint256).max);
     }
 }
