@@ -5,10 +5,10 @@ const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
 
 require("dotenv").config();
 
-const web3 = new Web3("https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0");
-const contractAddressBase = "0x7129714842AFf175dE1286728a58D2534BD36d5b";
-const contractAddressCLTModules = "0x7DBa7A781B2b4B630257B2Afc6C9330DCE7DC7Ef";
-const contractAddressRebaseModule = "0x6E78EaD7Afab63F3E33bC389a1E4E6B6D46141Bc";
+const web3 = new Web3("https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8");
+const contractAddressBase = "0x63fb6c5145F28Fab88F08A725cc305828aEA01eC";
+const contractAddressCLTModules = "0x342E92D15990cE571572199d660849cb44B28410";
+const contractAddressRebaseModule = "0xe68d65023261d86b28dffba7ec4bad0a81be6fc9";
 
 const contractABIBase = CLTABI.abi;
 const baseContract = new web3.eth.Contract(contractABIBase, contractAddressBase);
@@ -19,11 +19,12 @@ const ModulesContract = new web3.eth.Contract(contractABIModules, contractAddres
 const contractABIRebase = RebaseModuleABI.abi;
 const RebaseContract = new web3.eth.Contract(contractABIRebase, contractAddressRebaseModule);
 
-const fromAddress = "0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3";
-const privateKey = process.env.PRIVATE_KEY_2;
+const fromAddress = "0x97fF40b5678D2234B1E5C894b5F39b8BA8535431";
+const privateKey = process.env.PRIVATE_KEY;
 
 const rebaseStrategy = "0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204";
 const rebasePricePrefernece = "0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b";
+const rebaseInactivity = "0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893";
 
 // Define the parameters for createStrategy
 const strategyKey = {
@@ -78,7 +79,10 @@ async function executeCreateStrategy() {
 
 async function addModulesTxn() {
   try {
-    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
+    rebaseInactivity;
+    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
+
+    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 
@@ -97,7 +101,7 @@ async function addModulesTxn() {
   }
 }
 
-async function addModulesTxn() {
+async function addModulesVaultTxn() {
   try {
     const addModuleTxn = ModulesContract.methods.setModuleAddress(rebaseStrategy, contractAddressRebaseModule);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
@@ -140,5 +144,6 @@ async function txnData() {
 // txnData();
 // executeCreateStrategy();
 // addModulesTxn();
+addModulesVaultTxn();
 // checkModule();
 // checkOwner();
