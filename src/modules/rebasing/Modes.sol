@@ -3,6 +3,7 @@ pragma solidity =0.8.15;
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { AccessControl } from "../../base/AccessControl.sol";
+import { console } from "forge-std/console.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 contract Modes is ModeTicksCalculation, AccessControl {
@@ -15,7 +16,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         baseVault = ICLTBase(vault);
     }
 
-    function ShiftBasic(bytes32[] calldata strategyIDs) external returns (int24 tickLower, int24 tickUpper) {
+    function ShiftBase(bytes32[] calldata strategyIDs) external returns (int24 tickLower, int24 tickUpper) {
         uint256 strategyIdsLength = strategyIDs.length;
 
         for (uint256 i = 0; i < strategyIdsLength; i++) {
@@ -25,18 +26,18 @@ contract Modes is ModeTicksCalculation, AccessControl {
             ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
             if (modules.mode == 1) {
-                (tickLower, tickUpper) = shiftLeft(strategyIDs[i], key);
+                (tickLower, tickUpper) = shiftLeftBase(strategyIDs[i], key);
             } else if (modules.mode == 2) {
-                (tickLower, tickUpper) = shiftRight(strategyIDs[i], key);
+                (tickLower, tickUpper) = shiftRightBase(strategyIDs[i], key);
             } else if (modules.mode == 3) {
-                (tickLower, tickUpper) = shiftLeftAndRight(strategyIDs[i], key);
+                (tickLower, tickUpper) = shiftLeftAndRightBase(strategyIDs[i], key);
             } else {
                 revert InvalidModeId(modules.mode);
             }
         }
     }
 
-    function shiftLeft(
+    function shiftLeftBase(
         bytes32 strategyID,
         ICLTBase.StrategyKey memory key
     )
@@ -48,7 +49,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         updateStrategy(strategyID, key);
     }
 
-    function shiftRight(
+    function shiftRightBase(
         bytes32 strategyID,
         ICLTBase.StrategyKey memory key
     )
@@ -60,7 +61,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         updateStrategy(strategyID, key);
     }
 
-    function shiftLeftAndRight(
+    function shiftLeftAndRightBase(
         bytes32 strategyID,
         ICLTBase.StrategyKey memory key
     )
