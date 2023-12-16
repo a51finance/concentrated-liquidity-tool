@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import { console } from "forge-std/console.sol";
 import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
@@ -42,7 +43,7 @@ library LiquidityShares {
     {
         if (isCompound) {
             (uint256 reserve0, uint256 reserve1) = getReserves(key, strategyliquidity);
-
+            console.log(totalSupply, reserve0, reserve1, strategyliquidity);
             // If total supply > 0, pool can't be empty
             assert(totalSupply == 0 || reserve0 != 0 || reserve1 != 0);
             (shares, amount0, amount1) =

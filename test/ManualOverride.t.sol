@@ -748,4 +748,59 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(account.balance1 > 0, true);
     }
 
+    // MultiConditions
+
+    // function testExecuteStrategyWithTwoUsersZeroSwapMintTrue() public {
+    //     // deposit user 1
+    //     (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 1,
+    // 1);
+
+    //     int24 tickLower = key.tickLower;
+    //     int24 tickUpper = key.tickUpper;
+
+    //     ICLTBase.Account memory account;
+    //     (key,,,,,,,, account) = base.strategies(strategyID);
+
+    //     assertEq(true, checkRange(tickLower, tickUpper));
+
+    //     (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+    //     // 1 wei precision is lost on uniswap
+    //     assertEq(100e18 - reserve0 - 1, account.balance0);
+    //     assertEq(100e18 - reserve1 - 1, account.balance1);
+
+    //     IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+    //     executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+    //     assertEq(false, checkRange(tickLower, tickUpper));
+
+    //     (, int24 tick,,,,,) = pool.slot0();
+
+    //     executeParams.pool = key.pool;
+    //     executeParams.strategyID = strategyID;
+    //     executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
+    //     executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+    //     executeParams.shouldMint = false;
+    //     executeParams.zeroForOne = false;
+    //     executeParams.swapAmount = 0;
+
+    //     rebaseModule.executeStrategy(executeParams);
+
+    //     (key,,,,,,,, account) = base.strategies(strategyID);
+    //     (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+    //     console.log(account.balance0);
+    //     console.log(account.balance1);
+
+    //     assertEq(account.balance0 > 0, true);
+    //     assertEq(account.balance1 > 0, true);
+
+    //     assertEq(reserve1, 0);
+    //     assertEq(reserve0, 0);
+
+    //     // user 2 deposit in same strategy
+    //     uint256 amount0;
+    //     uint256 amount1;
+    // }
 }

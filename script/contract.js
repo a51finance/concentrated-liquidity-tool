@@ -6,9 +6,9 @@ const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
 require("dotenv").config();
 
 const web3 = new Web3("https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8");
-const contractAddressBase = "0x63fb6c5145F28Fab88F08A725cc305828aEA01eC";
-const contractAddressCLTModules = "0x342E92D15990cE571572199d660849cb44B28410";
-const contractAddressRebaseModule = "0xe68d65023261d86b28dffba7ec4bad0a81be6fc9";
+const contractAddressBase = "0x30eD7AFE5083B170884eC959cb4d7CE1b757aD59";
+const contractAddressCLTModules = "0xdC13694d438364A4662e6B6F2878E645870738C6";
+const contractAddressRebaseModule = "0x22F42C288370cf261dcf353af0dB77C3F35a6f47";
 
 const contractABIBase = CLTABI.abi;
 const baseContract = new web3.eth.Contract(contractABIBase, contractAddressBase);
@@ -80,9 +80,9 @@ async function executeCreateStrategy() {
 async function addModulesTxn() {
   try {
     rebaseInactivity;
-    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
+    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
 
-    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
+    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 

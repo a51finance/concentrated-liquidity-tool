@@ -269,6 +269,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         }
 
         position.liquidityShare -= params.liquidity;
+        strategy.account.totalShares -= params.liquidity;
         strategy.account.uniswapLiquidity -= liquidity;
 
         emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);

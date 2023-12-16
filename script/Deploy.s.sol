@@ -14,6 +14,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 contract DeployALP is Script {
     address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
     address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+
     // mainnet
     // address _owner = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
     // address _weth9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -38,7 +39,7 @@ contract DeployALP is Script {
         new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler), address(cltModules),
         _factoryAddress);
 
-        new CLTHelper();
+        // new CLTHelper();
 
         vm.stopBroadcast();
     }
@@ -46,14 +47,14 @@ contract DeployALP is Script {
 
 contract DeployRebaseModule is Script {
     address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    address _baseContract = 0x63fb6c5145F28Fab88F08A725cc305828aEA01eC;
+    address _baseContract = 0x30eD7AFE5083B170884eC959cb4d7CE1b757aD59;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
         vm.startBroadcast(deployerPrivateKey);
 
         new Modes(_baseContract,_owner);
-        // new RebaseModule(_owner,_baseContract);
+        new RebaseModule(_owner,_baseContract);
 
         vm.stopBroadcast();
     }
