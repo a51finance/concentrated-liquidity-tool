@@ -52,18 +52,15 @@ library PoolActions {
     function burnUserLiquidity(
         ICLTBase.StrategyKey storage key,
         uint128 strategyliquidity,
-        uint256 userSharePercentage,
-        bool isCompound
+        uint256 userSharePercentage
     )
         external
-        returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
         if (strategyliquidity > 0) {
-            uint256 liquidityRemoved = isCompound
-                ? FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18)
-                : userSharePercentage;
+            liquidity = (FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18)).toUint128();
 
-            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidityRemoved.toUint128());
+            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
 
             // collect user liquidity + unclaimed fee both now in compounding
             if (amount0 > 0 || amount1 > 0) {
@@ -79,6 +76,8 @@ library PoolActions {
 
     function mintLiquidity(
         ICLTBase.StrategyKey memory key,
+        bool isCompound,
+        uint128 liquidityDesired,
         uint256 amount0Desired,
         uint256 amount1Desired
     )
@@ -92,7 +91,7 @@ library PoolActions {
                 address(this),
                 key.tickLower,
                 key.tickUpper,
-                liquidity,
+                isCompound ? liquidity : liquidityDesired,
                 abi.encode(
                     ICLTPayments.MintCallbackData({
                         token0: key.pool.token0(),
@@ -155,7 +154,7 @@ library PoolActions {
 
         (uint256 total0, uint256 total1) = (collect0 + balance0, collect1 + balance1);
 
-        (liquidity, collect0, collect1) = mintLiquidity(key, total0, total1);
+        (liquidity, collect0, collect1) = mintLiquidity(key, false, 0, total0, total1);
 
         (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
     }

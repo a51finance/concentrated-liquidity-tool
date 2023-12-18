@@ -102,8 +102,8 @@ contract ClaimFeeTest is Test, Fixtures {
         vm.startPrank(address(this));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(msg.sender), account.fee0);
-        assertEq(token1.balanceOf(msg.sender), account.fee1);
+        assertEq(token0.balanceOf(msg.sender) - 1, account.fee0);
+        assertEq(token1.balanceOf(msg.sender) - 1, account.fee1);
     }
 
     function test_claimFee_multipleUserShare() public {

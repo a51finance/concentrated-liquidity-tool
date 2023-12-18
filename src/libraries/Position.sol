@@ -5,6 +5,7 @@ import { Constants } from "./Constants.sol";
 import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
+import { StrategyFeeShares } from "../libraries/StrategyFeeShares.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
@@ -12,6 +13,7 @@ import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 library Position {
     function update(
         ICLTBase.StrategyData storage self,
+        StrategyFeeShares.GlobalAccount storage global,
         uint128 liquidityAdded,
         uint256 share,
         uint256 amount0Desired,
@@ -31,12 +33,14 @@ library Position {
 
         if (share > 0) {
             self.account.totalShares += share;
+            global.totalLiquidity += liquidityAdded;
             self.account.uniswapLiquidity += liquidityAdded;
         }
     }
 
     function updateForCompound(
         ICLTBase.StrategyData storage self,
+        StrategyFeeShares.GlobalAccount storage global,
         uint128 liquidityAdded,
         uint256 amount0Added,
         uint256 amount1Added
@@ -47,12 +51,14 @@ library Position {
             self.account.balance0 = amount0Added;
             self.account.balance1 = amount1Added;
 
+            global.totalLiquidity += liquidityAdded;
             self.account.uniswapLiquidity += liquidityAdded;
         }
     }
 
     function updateStrategy(
         ICLTBase.StrategyData storage self,
+        mapping(bytes32 => StrategyFeeShares.GlobalAccount) storage global,
         ICLTBase.StrategyKey memory key,
         bytes memory status,
         uint128 liquidity,
@@ -61,6 +67,9 @@ library Position {
     )
         public
     {
+        StrategyFeeShares.GlobalAccount storage globalAccount =
+            global[keccak256(abi.encodePacked(key.pool, key.tickLower, key.tickUpper))];
+
         self.key = key;
 
         self.account.balance0 = balance0;
@@ -68,6 +77,7 @@ library Position {
 
         self.actionStatus = status;
         self.account.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
+        globalAccount.totalLiquidity += liquidity;
     }
 
     function updateStrategyState(
@@ -84,22 +94,5 @@ library Position {
         self.performanceFee = performanceFee;
         self.actions = newActions; // this can effect balances and actionStatus?
         self.actionStatus = ""; // alert user during update that all previous data will be cleared
-    }
-
-    /// update this function after strategy global implementation
-    function updatePositionFee(ICLTBase.StrategyData storage self) public {
-        PoolActions.updatePosition(self.key);
-
-        (uint256 fees0, uint256 fees1) =
-            PoolActions.collectPendingFees(self.key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
-
-        self.account.fee0 += fees0;
-        self.account.fee1 += fees1;
-
-        self.account.feeGrowthInside0LastX128 +=
-            FullMath.mulDiv(fees0, FixedPoint128.Q128, self.account.uniswapLiquidity);
-
-        self.account.feeGrowthInside1LastX128 +=
-            FullMath.mulDiv(fees1, FixedPoint128.Q128, self.account.uniswapLiquidity);
     }
 }

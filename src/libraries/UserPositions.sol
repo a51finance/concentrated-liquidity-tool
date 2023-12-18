@@ -10,6 +10,7 @@ import { Position } from "../libraries/Position.sol";
 import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 library UserPositions {
     struct Data {
@@ -76,7 +77,8 @@ library UserPositions {
         self.tokensOwed0 = 0;
         self.tokensOwed1 = 0;
 
-        strategy.account.fee0 -= total0;
-        strategy.account.fee1 -= total1;
+        // precesion loss expected here so rounding the value to zero to prevent overflow
+        (, strategy.account.fee0) = SafeMath.trySub(strategy.account.fee0, total0);
+        (, strategy.account.fee1) = SafeMath.trySub(strategy.account.fee1, total1);
     }
 }

@@ -230,8 +230,9 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
 
-        assertEq(account.balance0, 360_616_736_599_641);
-        assertEq(account.totalShares, (depositAmount * 2) + liquidityShareUser2 + 1);
+        assertEq(account.balance0, 0);
+        assertEq(account.balance1, 0);
+        assertEq(account.totalShares, ((depositAmount * 2) + liquidityShareUser2 + 1));
     }
 
     function test_deposit_succeedsOutOfRangeDeposit() public {
@@ -269,7 +270,7 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 498_625_034_701_312_208);
+        assertEq(liquidityShareUser2, 498_750_065_099_603_224);
     }
 
     function test_deposit_shouldReturnExtraETH() public {
@@ -336,7 +337,7 @@ contract CLTDepositTest is Test, Fixtures {
             })
         );
 
-        // create 2nd strategy with same compounding tunrned on
+        // create 2nd strategy with same compounding tunrned off
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
         base.createStrategy(key, actions, 0, 0, false, false);
 
@@ -372,18 +373,22 @@ contract CLTDepositTest is Test, Fixtures {
             })
         );
 
-        base.updateFees(key);
+        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(strategyID1);
+        (, uint256 fees0, uint256 fees1) = base.getStrategyReserves(strategyID2);
 
-        (,,, uint256 fee0, uint256 fee1) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
-
-        console.log("total fees of both strategies -> ", fee0, fee1);
+        console.log("user1 fee earned in strategy1  -> ", fee0, fee1);
+        console.log("user2 fee earned in strategy2 -> ", fees0, fees1);
+        console.log("total fee of both strategies -> ", fee0 + fees0, fee1 + fees1);
 
         vm.prank(users[1]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
-        (,,, fee0, fee1) = key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
-        console.log("After user2 claimed fees total fees is now -> ", fee0, fee1);
+        assertEq(token0.balanceOf(users[1]) - 1, fees0);
+
+        (, fee0, fee1) = base.getStrategyReserves(strategyID1);
+        (, fees0, fees1) = base.getStrategyReserves(strategyID2);
+
+        console.log("After user2 claimed fees total fees is now -> ", fee0 + fees0, fee1 + fees1);
 
         console.log(
             "user2 successfully drained all the fees of previous created strategy -> ", token0.balanceOf(users[1])
@@ -440,10 +445,7 @@ contract CLTDepositTest is Test, Fixtures {
             })
         );
 
-        base.updateFees(key);
-
-        (,,, uint256 fee0, uint256 fee1) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(strategyID1);
 
         console.log("total fees of first strategy -> ", fee0, fee1);
 
@@ -473,12 +475,11 @@ contract CLTDepositTest is Test, Fixtures {
         vm.prank(users[1]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
-        (,,, fee0, fee1) = key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
-        console.log("After user2 claimed fees total fees is now -> ", fee0, fee1);
+        (, fee0, fee1) = base.getStrategyReserves(strategyID1);
 
-        console.log(
-            "user2 successfully drained all the fees of previous created strategy -> ", token0.balanceOf(users[1])
-        );
+        console.log("total fees of first strategy is still unctouched -> ", fee0, fee1);
+
+        console.log("balance of user2 -> ", token0.balanceOf(users[1]));
     }
 
     function test_poc_scenerio3() public {

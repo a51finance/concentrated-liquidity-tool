@@ -27,7 +27,7 @@ contract CLTStrategyTest is Test, Fixtures {
 
         ICLTBase.PositionActions memory actions = createStrategyActions(mode, 3, 0, inactivityCounts, 0, 0);
 
-        bytes32 strategyId = getStrategyID(0xDB8cFf278adCCF9E9b5da745B44E754fC4EE3C76, 1);
+        bytes32 strategyId = getStrategyID(address(this), 1);
 
         vm.expectEmit(true, false, false, false);
         emit StrategyCreated(strategyId);
@@ -39,7 +39,7 @@ contract CLTStrategyTest is Test, Fixtures {
         assertEq(isCompound, true);
         assertEq(abi.encode(actions), actionsAdded);
         assertEq(key.tickLower, keyAdded.tickLower);
-        assertEq(owner, 0xDB8cFf278adCCF9E9b5da745B44E754fC4EE3C76); // check msg.sender of foundry
+        assertEq(owner, address(this));
     }
 
     function test_strategy_succeedsWithValidInputsForPreference() public { }
