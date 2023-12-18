@@ -84,6 +84,8 @@ interface ICLTBase {
     /// @param amount1Collected The amount of token1 owed to the position that was collected
     event Collect(uint256 tokenId, address recipient, uint256 amount0Collected, uint256 amount1Collected);
 
+    event FeeCompounded(bytes32 strategyId, uint256 fee0Compounded, uint256 fee1Compounded);
+
     /// @notice Emitted when liquidity is minted for a given position
     /// @param tokenId The ID of the token for which liquidity was increased
     /// @param recipient Recipient of liquidity
@@ -94,6 +96,8 @@ interface ICLTBase {
         uint256 indexed tokenId, address indexed recipient, uint256 liquidity, uint256 amount0, uint256 amount1
     );
 
+    event PositionUpdated(uint256 indexed tokenId, uint256 share, uint256 amount0, uint256 amount1);
+
     /// @notice Emitted when a position's liquidity is removed
     /// @param tokenId The ID of the token for which liquidity was decreased
     /// @param recipient Recipient of liquidity
@@ -101,7 +105,14 @@ interface ICLTBase {
     /// @param amount0 The amount of token0 that was accounted for the decrease in liquidity
     /// @param amount1 The amount of token1 that was accounted for the decrease in liquidity
     event Withdraw(
-        uint256 indexed tokenId, address indexed recipient, uint256 liquidity, uint256 amount0, uint256 amount1
+        uint256 indexed tokenId,
+        address indexed recipient,
+        uint256 liquidity,
+        uint256 totalShares,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 fee0,
+        uint256 fee1
     );
 
     /// @notice Emitted when strategy is created

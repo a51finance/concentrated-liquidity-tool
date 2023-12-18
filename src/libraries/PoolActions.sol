@@ -88,7 +88,6 @@ library PoolActions {
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
-
         if (liquidity > 0) {
             (amount0, amount1) = key.pool.mint(
                 address(this),
@@ -150,10 +149,13 @@ library PoolActions {
         uint256 balance1
     )
         external
-        returns (uint128 liquidity, uint256 balance0AfterMint, uint256 balance1AfterMint)
+        returns (uint128 liquidity, uint256 balance0AfterMint, uint256 balance1AfterMint, uint256 fee0, uint256 fee1)
     {
         (uint256 collect0, uint256 collect1) =
             collectPendingFees(key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
+
+        fee0 = collect0;
+        fee1 = collect1;
 
         (uint256 total0, uint256 total1) = (collect0 + balance0, collect1 + balance1);
 

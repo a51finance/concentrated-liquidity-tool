@@ -36,10 +36,15 @@ contract DeployALP is Script {
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
-        new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler), address(cltModules),
+        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler),
+        address(cltModules),
         _factoryAddress);
 
-        // new CLTHelper();
+        new CLTHelper();
+
+        new Modes(address(baseContract),_owner);
+
+        new RebaseModule(_owner,address(baseContract));
 
         vm.stopBroadcast();
     }

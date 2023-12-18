@@ -251,4 +251,71 @@ contract BasicModes is Test, RebaseFixtures {
         // assertEq(token0.balanceOf(users[1]), 4 ether);
         // assertEq(token1.balanceOf(users[1]), 4 ether);
     }
+
+    function testEvent() public {
+        createBasicStrategy(2503, owner, true, 1);
+
+        // user 1
+        allowNewUser(users[0], owner, 4 ether);
+
+        bytes32 strategyID = getStrategyID(address(this), 1);
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID);
+
+        // user 1 deposit
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(users[0])
+            })
+        );
+
+        executeSwap(token0, token1, pool.fee(), owner, 50e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 20e18, 0, 0);
+
+        // user 2 deposit
+        allowNewUser(users[1], owner, 2 ether);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: 2 ether,
+                amount1Desired: 2 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(users[1])
+            })
+        );
+
+        executeSwap(token0, token1, pool.fee(), owner, 50e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 20e18, 0, 0);
+
+        (, uint256 liquidityShare,,,,) = base.positions(1);
+        _hevm.prank(users[0]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: users[0], refundAsETH: false })
+        );
+
+        // assertEq(checkRange(key.tickLower, key.tickUpper), true);
+
+        // executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        // _hevm.warp(block.timestamp + 1 days);
+
+        // assertEq(checkRange(key.tickLower, key.tickUpper), false);
+
+        // bytes32[] memory strategyIDs = new bytes32[](1);
+        // strategyIDs[0] = strategyID;
+
+        // modes.ShiftBase(strategyIDs);
+        // (key,,,,,,,,) = base.strategies(strategyID);
+
+        // (, int24 tick,,,,,) = pool.slot0();
+
+        // assertEq(key.tickLower > tick, true);
+        // assertEq(key.tickUpper > key.tickLower, true);
+        // assertEq(checkRange(key.tickLower, key.tickUpper), false);
+    }
 }

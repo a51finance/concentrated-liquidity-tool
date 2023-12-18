@@ -173,6 +173,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         }
 
         position.liquidityShare += share;
+
+        emit PositionUpdated(params.tokenId, share, amount0, amount1);
     }
 
     /// @inheritdoc ICLTBase
@@ -268,11 +270,20 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
         }
 
+        emit Withdraw(
+            params.tokenId,
+            params.recipient,
+            params.liquidity,
+            strategy.account.totalShares,
+            amount0,
+            amount1,
+            fees0,
+            fees1
+        );
+
         position.liquidityShare -= params.liquidity;
         strategy.account.totalShares -= params.liquidity;
         strategy.account.uniswapLiquidity -= liquidity;
-
-        emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
     }
 
     /// @inheritdoc ICLTBase
@@ -326,6 +337,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         if (strategy.isCompound) {
             amount0 += fees0 + strategy.account.balance0;
             amount1 += fees1 + strategy.account.balance1;
+
+            emit FeeCompounded(params.strategyId, fees0, fees1);
         }
 
         if (params.swapAmount != 0) {
@@ -428,11 +441,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         // optimize above and below states
         if (strategy.isCompound) {
+            uint256 compoundedFee0;
+            uint256 compoundedFee1;
+
             /// should set these vars zero if not added : above values should not use
-            (liquidityAdded, amount0Added, amount1Added) =
+            (liquidityAdded, amount0Added, amount1Added, compoundedFee0, compoundedFee1) =
                 PoolActions.compoundFees(strategy.key, strategy.account.balance0, strategy.account.balance1);
 
             strategy.updateForCompound(liquidityAdded, amount0Added, amount1Added);
+
+            emit FeeCompounded(strategyId, compoundedFee0, compoundedFee1);
         }
 
         if (address(this).balance > 0) {
