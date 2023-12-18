@@ -52,18 +52,13 @@ library PoolActions {
     function burnUserLiquidity(
         ICLTBase.StrategyKey storage key,
         uint128 strategyliquidity,
-        uint256 userSharePercentage,
-        bool isCompound
+        uint256 userSharePercentage
     )
         external
         returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
         if (strategyliquidity > 0) {
-            uint256 liquidityRemoved = isCompound
-                ? FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18)
-                : userSharePercentage;
-
-            liquidity = liquidityRemoved.toUint128();
+            liquidity = (FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18)).toUint128();
 
             (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
 
@@ -87,7 +82,12 @@ library PoolActions {
         public
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
+        // still needs to fix this precision issue
+        if (amount0Desired > 0) amount0Desired = amount0Desired - 1;
+        if (amount1Desired > 0) amount1Desired = amount1Desired - 1;
+
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
+
         if (liquidity > 0) {
             (amount0, amount1) = key.pool.mint(
                 address(this),

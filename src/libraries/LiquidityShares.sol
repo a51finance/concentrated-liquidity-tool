@@ -42,16 +42,21 @@ library LiquidityShares {
     {
         if (isCompound) {
             (uint256 reserve0, uint256 reserve1) = getReserves(key, strategyliquidity);
+
             // If total supply > 0, pool can't be empty
             assert(totalSupply == 0 || reserve0 != 0 || reserve1 != 0);
             (shares, amount0, amount1) =
                 calculateShare(amount0Max, amount1Max, reserve0 + balance0, reserve1 + balance1, totalSupply);
         } else {
-            (uint128 liquidity) = PoolActions.getLiquidityForAmounts(key, amount0Max, amount1Max);
+            uint128 liquidity = PoolActions.getLiquidityForAmounts(key, amount0Max, amount1Max);
 
             (amount0, amount1) = PoolActions.getAmountsForLiquidity(key, liquidity);
 
-            shares = uint256(liquidity);
+            if (totalSupply == 0) {
+                shares = uint256(liquidity);
+            } else {
+                shares = FullMath.mulDiv(totalSupply, liquidity, strategyliquidity);
+            }
         }
     }
 

@@ -202,10 +202,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         (liquidity, amount0, amount1, fees0, fees1) = PoolActions.burnUserLiquidity(
             strategy.key,
             strategy.account.uniswapLiquidity,
-            strategy.isCompound
-                ? FullMath.mulDiv(params.liquidity, 1e18, strategy.account.totalShares)
-                : params.liquidity,
-            strategy.isCompound
+            FullMath.mulDiv(params.liquidity, 1e18, strategy.account.totalShares)
         );
 
         if (!strategy.isCompound) (fees0, fees1) = position.claimPositionAmounts(strategy);
@@ -434,8 +431,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         // ticks that are not meant to be pulled.
 
         // now contract balance has: new user asset + previous user unused assets
-        (uint128 liquidityAdded, uint256 amount0Added, uint256 amount1Added) =
-            PoolActions.mintLiquidity(strategy.key, amount0, amount1);
+        uint128 liquidityAdded;
+        uint256 amount0Added;
+        uint256 amount1Added;
+
+        if (strategy.isCompound) {
+            (liquidityAdded, amount0Added, amount1Added) = PoolActions.mintLiquidity(strategy.key, amount0, amount1);
+        } else {
+            (liquidityAdded, amount0Added, amount1Added) =
+                PoolActions.mintLiquidity(strategy.key, amount0Desired, amount1Desired);
+        }
 
         strategy.update(liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
 
