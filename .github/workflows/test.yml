@@ -1,21 +1,9 @@
+on: [push]
+
 name: test
 
-on:
-  push:
-    branches:
-      - main
-      - basic-structure
-      - reconcile
-  pull_request:
-
-env:
-  FOUNDRY_PROFILE: ci
-
 jobs:
-  foundry:
-    strategy:
-      fail-fast: true
-
+  check:
     name: Foundry project
     runs-on: ubuntu-latest
     steps:
@@ -25,16 +13,9 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge build --sizes
-        id: build
+      - name: Run tests
+        run: forge test -vvv
 
-      - name: Run Forge tests
-        run: |
-          forge test -vvv
-        id: forge-test
+      - name: Run snapshot
+        run: forge snapshot
