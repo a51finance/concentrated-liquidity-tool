@@ -10,9 +10,11 @@ import { Utilities } from "./utils/Utilities.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { Constants } from "../src/libraries/Constants.sol";
+import { PoolActions } from "../src/libraries/PoolActions.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
@@ -193,8 +195,8 @@ contract CLTDepositTest is Test, Fixtures {
         (, uint256 liquidityShareUser1,,,,) = base.positions(2);
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        assertEq(account.totalShares, (depositAmount * 2) + 1);
-        assertEq(liquidityShareUser1, depositAmount + 1);
+        assertEq(liquidityShareUser1, depositAmount);
+        assertEq(account.totalShares, depositAmount * 2);
 
         // try swapping here to check contract balances
         router.exactInputSingle(
@@ -230,9 +232,9 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
 
-        assertEq(account.balance0, 0);
+        assertEq(account.balance0, 243_856_850_123_961);
         assertEq(account.balance1, 0);
-        assertEq(account.totalShares, ((depositAmount * 2) + liquidityShareUser2 + 1));
+        assertEq(account.totalShares, ((depositAmount * 2) + liquidityShareUser2));
     }
 
     function test_deposit_succeedsOutOfRangeDeposit() public {
@@ -270,7 +272,7 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 498_750_065_099_603_224);
+        assertEq(liquidityShareUser2, 251_031_077_193_010_225);
     }
 
     function test_deposit_shouldReturnExtraETH() public {
@@ -383,16 +385,12 @@ contract CLTDepositTest is Test, Fixtures {
         vm.prank(users[1]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(users[1]) - 1, fees0);
+        assertEq(token0.balanceOf(users[1]), fees0);
 
         (, fee0, fee1) = base.getStrategyReserves(strategyID1);
         (, fees0, fees1) = base.getStrategyReserves(strategyID2);
 
         console.log("After user2 claimed fees total fees is now -> ", fee0 + fees0, fee1 + fees1);
-
-        console.log(
-            "user2 successfully drained all the fees of previous created strategy -> ", token0.balanceOf(users[1])
-        );
     }
 
     function test_poc_scenerio2() public {
@@ -403,10 +401,10 @@ contract CLTDepositTest is Test, Fixtures {
         uint256 depositAmount = 5 ether;
 
         token0.mint(users[0], depositAmount);
-        token0.mint(users[1], depositAmount);
+        token0.mint(users[1], depositAmount * depositAmount);
 
         token1.mint(users[0], depositAmount);
-        token1.mint(users[1], depositAmount);
+        token1.mint(users[1], depositAmount * depositAmount);
 
         vm.startPrank(users[0]);
         token0.approve(address(base), depositAmount);
@@ -414,8 +412,8 @@ contract CLTDepositTest is Test, Fixtures {
         vm.stopPrank();
 
         vm.startPrank(users[1]);
-        token0.approve(address(base), depositAmount);
-        token1.approve(address(base), depositAmount);
+        token0.approve(address(base), depositAmount * depositAmount);
+        token1.approve(address(base), depositAmount * depositAmount);
         vm.stopPrank();
 
         bytes32 strategyID1 = getStrategyID(address(this), 1);
@@ -473,13 +471,13 @@ contract CLTDepositTest is Test, Fixtures {
         console.log("user 1 & 2 deposits -> ", liquidityShareUser1, liquidityShareUser2);
 
         vm.prank(users[1]);
-        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 2, refundAsETH: true }));
 
         (, fee0, fee1) = base.getStrategyReserves(strategyID1);
 
         console.log("total fees of first strategy is still unctouched -> ", fee0, fee1);
 
-        console.log("balance of user2 -> ", token0.balanceOf(users[1]));
+        console.log("user2 unable to claim any amount -> ", token0.balanceOf(msg.sender));
     }
 
     function test_poc_scenerio3() public {
@@ -555,21 +553,128 @@ contract CLTDepositTest is Test, Fixtures {
             })
         );
 
-        base.updateFees(key);
+        (, uint256 strategy1fee0, uint256 strategy1fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        (, uint256 strategy2fee0, uint256 strategy2fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
 
-        (,,, uint256 fee0, uint256 fee1) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
-
-        console.log("total fees of both strategies -> ", fee0, fee1);
+        console.log("total fees of both strategies -> ", strategy1fee0 + strategy2fee0, strategy1fee1 + strategy2fee1);
 
         vm.prank(users[1]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
-        (,,, fee0, fee1) = key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
-        console.log("After user2 claimed fees total fees is now -> ", fee0, fee1);
+        (, strategy1fee0, strategy1fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        (, strategy2fee0, strategy2fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
 
         console.log(
-            "user2 successfully drained all the fees of previous created strategy -> ", token0.balanceOf(users[1])
+            "After user2 claimed total fees is now -> ", strategy1fee0 + strategy2fee0, strategy1fee1 + strategy2fee1
+        );
+
+        console.log("user2 successfully claimed only his strategy fees -> ", token0.balanceOf(users[1]));
+    }
+
+    function test_deposit_multipleUsersNonCompound() public {
+        initPoolAndAddLiquidity();
+        initRouter();
+
+        address payable[] memory users = utils.createUsers(2);
+        uint256 depositAmount = 5 ether;
+
+        token0.mint(users[0], depositAmount);
+        token0.mint(users[1], depositAmount);
+
+        token1.mint(users[0], depositAmount);
+        token1.mint(users[1], depositAmount);
+
+        vm.startPrank(users[0]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        vm.startPrank(users[1]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        base.deposit(params);
+        (, uint256 userShare1,,,,) = base.positions(1);
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        uint128 liquidityUser1 = PoolActions.getLiquidityForAmounts(key, depositAmount, depositAmount);
+
+        assertEq(userShare1, liquidityUser1);
+        assertEq(account.totalShares, liquidityUser1);
+
+        vm.prank(users[0]);
+        base.deposit(params);
+
+        uint128 liquidityUser2 = PoolActions.getLiquidityForAmounts(key, depositAmount, depositAmount);
+
+        (, uint256 userShare2,,,,) = base.positions(2);
+        (,,,,,,,, account) = base.strategies(strategyID);
+
+        assertEq(userShare2, liquidityUser2);
+
+        assertEq(
+            account.totalShares, liquidityUser1 + (FullMath.mulDiv(liquidityUser1, liquidityUser2, liquidityUser1))
+        );
+
+        assertEq(account.balance0, 0);
+        assertEq(account.balance1, 0);
+
+        // try swapping here to check contract balances
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        vm.prank(users[1]);
+        base.deposit(params);
+
+        (, uint256 userShare3,,,,) = base.positions(3);
+        (,,,,,,,, account) = base.strategies(strategyID);
+
+        uint128 liquidityUser3 = PoolActions.getLiquidityForAmounts(key, depositAmount, depositAmount);
+
+        assertEq(userShare3, liquidityUser3);
+
+        assertEq(
+            account.totalShares,
+            liquidityUser1 + liquidityUser2
+                + (FullMath.mulDiv(liquidityUser1 + liquidityUser2, liquidityUser3, liquidityUser1 + liquidityUser2))
         );
     }
 

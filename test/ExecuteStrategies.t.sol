@@ -239,27 +239,27 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
+        (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
 
-        // assertEq(abi.decode(actionStatus, (uint256)), 1);
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        // executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // rebaseModule.executeStrategies(strategyIDs);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
 
-        // assertEq(abi.decode(actionStatus, (uint256)), 2);
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
 
-        // executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // rebaseModule.executeStrategies(strategyIDs);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
 
-        // assertEq(abi.decode(actionStatus, (uint256)), 2);
+        assertEq(abi.decode(actionStatus, (uint256)), 2);
     }
 
     function testExecuteStrategyShouldNotRebasePastLimitMode2() public {
