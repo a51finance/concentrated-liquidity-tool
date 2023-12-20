@@ -45,7 +45,7 @@ library UserPositions {
         self.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
     }
 
-    function claimPositionAmounts(
+    function claimFeeForNonCompounders(
         Data storage self,
         ICLTBase.StrategyData storage strategy
     )
@@ -80,5 +80,19 @@ library UserPositions {
         // precesion loss expected here so rounding the value to zero to prevent overflow
         (, strategy.account.fee0) = SafeMath.trySub(strategy.account.fee0, total0);
         (, strategy.account.fee1) = SafeMath.trySub(strategy.account.fee1, total1);
+    }
+
+    function claimFeeForCompounders(
+        Data storage self,
+        ICLTBase.StrategyData storage strategy
+    )
+        public
+        returns (uint256 fee0, uint256 fee1)
+    {
+        fee0 = FullMath.mulDiv(strategy.account.fee0, self.liquidityShare, strategy.account.totalShares);
+        fee1 = FullMath.mulDiv(strategy.account.fee1, self.liquidityShare, strategy.account.totalShares);
+
+        (, strategy.account.fee0) = SafeMath.trySub(strategy.account.fee0, fee0);
+        (, strategy.account.fee1) = SafeMath.trySub(strategy.account.fee1, fee1);
     }
 }

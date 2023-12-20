@@ -10,8 +10,6 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
-import "forge-std/console.sol";
-
 library StrategyFeeShares {
     struct GlobalAccount {
         uint256 positionFee0;
@@ -32,11 +30,6 @@ library StrategyFeeShares {
 
         PoolActions.updatePosition(key);
 
-        console.logInt(key.tickLower);
-        console.logInt(key.tickUpper);
-
-        console.log("total liq -> ", account.totalLiquidity);
-
         if (account.totalLiquidity > 0) {
             (uint256 fees0, uint256 fees1) =
                 PoolActions.collectPendingFees(key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
@@ -46,21 +39,12 @@ library StrategyFeeShares {
 
             account.feeGrowthInside0LastX128 += FullMath.mulDiv(fees0, FixedPoint128.Q128, account.totalLiquidity);
             account.feeGrowthInside1LastX128 += FullMath.mulDiv(fees1, FixedPoint128.Q128, account.totalLiquidity);
-
-            console.log("feeGrwoth -> ", account.feeGrowthInside0LastX128);
         }
     }
 
     function updateStrategyFees(ICLTBase.StrategyData storage self, GlobalAccount storage global) external {
         (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
             (global.feeGrowthInside0LastX128, global.feeGrowthInside1LastX128);
-
-        console.log("here", feeGrowthInside0LastX128, self.account.feeGrowthInside0LastX128);
-
-        console.log("globals -> ", global.feeGrowthInside0LastX128, global.positionFee0, global.totalLiquidity);
-        console.log("strategy -> ", self.account.feeGrowthInside0LastX128, self.account.fee0, global.totalLiquidity);
-        console.logInt(self.key.tickLower);
-        console.logInt(self.key.tickUpper);
 
         uint256 total0 = uint128(
             FullMath.mulDiv(

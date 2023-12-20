@@ -102,8 +102,8 @@ contract ClaimFeeTest is Test, Fixtures {
         vm.startPrank(address(this));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(msg.sender) - 1, account.fee0);
-        assertEq(token1.balanceOf(msg.sender) - 1, account.fee1);
+        assertEq(token0.balanceOf(msg.sender), account.fee0);
+        assertEq(token1.balanceOf(msg.sender), account.fee1);
     }
 
     function test_claimFee_multipleUserShare() public {
@@ -144,17 +144,13 @@ contract ClaimFeeTest is Test, Fixtures {
             })
         );
 
-        // replace with account fee comparision
-        base.updateFees(key);
+        (, uint256 fee0,) = base.getStrategyReserves(getStrategyID(address(this), 1));
 
-        (,,, uint256 fee0,) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
-
-        // nft 1 earns 25% of fees
+        // // nft 1 earns 25% of fees
         vm.startPrank(address(this));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 1, refundAsETH: true }));
 
-        // nft 2 earns 75% of fees
+        // // nft 2 earns 75% of fees
         vm.startPrank(users[0]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[2], tokenId: 2, refundAsETH: true }));
 
@@ -179,12 +175,12 @@ contract ClaimFeeTest is Test, Fixtures {
         uint256 user1Deposit = 4 ether;
         address payable[] memory users = utils.createUsers(3);
 
-        token0.mint(users[0], user1Deposit);
-        token1.mint(users[0], user1Deposit);
+        token0.mint(users[0], user1Deposit + user1Deposit);
+        token1.mint(users[0], user1Deposit + user1Deposit);
 
         vm.startPrank(users[0]);
-        token0.approve(address(base), user1Deposit);
-        token1.approve(address(base), user1Deposit);
+        token0.approve(address(base), user1Deposit + user1Deposit);
+        token1.approve(address(base), user1Deposit + user1Deposit);
         vm.stopPrank();
 
         vm.prank(users[0]);

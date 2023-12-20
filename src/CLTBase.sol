@@ -22,8 +22,6 @@ import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-import "forge-std/console.sol";
-
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
@@ -187,13 +185,17 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         // these vars used for multipurpose || strategist fee & contract balance
         Account memory vars;
 
-        (vars.uniswapLiquidity, amount0, amount1, vars.fee0, vars.fee1) = PoolActions.burnUserLiquidity(
+        (vars.uniswapLiquidity, amount0, amount1,,) = PoolActions.burnUserLiquidity(
             strategy.key,
             strategy.account.uniswapLiquidity,
             FullMath.mulDiv(params.liquidity, 1e18, strategy.account.totalShares)
         );
 
-        if (!strategy.isCompound) (vars.fee0, vars.fee1) = position.claimPositionAmounts(strategy);
+        if (!strategy.isCompound) {
+            (vars.fee0, vars.fee1) = position.claimFeeForNonCompounders(strategy);
+        } else {
+            (vars.fee0, vars.fee1) = position.claimFeeForCompounders(strategy);
+        }
 
         // deduct any fees if required for strategist
         IGovernanceFeeHandler.ProtocolFeeRegistry memory protocolFee;
@@ -231,20 +233,17 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             amount0 += vars.fee0;
             amount1 += vars.fee1;
         } else {
-            vars.balance0 = strategy.account.balance0 + vars.fee0;
-            vars.balance1 = strategy.account.balance1 + vars.fee1;
+            uint256 userShare0 =
+                FullMath.mulDiv(strategy.account.balance0, params.liquidity, strategy.account.totalShares);
 
-            uint256 userShare0 = FullMath.mulDiv(vars.balance0, params.liquidity, strategy.account.totalShares);
-            uint256 userShare1 = FullMath.mulDiv(vars.balance1, params.liquidity, strategy.account.totalShares);
+            uint256 userShare1 =
+                FullMath.mulDiv(strategy.account.balance1, params.liquidity, strategy.account.totalShares);
 
-            amount0 += userShare0;
-            amount1 += userShare1;
+            amount0 += userShare0 + vars.fee0;
+            amount1 += userShare1 + vars.fee1;
 
-            vars.balance0 -= userShare0;
-            vars.balance1 -= userShare1;
-
-            strategy.account.balance0 = vars.balance0;
-            strategy.account.balance1 = vars.balance1;
+            strategy.account.balance0 -= userShare0;
+            strategy.account.balance1 -= userShare1;
         }
 
         if (amount0 > 0) {
@@ -260,7 +259,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         strategy.account.totalShares -= params.liquidity;
         strategy.account.uniswapLiquidity -= vars.uniswapLiquidity;
 
-        emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1);
+        emit Withdraw(params.tokenId, params.recipient, params.liquidity, amount0, amount1, vars.fee0, vars.fee1);
     }
 
     /// @inheritdoc ICLTBase
@@ -273,7 +272,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         if (strategy.isCompound) revert onlyNonCompounders();
         if (position.liquidityShare == 0) revert NoLiquidity();
 
-        (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimPositionAmounts(strategy);
+        (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
         if (tokensOwed0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), tokensOwed0);
@@ -288,38 +287,36 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     /// @inheritdoc ICLTBase
     function shiftLiquidity(ShiftLiquidityParams calldata params) external override onlyOperator {
-        // checks
         PoolActions.checkRange(params.key.tickLower, params.key.tickUpper, params.key.pool.tickSpacing());
 
         StrategyData storage strategy = strategies[params.strategyId];
         StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy);
 
         Account memory vars;
-        uint256 amount0Added;
-        uint256 amount1Added;
 
         vars.uniswapLiquidity = strategy.account.uniswapLiquidity;
 
-        // only burn this strategy liquidity not others
-        (vars.balance0, vars.balance1, vars.fee0, vars.fee1) =
-            PoolActions.burnLiquidity(strategy.key, vars.uniswapLiquidity);
-        // update global liquidity
+        // only burn this strategy liquidity not other strategy with same ticks
+        (vars.balance0, vars.balance1,,) = PoolActions.burnLiquidity(strategy.key, vars.uniswapLiquidity);
 
+        // update global liquidity
         global.totalLiquidity -= vars.uniswapLiquidity;
 
-        // deduct any fees if required for protocol
+        // returns protocol fees
         (uint256 automationFee,,,) = _getGovernanceFee(strategy.isPrivate);
 
-        // returns protocols feeses
-        (amount0Added, amount1Added) =
+        // deduct any fees if required for protocol
+        (vars.fee0, vars.fee1) =
             transferFee(strategy.key, 0, automationFee, vars.balance0, vars.balance1, address(0), owner);
 
-        vars.balance0 -= amount0Added;
-        vars.balance1 -= amount1Added;
+        vars.balance0 -= vars.fee0;
+        vars.balance1 -= vars.fee1;
 
         if (strategy.isCompound) {
-            vars.balance0 += vars.fee0 + strategy.account.balance0;
-            vars.balance1 += vars.fee1 + strategy.account.balance1;
+            vars.balance0 += strategy.account.fee0 + strategy.account.balance0;
+            vars.balance1 += strategy.account.fee1 + strategy.account.balance1;
+
+            emit FeeCompounded(params.strategyId, strategy.account.fee0, strategy.account.fee1);
         }
 
         if (params.swapAmount != 0) {
@@ -335,21 +332,21 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             );
         }
 
-        /// reuse amount0Added, amount1Added & liquidity vars
+        uint128 liquidityDelta;
+        uint256 amount0Added;
+        uint256 amount1Added;
+
         if (params.shouldMint) {
-            (vars.uniswapLiquidity, amount0Added, amount1Added) =
-                PoolActions.mintLiquidity(params.key, false, 0, vars.balance0, vars.balance1);
+            (liquidityDelta, amount0Added, amount1Added) =
+                PoolActions.mintLiquidity(params.key, vars.balance0, vars.balance1);
         }
 
         // update state { this state will be reflected to all users having this strategyID }
-        console.logInt(params.key.tickLower);
-        console.logInt(params.key.tickUpper);
-
         strategy.updateStrategy(
             strategyGlobalFees,
             params.key,
             params.moduleStatus,
-            vars.uniswapLiquidity,
+            liquidityDelta,
             vars.balance0 - amount0Added,
             vars.balance1 - amount1Added
         );
@@ -395,9 +392,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         StrategyData storage strategy = strategies[strategyId];
         StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy);
 
-        uint128 liquidity;
-
-        (liquidity, share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
+        (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
             strategy.key,
             strategy.isCompound,
             strategy.account.uniswapLiquidity,
@@ -418,27 +413,32 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);
 
-        // bug we need to track the liquidity amounts of all users in a single strategy & that value will be used in
-        // shifting of liquidity for each strategy
-        // ideally in child pattern there's only one position for that contract at a time
-        // (TL, TU, Owner) => total uniswapLiquidity added by the contract
-        // but here multiple positions could be open at a time for same ticks so if we do
-        // (TL, TU, Owner) => uniswapLiquidity: it will pull all other strategies liquidity which is having the same
-        // ticks that are not meant to be pulled.
+        // now contract balance has: new user asset + previous user unused assets + collected fee of strategy
+        uint128 liquidityAdded;
+        uint256 amount0Added;
+        uint256 amount1Added;
 
-        // now contract balance has: new user asset + previous user unused assets
-        (uint128 liquidityAdded, uint256 amount0Added, uint256 amount1Added) =
-            PoolActions.mintLiquidity(strategy.key, strategy.isCompound, liquidity, amount0, amount1);
+        if (strategy.isCompound) {
+            (liquidityAdded, amount0Added, amount1Added) = PoolActions.mintLiquidity(strategy.key, amount0, amount1);
+        } else {
+            (liquidityAdded, amount0Added, amount1Added) =
+                PoolActions.mintLiquidity(strategy.key, amount0Desired, amount1Desired);
+        }
 
         strategy.update(global, liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
 
         // optimize above and below states
         if (strategy.isCompound) {
             /// should set these vars zero if not added : above values should not use
-            (liquidityAdded, amount0Added, amount1Added) =
-                PoolActions.compoundFees(strategy.key, strategy.account.balance0, strategy.account.balance1);
+            (liquidityAdded, amount0Added, amount1Added) = PoolActions.compoundFees(
+                strategy.key,
+                strategy.account.balance0 + strategy.account.fee0,
+                strategy.account.balance1 + strategy.account.fee1
+            );
 
             strategy.updateForCompound(global, liquidityAdded, amount0Added, amount1Added);
+
+            emit FeeCompounded(strategyId, amount0Added, amount1Added);
         }
 
         if (address(this).balance > 0) {
@@ -455,7 +455,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         _updateGlobals(strategy);
 
-        (fee0, fee1) = position.claimPositionAmounts(strategy);
+        (fee0, fee1) = position.claimFeeForNonCompounders(strategy);
     }
 
     function _getGovernanceFee(bool isPrivate)
@@ -485,17 +485,12 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         }
     }
 
-    function _updateGlobals(StrategyData storage strategy) private returns (StrategyFeeShares.GlobalAccount storage) {
-        StrategyFeeShares.GlobalAccount storage global =
-            StrategyFeeShares.updateGlobalStrategyFees(strategyGlobalFees, strategy.key);
-
+    function _updateGlobals(StrategyData storage strategy)
+        private
+        returns (StrategyFeeShares.GlobalAccount storage global)
+    {
+        global = StrategyFeeShares.updateGlobalStrategyFees(strategyGlobalFees, strategy.key);
         StrategyFeeShares.updateStrategyFees(strategy, global);
-
-        return global;
-    }
-
-    function updateFees(StrategyKey memory key) external {
-        key.pool.burn(key.tickLower, key.tickUpper, 0);
     }
 
     function getStrategyReserves(bytes32 strategyId) external returns (uint128 liquidity, uint256 fee0, uint256 fee1) {

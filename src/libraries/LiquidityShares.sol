@@ -38,7 +38,7 @@ library LiquidityShares {
         uint256 totalSupply
     )
         external
-        returns (uint128 liquidity, uint256 shares, uint256 amount0, uint256 amount1)
+        returns (uint256 shares, uint256 amount0, uint256 amount1)
     {
         if (isCompound) {
             (uint256 reserve0, uint256 reserve1) = getReserves(key, strategyliquidity);
@@ -48,15 +48,11 @@ library LiquidityShares {
             (shares, amount0, amount1) =
                 calculateShare(amount0Max, amount1Max, reserve0 + balance0, reserve1 + balance1, totalSupply);
         } else {
-            liquidity = PoolActions.getLiquidityForAmounts(key, amount0Max, amount1Max);
+            uint128 liquidity = PoolActions.getLiquidityForAmounts(key, amount0Max, amount1Max);
 
             (amount0, amount1) = PoolActions.getAmountsForLiquidity(key, liquidity);
 
-            if (totalSupply == 0) {
-                shares = uint256(liquidity);
-            } else {
-                shares = FullMath.mulDiv(totalSupply, liquidity, strategyliquidity);
-            }
+            shares = totalSupply == 0 ? uint256(liquidity) : FullMath.mulDiv(totalSupply, liquidity, strategyliquidity);
         }
     }
 

@@ -101,12 +101,22 @@ interface ICLTBase {
     /// @param amount0 The amount of token0 that was accounted for the decrease in liquidity
     /// @param amount1 The amount of token1 that was accounted for the decrease in liquidity
     event Withdraw(
-        uint256 indexed tokenId, address indexed recipient, uint256 liquidity, uint256 amount0, uint256 amount1
+        uint256 indexed tokenId,
+        address indexed recipient,
+        uint256 liquidity,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 fee0,
+        uint256 fee1
     );
 
     /// @notice Emitted when strategy is created
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     event StrategyCreated(bytes32 indexed strategyId);
+
+    /// @notice Emitted when data of strategy is updated
+    /// @param strategyId Hash of strategy ID
+    event StrategyUpdated(bytes32 indexed strategyId);
 
     /// @notice Emitted when strategy is shifted
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
@@ -115,7 +125,11 @@ interface ICLTBase {
     /// @param swapAmount Amount
     event LiquidityShifted(bytes32 indexed strategyId, bool isLiquidityMinted, bool zeroForOne, int256 swapAmount);
 
-    event StrategyUpdated(bytes32 indexed strategyId);
+    /// @notice Emitted when collected fee of strategy is compounded
+    /// @param strategyId Hash of strategy ID
+    /// @param amount0 The amount of token0 that were compounded
+    /// @param amount1 The amount of token1 that were compounded
+    event FeeCompounded(bytes32 indexed strategyId, uint256 amount0, uint256 amount1);
 
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized

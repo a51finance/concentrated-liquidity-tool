@@ -13,10 +13,12 @@ import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/Liqu
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { SqrtPriceMath } from "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
 
 /// @title Liquidity and ticks functions
 /// @notice Provides functions for computing liquidity and ticks for token amounts and prices
 library PoolActions {
+    using SafeCastExtended for int256;
     using SafeCastExtended for uint256;
 
     function updatePosition(ICLTBase.StrategyKey memory key) external returns (uint128 liquidity) {
@@ -76,8 +78,6 @@ library PoolActions {
 
     function mintLiquidity(
         ICLTBase.StrategyKey memory key,
-        bool isCompound,
-        uint128 liquidityDesired,
         uint256 amount0Desired,
         uint256 amount1Desired
     )
@@ -91,7 +91,7 @@ library PoolActions {
                 address(this),
                 key.tickLower,
                 key.tickUpper,
-                isCompound ? liquidity : liquidityDesired,
+                liquidity,
                 abi.encode(
                     ICLTPayments.MintCallbackData({
                         token0: key.pool.token0(),
@@ -154,7 +154,7 @@ library PoolActions {
 
         (uint256 total0, uint256 total1) = (collect0 + balance0, collect1 + balance1);
 
-        (liquidity, collect0, collect1) = mintLiquidity(key, false, 0, total0, total1);
+        (liquidity, collect0, collect1) = mintLiquidity(key, total0, total1);
 
         (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
     }
@@ -201,16 +201,19 @@ library PoolActions {
     )
         public
         view
-        returns (uint256, uint256)
+        returns (uint256 amount0, uint256 amount1)
     {
         (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
 
-        return LiquidityAmounts.getAmountsForLiquidity(
-            sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(key.tickLower),
-            TickMath.getSqrtRatioAtTick(key.tickUpper),
-            liquidity
+        int256 amount0Delta = SqrtPriceMath.getAmount0Delta(
+            sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
         );
+
+        int256 amount1Delta = SqrtPriceMath.getAmount1Delta(
+            TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
+        );
+
+        (amount0, amount1) = (uint256(amount0Delta), uint256(amount1Delta));
     }
 
     function getSqrtRatioX96AndTick(IUniswapV3Pool pool)

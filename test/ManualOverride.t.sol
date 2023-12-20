@@ -287,12 +287,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         int24 tickUpper = key.tickUpper;
 
         ICLTBase.Account memory account;
-        Accounting memory accounting;
-        (key,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
 
-        accounting.balance0Before = account.balance0;
-        accounting.balance1Before = account.balance1;
+        (key,,,,,,,, account) = base.strategies(strategyID);
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -308,7 +304,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.slot0();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
