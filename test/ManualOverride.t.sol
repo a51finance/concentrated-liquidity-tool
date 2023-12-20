@@ -748,7 +748,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(account.balance0, 1);
+        assertEq(account.balance0, 0);
         assertEq(account.balance1 > 0, true);
     }
 
