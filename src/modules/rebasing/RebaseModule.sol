@@ -305,7 +305,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
     /// @notice Checks the strategies array for validity.
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
-    function checkStrategiesArray(bytes32[] memory data) internal returns (bool) {
+    function checkStrategiesArray(bytes32[] memory data) public returns (bool) {
         // this function has a comlexity of O(n^2).
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
@@ -348,6 +348,17 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
     {
         lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
         upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
+    }
+
+    function getPreferenceTicks(bytes32 strategyID)
+        external
+        returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
+    {
+        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,,) = _cltBase.strategies(strategyID);
+
+        (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData, (int24, int24));
+
+        (lowerPreferenceTick, upperPreferenceTick) = _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
     }
 
     /// @notice Updates the liquidity threshold.
