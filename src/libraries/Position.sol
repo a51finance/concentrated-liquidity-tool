@@ -48,8 +48,12 @@ library Position {
         public
     {
         if (liquidityAdded > 0) {
+            // fees amounts that are not added on AMM will be in held in contract balance
             self.account.balance0 = amount0Added;
             self.account.balance1 = amount1Added;
+
+            self.account.fee0 = 0;
+            self.account.fee1 = 0;
 
             global.totalLiquidity += liquidityAdded;
             self.account.uniswapLiquidity += liquidityAdded;
@@ -78,6 +82,12 @@ library Position {
         self.actionStatus = status;
         self.account.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
         globalAccount.totalLiquidity += liquidity;
+
+        self.account.fee0 = 0;
+        self.account.fee1 = 0;
+
+        self.account.feeGrowthInside0LastX128 = globalAccount.feeGrowthInside0LastX128;
+        self.account.feeGrowthInside1LastX128 = globalAccount.feeGrowthInside1LastX128;
     }
 
     function updateStrategyState(
