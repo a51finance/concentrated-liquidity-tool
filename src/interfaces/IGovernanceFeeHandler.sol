@@ -24,6 +24,10 @@ interface IGovernanceFeeHandler {
             uint256 protcolFeeOnPerformance
         );
 
+    function setPublicFeeRegistry(ProtocolFeeRegistry calldata newPublicStrategyFeeRegistry) external;
+
+    function setPrivateFeeRegistry(ProtocolFeeRegistry calldata newPrivateStrategyFeeRegistry) external;
+
     event PublicFeeRegistryUpdated(ProtocolFeeRegistry newRegistry);
 
     event PrivateFeeRegistryUpdated(ProtocolFeeRegistry newRegistry);
