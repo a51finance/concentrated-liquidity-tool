@@ -22,6 +22,8 @@ import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import "forge-std/console.sol";
+
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
@@ -232,6 +234,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         if (!strategy.isCompound) {
             amount0 += vars.fee0;
             amount1 += vars.fee1;
+
+            position.tokensOwed0 = 0;
+            position.tokensOwed1 = 0;
         } else {
             uint256 userShare0 =
                 FullMath.mulDiv(strategy.account.balance0, params.liquidity, strategy.account.totalShares);
@@ -274,15 +279,30 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
+        (,,, uint256 protcolFeeOnPerformance) = _getGovernanceFee(strategy.isPrivate);
+
+        (uint256 fee0, uint256 fee1) = transferFee(
+            strategy.key,
+            protcolFeeOnPerformance,
+            strategy.performanceFee,
+            tokensOwed0,
+            tokensOwed1,
+            owner,
+            strategy.owner
+        );
+
         if (tokensOwed0 > 0) {
-            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), tokensOwed0);
+            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), tokensOwed0 - fee0);
         }
 
         if (tokensOwed1 > 0) {
-            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), tokensOwed1);
+            transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), tokensOwed1 - fee1);
         }
 
-        emit Collect(params.tokenId, params.recipient, tokensOwed0, tokensOwed1);
+        position.tokensOwed0 = 0;
+        position.tokensOwed1 = 0;
+
+        emit Collect(params.tokenId, params.recipient, fee0, fee1);
     }
 
     /// @inheritdoc ICLTBase

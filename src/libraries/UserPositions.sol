@@ -11,6 +11,7 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "forge-std/console.sol";
 
 library UserPositions {
     struct Data {
@@ -74,8 +75,8 @@ library UserPositions {
         self.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
         self.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
 
-        self.tokensOwed0 = 0;
-        self.tokensOwed1 = 0;
+        self.tokensOwed0 = total0;
+        self.tokensOwed1 = total1;
 
         // precesion loss expected here so rounding the value to zero to prevent overflow
         (, strategy.account.fee0) = SafeMath.trySub(strategy.account.fee0, total0);
