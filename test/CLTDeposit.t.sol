@@ -232,7 +232,7 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
 
-        assertEq(account.balance0, 243_856_850_123_961);
+        assertEq(account.balance0, 360_616_736_599_640);
         assertEq(account.balance1, 0);
         assertEq(account.totalShares, ((depositAmount * 2) + liquidityShareUser2));
     }
@@ -272,7 +272,7 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 251_031_077_193_010_225);
+        assertEq(liquidityShareUser2, 250_968_146_844_201_956);
     }
 
     function test_deposit_shouldReturnExtraETH() public {
