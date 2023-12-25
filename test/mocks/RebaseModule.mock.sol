@@ -52,7 +52,8 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
 
             if (_queue[i].actionNames[0] == REBASE_INACTIVITY || _queue[i].actionNames[1] == REBASE_INACTIVITY) {
                 hasRebaseInactivity = true;
-                actionStatus.length > 0 ? rebaseCount = abi.decode(actionStatus, (uint256)) : rebaseCount = 0;
+                if (actionStatus.length > 0) (rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
+                else rebaseCount = 0;
             }
 
             params.strategyId = _queue[i].strategyID;
@@ -66,11 +67,10 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
                 }
 
                 (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].mode);
-
                 key.tickLower = tickLower;
                 key.tickUpper = tickUpper;
                 params.key = key;
-                params.moduleStatus = hasRebaseInactivity ? abi.encode(uint256(++rebaseCount)) : actionStatus;
+                params.moduleStatus = hasRebaseInactivity ? abi.encode(uint256(++rebaseCount), false) : actionStatus;
 
                 _cltBase.shiftLiquidity(params);
             }
@@ -87,13 +87,22 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
 
+        uint256 rebaseCount;
+        bool isExited;
+
         ICLTBase.ShiftLiquidityParams memory params;
         params.key = key;
         params.strategyId = executeParams.strategyID;
         params.shouldMint = executeParams.shouldMint;
         params.zeroForOne = executeParams.zeroForOne;
         params.swapAmount = executeParams.swapAmount;
-        params.moduleStatus = actionStatus;
+
+        isExited = !executeParams.shouldMint;
+
+        if (actionStatus.length > 0) (rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
+        else rebaseCount = 0;
+
+        params.moduleStatus = abi.encode(rebaseCount, isExited);
 
         _cltBase.shiftLiquidity(params);
     }
@@ -258,7 +267,7 @@ contract RebaseModuleMock is ModeTicksCalculation, AccessControl, IRebaseStrateg
     {
         uint256 preferredInActivity = abi.decode(strategyDetail.data, (uint256));
         if (actionStatus.length > 0) {
-            uint256 rebaseCount = abi.decode(actionStatus, (uint256));
+            (uint256 rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
             if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
                 return false;
             }

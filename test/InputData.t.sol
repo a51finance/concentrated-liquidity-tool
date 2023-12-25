@@ -594,7 +594,7 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModuleMockContract.REBASE_INACTIVITY();
         strategyDetail.data = abi.encode(uint256(5));
-        bytes memory actionStatus = abi.encode(uint256(5));
+        bytes memory actionStatus = abi.encode(uint256(5), false);
         assertFalse(rebaseModuleMockContract._checkRebaseInactivityStrategies(strategyDetail, actionStatus));
     }
 
@@ -602,7 +602,33 @@ contract RebasingModulesTest is Test, ModeTicksCalculation, UniswapDeployer {
         vm.assume(status >= 0 && status <= 10 ** 18);
         vm.assume(data >= 0 && data <= 10 ** 18);
         bytes memory preferredInActivity = abi.encode(uint256(data));
-        bytes memory actionStatus = abi.encode(uint256(status));
+        bytes memory actionStatus = abi.encode(uint256(status), true);
+
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.data = preferredInActivity;
+        if (data > 10 && data < 1000) {
+            actionStatus = "";
+        }
+
+        bool result = rebaseModuleMockContract._checkRebaseInactivityStrategies(strategyDetail, actionStatus);
+
+        if (actionStatus.length > 0) {
+            uint256 rebaseCount = abi.decode(actionStatus, (uint256));
+            uint256 preferredInActivityInternal = abi.decode(preferredInActivity, (uint256));
+            assertFalse(
+                (rebaseCount > 0 && preferredInActivityInternal == rebaseCount) == result,
+                "The function output does not match the expected result."
+            );
+        } else {
+            assertTrue(result, "Function should return false when rebaseOptions length is 0.");
+        }
+    }
+
+    function testCheckRebaseInactivityStrategiesFuzzingWithVariableExit(uint256 status, uint256 data) public {
+        vm.assume(status >= 0 && status <= 10 ** 18);
+        vm.assume(data >= 0 && data <= 10 ** 18);
+        bytes memory preferredInActivity = abi.encode(uint256(data));
+        bytes memory actionStatus = abi.encode(uint256(status), false);
 
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.data = preferredInActivity;

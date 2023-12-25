@@ -1,14 +1,18 @@
 const Web3 = require("web3");
+const ECR20ABI = require("../out/ERC20/ERC20.sol/ERC20.json");
 const CLTABI = require("../out/CLTBase.sol/CLTBase.json");
 const CLTModulesABI = require("../out/CLTModules.sol/CLTModules.json");
 const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
 
 require("dotenv").config();
 
-const web3 = new Web3("https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0");
-const contractAddressBase = "0x7129714842AFf175dE1286728a58D2534BD36d5b";
-const contractAddressCLTModules = "0x7DBa7A781B2b4B630257B2Afc6C9330DCE7DC7Ef";
-const contractAddressRebaseModule = "0x6E78EaD7Afab63F3E33bC389a1E4E6B6D46141Bc";
+const web3 = new Web3("https://eth-goerli.g.alchemy.com/v2/oD-Ft2zD3u6MzlCs5b7x-LzTK0OAL5--");
+const contractAddressBase = "0x8b23A5008303D31f709009FF99794389ed04A8b9";
+const contractAddressCLTModules = "0x8402Aebbc0b1b62c8c9F7AFafE95467394414711";
+const contractAddressRebaseModule = "0x4c8873A3ccC683f4893ac23a9F15f3D462A8D420";
+const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+const token0 = "0x3c5d67de8e81d65caa5552f5260d6986d4ea9f88";
+const token1 = "0xc71d5bc18438903dc9fff9b88088ac2d2bbea2e1";
 
 const contractABIBase = CLTABI.abi;
 const baseContract = new web3.eth.Contract(contractABIBase, contractAddressBase);
@@ -19,17 +23,24 @@ const ModulesContract = new web3.eth.Contract(contractABIModules, contractAddres
 const contractABIRebase = RebaseModuleABI.abi;
 const RebaseContract = new web3.eth.Contract(contractABIRebase, contractAddressRebaseModule);
 
-const fromAddress = "0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3";
-const privateKey = process.env.PRIVATE_KEY_2;
+const ERC20ABI = ECR20ABI.abi;
+const ercContractToken0 = new web3.eth.Contract(ERC20ABI, token0);
+const ercContractToken1 = new web3.eth.Contract(ERC20ABI, token1);
+
+const fromAddress = "0x97fF40b5678D2234B1E5C894b5F39b8BA8535431";
+const fromAddressA89 = "0xa0e9E6B79a3e1AB87FeB209567eF3E0373210a89";
+const privateKey = process.env.PRIVATE_KEY;
+const privateKeyA89 = process.env.PRIVATE_KEY_A89;
 
 const rebaseStrategy = "0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204";
 const rebasePricePrefernece = "0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b";
+const rebaseInactivity = "0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893";
 
 // Define the parameters for createStrategy
 const strategyKey = {
-  pool: "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
-  tickLower: "197190",
-  tickUpper: "201190",
+  pool: "0xb810a57202388b59102feBf04dEfd0051Fe0344A",
+  tickLower: "140",
+  tickUpper: "340",
 };
 const positionActions = {
   exitStrategy: [],
@@ -44,7 +55,7 @@ const positionActions = {
 };
 const managementFees = 0;
 const performanceFees = 0;
-const isCompound = false;
+const isCompound = true;
 const isPrivate = false;
 
 async function executeCreateStrategy() {
@@ -71,14 +82,80 @@ async function executeCreateStrategy() {
     const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
     console.log("Transaction successful:", receipt);
+    console.log("Strategy ID:", receipt.logs[0].topics[1]);
   } catch (error) {
     console.error("Error executing createStrategy:", error);
   }
 }
 
+async function approveTokens() {
+  const txn0 = ercContractToken0.methods.approve(contractAddressBase, MAX_UINT256);
+  const txn1 = ercContractToken1.methods.approve(contractAddressBase, MAX_UINT256);
+
+  const gas0 = await txn0.estimateGas({ from: fromAddressA89 });
+  const gas1 = await txn1.estimateGas({ from: fromAddressA89 });
+  const gasPrice = await web3.eth.getGasPrice();
+
+  const txData0 = {
+    to: token0,
+    data: txn0.encodeABI(),
+    gas: gas0,
+    gasPrice,
+  };
+
+  const txData1 = {
+    to: token1,
+    data: txn1.encodeABI(),
+    gas: gas1,
+    gasPrice,
+  };
+
+  const signedTx0 = await web3.eth.accounts.signTransaction(txData0, privateKeyA89);
+  const receipt0 = await web3.eth.sendSignedTransaction(signedTx0.rawTransaction);
+  console.log("Transaction successful:", receipt0);
+
+  const signedTx1 = await web3.eth.accounts.signTransaction(txData1, privateKeyA89);
+  const receipt1 = await web3.eth.sendSignedTransaction(signedTx1.rawTransaction);
+  console.log("Transaction successful receipt0:", receipt0);
+  console.log("Transaction successful receipt1:", receipt1);
+}
+
+async function deposit() {
+  try {
+    const depoitAmount0 = "1000000000";
+    const depoitAmount1 = "1000000000";
+
+    const depositTx = baseContract.methods.deposit(
+      "0x353fd513ce55139191f81b229e521f66addb59b7f3501b73a107801c611309e1",
+      depoitAmount0,
+      depoitAmount1,
+      depoitAmount0,
+      depoitAmount1,
+      fromAddressA89,
+    );
+
+    const gas = await depositTx.estimateGas({ from: fromAddressA89 });
+    const gasPrice = await web3.eth.getGasPrice();
+
+    const txData = {
+      to: contractAddressBase,
+      data: depositTx.encodeABI(),
+      gas,
+      gasPrice,
+    };
+
+    const signedTx = await web3.eth.accounts.signTransaction(txData, privateKeyA89);
+    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+    console.log("Transaction successful:", receipt);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 async function addModulesTxn() {
   try {
-    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
+    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
+    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 
@@ -97,7 +174,7 @@ async function addModulesTxn() {
   }
 }
 
-async function addModulesTxn() {
+async function addModulesVaultTxn() {
   try {
     const addModuleTxn = ModulesContract.methods.setModuleAddress(rebaseStrategy, contractAddressRebaseModule);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
@@ -114,7 +191,6 @@ async function addModulesTxn() {
     const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
     console.log("Transaction successful:", receipt);
-    console.log("Strategy ID:", receipt.logs[0].topics[1]);
   } catch (error) {
     console.error("Error executing createStrategy:", error);
   }
@@ -138,7 +214,10 @@ async function txnData() {
 }
 
 // txnData();
-// executeCreateStrategy();
+executeCreateStrategy();
 // addModulesTxn();
+// addModulesVaultTxn();
 // checkModule();
 // checkOwner();
+// deposit();
+// approveTokens();
