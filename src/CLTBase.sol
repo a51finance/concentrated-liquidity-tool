@@ -167,6 +167,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         }
 
         position.liquidityShare += share;
+
+        emit PositionUpdated(params.tokenId, share, amount0, amount1);
     }
 
     /// @inheritdoc ICLTBase
@@ -179,8 +181,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         UserPositions.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
-        StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy);
+        StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, position.strategyId);
 
+        if (params.liquidity == 0) revert InvalidShare();
         if (position.liquidityShare == 0) revert NoLiquidity();
         if (position.liquidityShare < params.liquidity) revert InvalidShare();
 
@@ -272,7 +275,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         UserPositions.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
-        _updateGlobals(strategy);
+        _updateGlobals(strategy, position.strategyId);
 
         if (strategy.isCompound) revert onlyNonCompounders();
         if (position.liquidityShare == 0) revert NoLiquidity();
@@ -310,7 +313,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         PoolActions.checkRange(params.key.tickLower, params.key.tickUpper, params.key.pool.tickSpacing());
 
         StrategyData storage strategy = strategies[params.strategyId];
-        StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy);
+        StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, params.strategyId);
 
         Account memory vars;
 
@@ -410,7 +413,22 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         )
     {
         StrategyData storage strategy = strategies[strategyId];
-        StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy);
+        StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, strategyId);
+
+        Account memory vars;
+
+        if (strategy.isCompound) {
+            /// should set these vars zero if not added : above values should not use
+            (vars.uniswapLiquidity, vars.balance0, vars.balance1) = PoolActions.compoundFees(
+                strategy.key,
+                strategy.account.balance0 + strategy.account.fee0,
+                strategy.account.balance1 + strategy.account.fee1
+            );
+
+            strategy.updateForCompound(global, vars.uniswapLiquidity, vars.balance0, vars.balance1);
+
+            emit FeeCompounded(strategyId, vars.balance0, vars.balance1);
+        }
 
         (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
             strategy.key,
@@ -434,32 +452,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);
 
         // now contract balance has: new user asset + previous user unused assets + collected fee of strategy
-        uint128 liquidityAdded;
-        uint256 amount0Added;
-        uint256 amount1Added;
-
         if (strategy.isCompound) {
-            (liquidityAdded, amount0Added, amount1Added) = PoolActions.mintLiquidity(strategy.key, amount0, amount1);
+            (vars.uniswapLiquidity, vars.balance0, vars.balance1) =
+                PoolActions.mintLiquidity(strategy.key, amount0, amount1);
         } else {
-            (liquidityAdded, amount0Added, amount1Added) =
+            (vars.uniswapLiquidity, vars.balance0, vars.balance1) =
                 PoolActions.mintLiquidity(strategy.key, amount0Desired, amount1Desired);
         }
 
-        strategy.update(global, liquidityAdded, share, amount0, amount1, amount0Added, amount1Added);
-
-        // optimize above and below states
-        if (strategy.isCompound) {
-            /// should set these vars zero if not added : above values should not use
-            (liquidityAdded, amount0Added, amount1Added) = PoolActions.compoundFees(
-                strategy.key,
-                strategy.account.balance0 + strategy.account.fee0,
-                strategy.account.balance1 + strategy.account.fee1
-            );
-
-            strategy.updateForCompound(global, liquidityAdded, amount0Added, amount1Added);
-
-            emit FeeCompounded(strategyId, amount0Added, amount1Added);
-        }
+        strategy.update(global, vars.uniswapLiquidity, share, amount0, amount1, vars.balance0, vars.balance1);
 
         if (address(this).balance > 0) {
             TransferHelper.safeTransferETH(_msgSender(), address(this).balance);
@@ -473,7 +474,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         UserPositions.Data storage position = positions[tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
-        _updateGlobals(strategy);
+        _updateGlobals(strategy, position.strategyId);
 
         (fee0, fee1) = position.claimFeeForNonCompounders(strategy);
     }
@@ -505,18 +506,23 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         }
     }
 
-    function _updateGlobals(StrategyData storage strategy)
+    function _updateGlobals(
+        StrategyData storage strategy,
+        bytes32 strategyId
+    )
         private
         returns (StrategyFeeShares.GlobalAccount storage global)
     {
         global = StrategyFeeShares.updateGlobalStrategyFees(strategyGlobalFees, strategy.key);
-        StrategyFeeShares.updateStrategyFees(strategy, global);
+        (uint256 earned0, uint256 earned1) = StrategyFeeShares.updateStrategyFees(strategy, global);
+
+        emit StrategyFee(strategyId, earned0, earned1);
     }
 
     function getStrategyReserves(bytes32 strategyId) external returns (uint128 liquidity, uint256 fee0, uint256 fee1) {
         StrategyData storage strategy = strategies[strategyId];
 
-        _updateGlobals(strategy);
+        _updateGlobals(strategy, strategyId);
 
         (liquidity, fee0, fee1) = (strategy.account.uniswapLiquidity, strategy.account.fee0, strategy.account.fee1);
     }

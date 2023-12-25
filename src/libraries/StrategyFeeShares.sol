@@ -42,11 +42,17 @@ library StrategyFeeShares {
         }
     }
 
-    function updateStrategyFees(ICLTBase.StrategyData storage self, GlobalAccount storage global) external {
+    function updateStrategyFees(
+        ICLTBase.StrategyData storage self,
+        GlobalAccount storage global
+    )
+        external
+        returns (uint256 total0, uint256 total1)
+    {
         (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
             (global.feeGrowthInside0LastX128, global.feeGrowthInside1LastX128);
 
-        uint256 total0 = uint128(
+        total0 = uint128(
             FullMath.mulDiv(
                 feeGrowthInside0LastX128 - self.account.feeGrowthInside0LastX128,
                 self.account.uniswapLiquidity,
@@ -54,7 +60,7 @@ library StrategyFeeShares {
             )
         );
 
-        uint256 total1 = uint128(
+        total1 = uint128(
             FullMath.mulDiv(
                 feeGrowthInside1LastX128 - self.account.feeGrowthInside1LastX128,
                 self.account.uniswapLiquidity,
