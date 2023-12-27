@@ -7,59 +7,69 @@ import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 contract Modes is ModeTicksCalculation, AccessControl {
     error InvalidModeId(uint256 modeId);
+    error InvalidStrategyId(bytes32 strategyID);
 
     ICLTBase public baseVault;
 
-    constructor(ICLTBase vault, address owner) AccessControl(owner) {
+    constructor(address vault, address owner) AccessControl(owner) {
         baseVault = ICLTBase(vault);
     }
 
-    function shiftLeft(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
-        (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
+    function ShiftBase(bytes32[] calldata strategyIDs) external returns (int24 tickLower, int24 tickUpper) {
+        uint256 strategyIdsLength = strategyIDs.length;
 
-        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
+        for (uint256 i = 0; i < strategyIdsLength; i++) {
+            (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyIDs[i]);
 
-        if (modules.mode == 1) {
-            (tickLower, tickUpper) = shiftLeft(key);
+            if (address(key.pool) == address(0)) revert InvalidStrategyId(strategyIDs[i]);
+            ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
-            key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
-
-            updateStrategy(strategyID, key);
-        } else {
-            revert InvalidModeId(modules.mode);
+            if (modules.mode == 1) {
+                (tickLower, tickUpper) = shiftLeftBase(strategyIDs[i], key);
+            } else if (modules.mode == 2) {
+                (tickLower, tickUpper) = shiftRightBase(strategyIDs[i], key);
+            } else if (modules.mode == 3) {
+                (tickLower, tickUpper) = shiftLeftAndRightBase(strategyIDs[i], key);
+            } else {
+                revert InvalidModeId(modules.mode);
+            }
         }
     }
 
-    function shiftRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
-        (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
-
-        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
-
-        if (modules.mode == 2) {
-            (tickLower, tickUpper) = shiftRight(key);
-
-            key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
-
-            updateStrategy(strategyID, key);
-        } else {
-            revert InvalidModeId(modules.mode);
-        }
+    function shiftLeftBase(
+        bytes32 strategyID,
+        ICLTBase.StrategyKey memory key
+    )
+        internal
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        (tickLower, tickUpper) = shiftLeft(key);
+        key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
+        updateStrategy(strategyID, key);
     }
 
-    function shiftLeftAndRight(bytes32 strategyID) external onlyOperator returns (int24 tickLower, int24 tickUpper) {
-        (ICLTBase.StrategyKey memory key, bytes memory actions) = getStrategy(strategyID);
+    function shiftRightBase(
+        bytes32 strategyID,
+        ICLTBase.StrategyKey memory key
+    )
+        internal
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        (tickLower, tickUpper) = shiftRight(key);
+        key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
+        updateStrategy(strategyID, key);
+    }
 
-        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
-
-        if (modules.mode == 3) {
-            (tickLower, tickUpper) = shiftBothSide(key);
-
-            key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
-
-            updateStrategy(strategyID, key);
-        } else {
-            revert InvalidModeId(modules.mode);
-        }
+    function shiftLeftAndRightBase(
+        bytes32 strategyID,
+        ICLTBase.StrategyKey memory key
+    )
+        internal
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        (tickLower, tickUpper) = shiftBothSide(key);
+        key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
+        updateStrategy(strategyID, key);
     }
 
     function getStrategy(bytes32 strategyID) internal returns (ICLTBase.StrategyKey memory key, bytes memory actions) {

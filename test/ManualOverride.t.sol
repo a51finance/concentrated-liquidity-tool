@@ -592,4 +592,390 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         console.log(token0.balanceOf(users[1]));
     }
+
+    function testExecuteStrategyWithMintTrueInRangeSwapFifty() public {
+        initStrategy(1500);
+
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(34, 33);
+
+        positionActions.mode = 3;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(1500, owner, true, positionActions);
+
+        bytes32 strategyID = getStrategyID(owner, 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 150e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = owner;
+
+        base.deposit(depositParams);
+
+        int24 tickLower = strategyKey.tickLower;
+        int24 tickUpper = strategyKey.tickUpper;
+
+        ICLTBase.Account memory account;
+        Accounting memory accounting;
+
+        (strategyKey,,,,,,,, account) = base.strategies(strategyID);
+        (, int24 tick,,,,,) = pool.slot0();
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(150e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        (, tick,,,,,) = pool.slot0();
+
+        executeParams.pool = strategyKey.pool;
+        executeParams.strategyID = strategyID;
+        // inrange ticks provided
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = int256(reserve0 / 8);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (strategyKey,,,,,,,, account) = base.strategies(strategyID);
+        console.logInt(tick);
+        assertEq(true, checkRange(strategyKey.tickLower, strategyKey.tickUpper));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        assertEq(strategyKey.tickLower < tick, true);
+        assertEq(strategyKey.tickUpper > tick, true);
+    }
+
+    function testExecuteStrategyWithMintTrueOutOfRangeSwapFifty() public {
+        initStrategy(1500);
+
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(34, 33);
+
+        positionActions.mode = 3;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(1500, owner, true, positionActions);
+
+        bytes32 strategyID = getStrategyID(owner, 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 150e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = owner;
+
+        base.deposit(depositParams);
+
+        int24 tickLower = strategyKey.tickLower;
+        int24 tickUpper = strategyKey.tickUpper;
+
+        ICLTBase.Account memory account;
+        Accounting memory accounting;
+
+        (strategyKey,,,,,,,, account) = base.strategies(strategyID);
+        (, int24 tick,,,,,) = pool.slot0();
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(150e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        (, tick,,,,,) = pool.slot0();
+
+        executeParams.pool = strategyKey.pool;
+        executeParams.strategyID = strategyID;
+        // inrange ticks provided
+        executeParams.tickLower = floorTicks(tick + 200, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = int256(reserve0 / 2);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (strategyKey,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        assertEq(reserve0 > 0, true);
+        assertEq(reserve1 == 0, true);
+
+        (,,,,,,,, account) = base.strategies(strategyID);
+
+        assertEq(account.balance0, 0);
+        assertEq(account.balance1 > 0, true);
+    }
+
+    // MultiConditions
+
+    function testExecuteStrategyWithTwoUsersZeroSwapMintFalse() public {
+        // deposit user 1
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 1, 1);
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        ICLTBase.Account memory account;
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(account.balance0 > 0, true);
+        assertEq(account.balance1 > 0, true);
+
+        assertEq(reserve1, 0);
+        assertEq(reserve0, 0);
+
+        /**
+         * Bug here
+         */
+
+        // // user 2 deposit in same strategy
+        // allowNewUser(users[0], owner, 4 ether);
+        // uint256 amount0 = 4 ether;
+        // uint256 amount1 = 4 ether;
+
+        // depoit(strategyID, users[0], amount0, amount1);
+
+        // (key,,,,,,,, account) = base.strategies(strategyID);
+        // (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // assertEq(reserve1, 0);
+        // assertEq(reserve0, 0);
+    }
+
+    function testExecuteStrategyWithTwoUsersZeroSwapMintTrue() public {
+        // deposit user 1
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 1, 1);
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        ICLTBase.Account memory account;
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(account.balance0 == 0, true);
+        assertEq(account.balance1 > 0, true);
+
+        assertEq(reserve1, 0);
+        assertEq(reserve0 > 0, true);
+
+        // user 2 deposit in same strategy
+        allowNewUser(users[0], owner, 4 ether);
+        uint256 amount0 = 4 ether;
+        uint256 amount1 = 4 ether;
+
+        depoit(strategyID, users[0], amount0, amount1);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(reserve1, 0);
+        assertEq(reserve0 > 0, true);
+
+        // generate some fees
+        executeSwap(token0, token1, pool.fee(), owner, 10e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 10e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 10e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 10e18, 0, 0);
+
+        // user 2 withdraws
+        (, uint256 liquidityShare,,,,) = base.positions(2);
+
+        _hevm.prank(owner);
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: users[0], refundAsETH: false })
+        );
+    }
+
+    function testExecuteStrategyBeforeBotRebaseing() public {
+        initStrategy(1500);
+
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(34, 33);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(3);
+
+        positionActions.mode = 3;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(1500, owner, true, positionActions);
+
+        bytes32 strategyID = getStrategyID(owner, 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 150e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = owner;
+
+        base.deposit(depositParams);
+
+        int24 tickLower = strategyKey.tickLower;
+        int24 tickUpper = strategyKey.tickUpper;
+
+        ICLTBase.Account memory account;
+
+        (strategyKey,,,,,,,, account) = base.strategies(strategyID);
+        (, int24 tick,,,,,) = pool.slot0();
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(150e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        (, tick,,,,,) = pool.slot0();
+
+        executeParams.pool = strategyKey.pool;
+        executeParams.strategyID = strategyID;
+        // inrange ticks provided
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = int256(reserve0 / 8);
+
+        rebaseModule.executeStrategy(executeParams);
+        bytes memory actionStatus;
+        (strategyKey,,, actionStatus,,,,, account) = base.strategies(strategyID);
+
+        assertEq(true, checkRange(strategyKey.tickLower, strategyKey.tickUpper));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        assertEq(reserve0, 0);
+        assertEq(reserve1, 0);
+
+        (, bool exit) = abi.decode(actionStatus, (uint256, bool));
+        assertEq(exit, true);
+
+        bytes32[] memory strategies = new bytes32[](1);
+        strategies[0] = strategyID;
+
+        rebaseModule.executeStrategies(strategies);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID);
+        (, exit) = abi.decode(actionStatus, (uint256, bool));
+        assertEq(exit, false);
+    }
 }
