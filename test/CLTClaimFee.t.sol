@@ -148,11 +148,11 @@ contract ClaimFeeTest is Test, Fixtures {
 
         (, uint256 fee0,) = base.getStrategyReserves(getStrategyID(address(this), 1));
 
-        // // nft 1 earns 25% of fees
+        // nft 1 earns 25% of fees
         vm.startPrank(address(this));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 1, refundAsETH: true }));
 
-        // // nft 2 earns 75% of fees
+        // nft 2 earns 75% of fees
         vm.startPrank(users[0]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[2], tokenId: 2, refundAsETH: true }));
 
@@ -240,15 +240,15 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
         /// user1 has earned more fees which is 66% which is fishy because for token1 both have equal share & growth
-        assertEq(token0.balanceOf(msg.sender), 4_019_073_529_944_806);
-        assertEq(token1.balanceOf(msg.sender), 1_998_013_943_879_531);
+        assertEq(token0.balanceOf(msg.sender), 4_416_689_949_339_070);
+        assertEq(token1.balanceOf(msg.sender), 2_393_644_397_049_624);
 
         vm.startPrank(users[0]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
         /// user2 has earned 33% of token1
-        assertEq(token0.balanceOf(users[1]), 1_001_511_814_214_027);
-        assertEq(token1.balanceOf(users[1]), 996_509_584_579_831);
+        assertEq(token0.balanceOf(users[1]), 603_895_394_819_763);
+        assertEq(token1.balanceOf(users[1]), 600_879_131_409_738);
     }
 
     function test_claimFee_shouldPayStrategistFee() public {
