@@ -14,7 +14,7 @@ library StrategyFeeShares {
     struct GlobalAccount {
         uint256 positionFee0;
         uint256 positionFee1;
-        uint128 totalLiquidity;
+        uint256 totalLiquidity;
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
     }
@@ -52,21 +52,29 @@ library StrategyFeeShares {
         (uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128) =
             (global.feeGrowthInside0LastX128, global.feeGrowthInside1LastX128);
 
-        total0 = uint128(
-            FullMath.mulDiv(
-                feeGrowthInside0LastX128 - self.account.feeGrowthInside0LastX128,
-                self.account.uniswapLiquidity,
-                FixedPoint128.Q128
-            )
-        );
+        bool isExit;
 
-        total1 = uint128(
-            FullMath.mulDiv(
-                feeGrowthInside1LastX128 - self.account.feeGrowthInside1LastX128,
-                self.account.uniswapLiquidity,
-                FixedPoint128.Q128
-            )
-        );
+        if (self.actionStatus.length > 0) {
+            (, isExit) = abi.decode(self.actionStatus, (uint256, bool));
+        }
+
+        if (isExit == false) {
+            total0 = uint128(
+                FullMath.mulDiv(
+                    feeGrowthInside0LastX128 - self.account.feeGrowthInside0LastX128,
+                    self.account.totalShares,
+                    FixedPoint128.Q128
+                )
+            );
+
+            total1 = uint128(
+                FullMath.mulDiv(
+                    feeGrowthInside1LastX128 - self.account.feeGrowthInside1LastX128,
+                    self.account.totalShares,
+                    FixedPoint128.Q128
+                )
+            );
+        }
 
         // precesion loss expected here so rounding the value to zero to prevent overflow
         (, global.positionFee0) = SafeMath.trySub(global.positionFee0, total0);

@@ -11,7 +11,6 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "forge-std/console.sol";
 
 library UserPositions {
     struct Data {

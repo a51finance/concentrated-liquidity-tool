@@ -234,24 +234,19 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         amount0 -= vars.balance0;
         amount1 -= vars.balance1;
 
-        if (!strategy.isCompound) {
-            amount0 += vars.fee0;
-            amount1 += vars.fee1;
+        // should calculate correct amounts for both compounders & non-compounders
+        uint256 userShare0 = FullMath.mulDiv(strategy.account.balance0, params.liquidity, strategy.account.totalShares);
+        uint256 userShare1 = FullMath.mulDiv(strategy.account.balance1, params.liquidity, strategy.account.totalShares);
 
+        amount0 += userShare0 + vars.fee0;
+        amount1 += userShare1 + vars.fee1;
+
+        strategy.account.balance0 -= userShare0;
+        strategy.account.balance1 -= userShare1;
+
+        if (!strategy.isCompound) {
             position.tokensOwed0 = 0;
             position.tokensOwed1 = 0;
-        } else {
-            uint256 userShare0 =
-                FullMath.mulDiv(strategy.account.balance0, params.liquidity, strategy.account.totalShares);
-
-            uint256 userShare1 =
-                FullMath.mulDiv(strategy.account.balance1, params.liquidity, strategy.account.totalShares);
-
-            amount0 += userShare0 + vars.fee0;
-            amount1 += userShare1 + vars.fee1;
-
-            strategy.account.balance0 -= userShare0;
-            strategy.account.balance1 -= userShare1;
         }
 
         if (amount0 > 0) {
@@ -262,8 +257,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
         }
 
+        bool isExit;
+
+        if (strategy.actionStatus.length > 0) {
+            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
+        }
+
+        if (isExit == false) global.totalLiquidity -= params.liquidity;
+
         position.liquidityShare -= params.liquidity;
-        global.totalLiquidity -= vars.uniswapLiquidity;
         strategy.account.totalShares -= params.liquidity;
         strategy.account.uniswapLiquidity -= vars.uniswapLiquidity;
 
@@ -322,8 +324,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         // only burn this strategy liquidity not other strategy with same ticks
         (vars.balance0, vars.balance1,,) = PoolActions.burnLiquidity(strategy.key, vars.uniswapLiquidity);
 
-        // update global liquidity
-        global.totalLiquidity -= vars.uniswapLiquidity;
+        bool isExit;
+
+        if (strategy.actionStatus.length > 0) {
+            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
+        }
+
+        // global liquidity will be less if strategy has activated exit mode
+        if (isExit == false) {
+            global.totalLiquidity -= strategy.account.totalShares;
+        }
 
         // returns protocol fees
         (uint256 automationFee,,,) = _getGovernanceFee(strategy.isPrivate);
@@ -417,8 +427,14 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
         Account memory vars;
 
-        if (strategy.isCompound) {
-            /// should set these vars zero if not added : above values should not use
+        bool isExit;
+
+        if (strategy.actionStatus.length > 0) {
+            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
+        }
+
+        // prevent user drains others
+        if (strategy.isCompound && isExit == false) {
             (vars.uniswapLiquidity, vars.balance0, vars.balance1) = PoolActions.compoundFees(
                 strategy.key,
                 strategy.account.balance0 + strategy.account.fee0,
@@ -430,16 +446,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             emit FeeCompounded(strategyId, vars.balance0, vars.balance1);
         }
 
-        (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(
-            strategy.key,
-            strategy.isCompound,
-            strategy.account.uniswapLiquidity,
-            amount0Desired,
-            amount1Desired,
-            strategy.account.balance0,
-            strategy.account.balance1,
-            strategy.account.totalShares
-        );
+        // shares should not include fee for non-compounders
+        (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(strategy, amount0Desired, amount1Desired);
 
         // liquidity frontrun checks here
         if (share == 0) revert InvalidShare();
@@ -452,12 +460,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);
 
         // now contract balance has: new user asset + previous user unused assets + collected fee of strategy
-        if (strategy.isCompound) {
+        if (isExit == false) {
             (vars.uniswapLiquidity, vars.balance0, vars.balance1) =
                 PoolActions.mintLiquidity(strategy.key, amount0, amount1);
-        } else {
-            (vars.uniswapLiquidity, vars.balance0, vars.balance1) =
-                PoolActions.mintLiquidity(strategy.key, amount0Desired, amount1Desired);
         }
 
         strategy.update(global, vars.uniswapLiquidity, share, amount0, amount1, vars.balance0, vars.balance1);
