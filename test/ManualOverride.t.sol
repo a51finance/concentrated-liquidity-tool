@@ -799,22 +799,18 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(reserve1, 0);
         assertEq(reserve0, 0);
 
-        /**
-         * Bug here
-         */
+        // user 2 deposit in same strategy
+        allowNewUser(users[0], owner, 4 ether);
+        uint256 amount0 = 4 ether;
+        uint256 amount1 = 4 ether;
 
-        // // user 2 deposit in same strategy
-        // allowNewUser(users[0], owner, 4 ether);
-        // uint256 amount0 = 4 ether;
-        // uint256 amount1 = 4 ether;
+        depoit(strategyID, users[0], amount0, amount1);
 
-        // depoit(strategyID, users[0], amount0, amount1);
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        // (key,,,,,,,, account) = base.strategies(strategyID);
-        // (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
-
-        // assertEq(reserve1, 0);
-        // assertEq(reserve0, 0);
+        assertEq(reserve1, 0);
+        assertEq(reserve0, 0);
     }
 
     function testExecuteStrategyWithTwoUsersZeroSwapMintTrue() public {

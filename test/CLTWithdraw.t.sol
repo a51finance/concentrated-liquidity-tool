@@ -246,5 +246,75 @@ contract CLTWithdrawTest is Test, Fixtures {
         );
     }
 
+    function test_withdraw_succeedsWithCompounding() public {
+        address payable[] memory users = utils.createUsers(1);
+        uint256 depositAmount = 4 ether;
+
+        token0.mint(users[0], depositAmount);
+        token1.mint(users[0], depositAmount);
+
+        vm.startPrank(users[0]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: getStrategyID(address(this), 1),
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: users[0]
+        });
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+
+        vm.prank(users[0]);
+        base.deposit(params);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (uint128 liquidity, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        (uint256 res0, uint256 res1) = getStrategyReserves(key, liquidity);
+
+        console.log("res -> ", res0, res1);
+        console.log("fee -> ", fee0, fee1);
+
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+    }
+
     function test_withdraw_() public { }
 }
