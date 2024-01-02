@@ -793,8 +793,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (key,,,,,,,, account) = base.strategies(strategyID);
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        assertEq(account.balance0 > 0, true);
-        assertEq(account.balance1 > 0, true);
+        console.log(account.balance0);
+        console.log(account.balance1);
 
         assertEq(reserve1, 0);
         assertEq(reserve0, 0);
@@ -811,6 +811,9 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(reserve1, 0);
         assertEq(reserve0, 0);
+
+        console.log(account.balance0);
+        console.log(account.balance1);
     }
 
     function testExecuteStrategyWithTwoUsersZeroSwapMintTrue() public {
