@@ -32,8 +32,8 @@ library Position {
         }
 
         if (share > 0) {
+            global.totalLiquidity += share;
             self.account.totalShares += share;
-            global.totalLiquidity += liquidityAdded;
             self.account.uniswapLiquidity += liquidityAdded;
         }
     }
@@ -55,7 +55,6 @@ library Position {
             self.account.fee0 = 0;
             self.account.fee1 = 0;
 
-            global.totalLiquidity += liquidityAdded;
             self.account.uniswapLiquidity += liquidityAdded;
         }
     }
@@ -76,16 +75,29 @@ library Position {
 
         self.key = key;
 
+        // remaining assets are held in contract
         self.account.balance0 = balance0;
         self.account.balance1 = balance1;
 
         self.actionStatus = status;
         self.account.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
-        globalAccount.totalLiquidity += liquidity;
 
-        self.account.fee0 = 0;
-        self.account.fee1 = 0;
+        bool isExit;
 
+        if (self.actionStatus.length > 0) {
+            (, isExit) = abi.decode(self.actionStatus, (uint256, bool));
+        }
+
+        // if liquidity is on HODL it shouldn't recieve fee shares but calculations will remain for existing users
+        if (isExit == false) globalAccount.totalLiquidity += self.account.totalShares;
+
+        // fee should remain for non-compounding strategy's existing users
+        if (self.isCompound) {
+            self.account.fee0 = 0;
+            self.account.fee1 = 0;
+        }
+
+        // assigning again feeGrowth here because if liquidity ticks are changed then calculations will be messed
         self.account.feeGrowthInside0LastX128 = globalAccount.feeGrowthInside0LastX128;
         self.account.feeGrowthInside1LastX128 = globalAccount.feeGrowthInside1LastX128;
     }

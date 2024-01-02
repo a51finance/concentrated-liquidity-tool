@@ -17,6 +17,7 @@ library LiquidityShares {
         PoolActions.updatePosition(key);
 
         // check only for this strategy uniswap liquidity
+        // earnable0 & earnable1 will always returns zero becuase fee already claimed in updateGlobal
         if (liquidity > 0) {
             (,,, uint256 earnable0, uint256 earnable1) = PoolActions.getPositionLiquidity(key);
 
@@ -28,32 +29,25 @@ library LiquidityShares {
     }
 
     function computeLiquidityShare(
-        ICLTBase.StrategyKey memory key,
-        bool isCompound,
-        uint128 strategyliquidity,
+        ICLTBase.StrategyData storage strategy,
         uint256 amount0Max,
-        uint256 amount1Max,
-        uint256 balance0,
-        uint256 balance1,
-        uint256 totalSupply
+        uint256 amount1Max
     )
         external
         returns (uint256 shares, uint256 amount0, uint256 amount1)
     {
-        if (isCompound) {
-            (uint256 reserve0, uint256 reserve1) = getReserves(key, strategyliquidity);
+        (uint256 reserve0, uint256 reserve1) = getReserves(strategy.key, strategy.account.uniswapLiquidity);
 
-            // If total supply > 0, pool can't be empty
-            assert(totalSupply == 0 || reserve0 != 0 || reserve1 != 0);
-            (shares, amount0, amount1) =
-                calculateShare(amount0Max, amount1Max, reserve0 + balance0, reserve1 + balance1, totalSupply);
-        } else {
-            uint128 liquidity = PoolActions.getLiquidityForAmounts(key, amount0Max, amount1Max);
+        // If total supply > 0, pool can't be empty
+        assert(strategy.account.totalShares == 0 || reserve0 != 0 || reserve1 != 0);
 
-            (amount0, amount1) = PoolActions.getAmountsForLiquidity(key, liquidity);
-
-            shares = totalSupply == 0 ? uint256(liquidity) : FullMath.mulDiv(totalSupply, liquidity, strategyliquidity);
-        }
+        (shares, amount0, amount1) = calculateShare(
+            amount0Max,
+            amount1Max,
+            reserve0 + strategy.account.balance0,
+            reserve1 + strategy.account.balance1,
+            strategy.account.totalShares
+        );
     }
 
     function calculateShare(

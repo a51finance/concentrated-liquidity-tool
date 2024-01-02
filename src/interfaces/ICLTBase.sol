@@ -118,6 +118,19 @@ interface ICLTBase {
     /// @param strategyId Hash of strategy ID
     event StrategyUpdated(bytes32 indexed strategyId);
 
+    /// @notice Emitted when fee of strategy is updated
+    /// @param strategyId Hash of strategy ID
+    /// @param fee0 Amount of fees0 collected by strategy
+    /// @param fee1 Amount of fees1 collected by strategy
+    event StrategyFee(bytes32 indexed strategyId, uint256 fee0, uint256 fee1);
+
+    /// @notice Emitted when liquidity is increased for a position NFT
+    /// @param tokenId The ID of the token for which liquidity was increased
+    /// @param share The amount by which liquidity for the NFT position was increased
+    /// @param amount0 The amount of token0 that was paid for the increase in liquidity
+    /// @param amount1 The amount of token1 that was paid for the increase in liquidity
+    event PositionUpdated(uint256 indexed tokenId, uint256 share, uint256 amount0, uint256 amount1);
+
     /// @notice Emitted when strategy is shifted
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @param isLiquidityMinted Bool

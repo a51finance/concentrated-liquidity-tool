@@ -10,7 +10,7 @@ import { Utilities } from "./utils/Utilities.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { Constants } from "../src/libraries/Constants.sol";
-import { PoolActions } from "../src/libraries/PoolActions.sol";
+import { LiquidityShares } from "../src/libraries/LiquidityShares.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
@@ -232,7 +232,7 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
 
-        assertEq(account.balance0, 243_856_850_123_961);
+        assertEq(account.balance0, 360_616_736_599_640);
         assertEq(account.balance1, 0);
         assertEq(account.totalShares, ((depositAmount * 2) + liquidityShareUser2));
     }
@@ -272,7 +272,7 @@ contract CLTDepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 251_031_077_193_010_225);
+        assertEq(liquidityShareUser2, 250_968_146_844_201_956);
     }
 
     function test_deposit_shouldReturnExtraETH() public {
@@ -612,7 +612,7 @@ contract CLTDepositTest is Test, Fixtures {
         (, uint256 userShare1,,,,) = base.positions(1);
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        uint128 liquidityUser1 = PoolActions.getLiquidityForAmounts(key, depositAmount, depositAmount);
+        (uint256 liquidityUser1,,) = LiquidityShares.calculateShare(depositAmount, depositAmount, 0, 0, 0);
 
         assertEq(userShare1, liquidityUser1);
         assertEq(account.totalShares, liquidityUser1);
@@ -620,16 +620,11 @@ contract CLTDepositTest is Test, Fixtures {
         vm.prank(users[0]);
         base.deposit(params);
 
-        uint128 liquidityUser2 = PoolActions.getLiquidityForAmounts(key, depositAmount, depositAmount);
-
         (, uint256 userShare2,,,,) = base.positions(2);
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(userShare2, liquidityUser2);
-
-        assertEq(
-            account.totalShares, liquidityUser1 + (FullMath.mulDiv(liquidityUser1, liquidityUser2, liquidityUser1))
-        );
+        assertEq(userShare2, depositAmount);
+        assertEq(account.totalShares, depositAmount * 2);
 
         assertEq(account.balance0, 0);
         assertEq(account.balance1, 0);
@@ -661,21 +656,21 @@ contract CLTDepositTest is Test, Fixtures {
             })
         );
 
+        (,,,,,,,, account) = base.strategies(strategyID);
+
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        (uint256 liquidityUser3,,) =
+            LiquidityShares.calculateShare(depositAmount, depositAmount, reserves0, reserves1, account.totalShares);
+
         vm.prank(users[1]);
         base.deposit(params);
 
         (, uint256 userShare3,,,,) = base.positions(3);
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        uint128 liquidityUser3 = PoolActions.getLiquidityForAmounts(key, depositAmount, depositAmount);
-
-        assertEq(userShare3, liquidityUser3);
-
-        assertEq(
-            account.totalShares,
-            liquidityUser1 + liquidityUser2
-                + (FullMath.mulDiv(liquidityUser1 + liquidityUser2, liquidityUser3, liquidityUser1 + liquidityUser2))
-        );
+        assertEq(userShare3, liquidityUser3 - 1);
+        assertEq(account.totalShares, ((liquidityUser1 * 2) + liquidityUser3) - 1);
     }
 
     receive() external payable { }
