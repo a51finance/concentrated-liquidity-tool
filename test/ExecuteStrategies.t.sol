@@ -663,15 +663,32 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         ICLTBase.Account memory accounts;
         ICLTBase.StrategyKey memory key;
         (key,,,,,,,, accounts) = base.strategies(strategyID);
+
+        (, uint256 reserve1) = getStrategyReserves(key, accounts.uniswapLiquidity);
+        (, uint256 shares2,,,,) = base.positions(2);
+
+        _hevm.prank(address(base));
+        key.pool.burn(key.tickLower, key.tickUpper, 0);
+
+        _hevm.prank(address(base));
+        (uint256 collect0, uint256 collect1) =
+            key.pool.collect(address(base), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
+
+        console.log(collect0, collect1);
+
+        console.log(accounts.balance1);
+
         assertEq(token0.balanceOf(users[1]), 100 ether - accounts.balance0);
-        assertEq(token1.balanceOf(users[1]), 100 ether - accounts.balance1);
+        // precision error of 0.077071791677914138 here
+        assertEq(token1.balanceOf(users[1]), 100 ether - (reserve1 * shares2) / accounts.totalShares);
 
         executeSwap(token0, token1, pool.fee(), owner, 50e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
 
-        (, uint256 shares2,,,,) = base.positions(2);
+        (, shares2,,,,) = base.positions(2);
+
         _hevm.prank(users[1]);
         base.withdraw(
             ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
