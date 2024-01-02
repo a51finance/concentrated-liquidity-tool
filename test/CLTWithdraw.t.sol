@@ -304,6 +304,8 @@ contract CLTWithdrawTest is Test, Fixtures {
         console.log("res -> ", res0, res1);
         console.log("fee -> ", fee0, fee1);
 
+        base.toggleOperator(address(this));
+
         base.shiftLiquidity(
             ICLTBase.ShiftLiquidityParams({
                 key: key,
