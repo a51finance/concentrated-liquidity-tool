@@ -6,6 +6,7 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { Vm } from "forge-std/Vm.sol";
+import { console } from "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 
 contract ExecuteStrategiesTest is Test, RebaseFixtures {
@@ -155,70 +156,70 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
-        // (uint256 count,) = abi.decode(actionStatus, (uint256, bool));
-        // assertEq(count, 1);
+        (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
+        (uint256 count,) = abi.decode(actionStatus, (uint256, bool));
+        assertEq(count, 1);
 
-        // // for mode 2
-        // rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        // rebaseActions[0].data = abi.encode(45, 22);
+        // for mode 2
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(45, 22);
 
-        // rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
-        // rebaseActions[1].data = abi.encode(1);
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(1);
 
-        // bytes32 strategyID2 = createStrategyAndDeposit(rebaseActions, 3000, owner, 2, 2, true);
+        bytes32 strategyID2 = createStrategyAndDeposit(rebaseActions, 3000, owner, 2, 2, true);
 
-        // executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // strategyIDs[0] = strategyID2;
+        strategyIDs[0] = strategyID2;
 
-        // rebaseModule.executeStrategies(strategyIDs);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, actionStatus,,,,,) = base.strategies(strategyID2);
-        // (count,) = abi.decode(actionStatus, (uint256, bool));
-        // assertEq(count, 1);
+        (,,, actionStatus,,,,,) = base.strategies(strategyID2);
+        (count,) = abi.decode(actionStatus, (uint256, bool));
+        assertEq(count, 1);
 
-        // // for mode 3
-        // rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        // rebaseActions[0].data = abi.encode(76, 2);
+        // for mode 3
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(76, 2);
 
-        // rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
-        // rebaseActions[1].data = abi.encode(1);
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(1);
 
-        // bytes32 strategyID3 = createStrategyAndDeposit(rebaseActions, 1700, owner, 3, 3, true);
+        bytes32 strategyID3 = createStrategyAndDeposit(rebaseActions, 1700, owner, 3, 3, true);
 
-        // executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // strategyIDs[0] = strategyID3;
+        strategyIDs[0] = strategyID3;
 
-        // rebaseModule.executeStrategies(strategyIDs);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, actionStatus,,,,,) = base.strategies(strategyID3);
+        (,,, actionStatus,,,,,) = base.strategies(strategyID3);
 
-        // (count,) = abi.decode(actionStatus, (uint256, bool));
-        // assertEq(count, 1);
+        (count,) = abi.decode(actionStatus, (uint256, bool));
+        assertEq(count, 1);
 
-        // // for mode 3
-        // rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        // rebaseActions[0].data = abi.encode(34, 11);
+        // for mode 3
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(34, 11);
 
-        // rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
-        // rebaseActions[1].data = abi.encode(1);
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(1);
 
-        // bytes32 strategyID4 = createStrategyAndDeposit(rebaseActions, 500, owner, 4, 3, true);
+        bytes32 strategyID4 = createStrategyAndDeposit(rebaseActions, 500, owner, 4, 3, true);
 
-        // executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
-        // _hevm.warp(block.timestamp + 3600);
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
 
-        // strategyIDs[0] = strategyID4;
+        strategyIDs[0] = strategyID4;
 
-        // rebaseModule.executeStrategies(strategyIDs);
+        rebaseModule.executeStrategies(strategyIDs);
 
-        // (,,, actionStatus,,,,,) = base.strategies(strategyID4);
-        // (count,) = abi.decode(actionStatus, (uint256, bool));
-        // assertEq(count, 1);
+        (,,, actionStatus,,,,,) = base.strategies(strategyID4);
+        (count,) = abi.decode(actionStatus, (uint256, bool));
+        assertEq(count, 1);
     }
 
     function testExecuteStrategyShouldNotRebasePastLimitMode1() public {
@@ -544,5 +545,136 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         }
 
         rebaseModule.executeStrategies(strategyIDs);
+    }
+
+    /**
+     * Random scenario 1
+     * Rebase inactivity 2 and another user comes after 1 rebase
+     */
+
+    function testScenario1() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        allowNewUser(users[0], address(this), 10 ether);
+
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+
+        positionActions.mode = 2;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(700, users[0], true, positionActions);
+
+        bytes32 strategyID = getStrategyID(users[0], 1);
+
+        depoit(strategyID, users[0], 10 ether, 10 ether);
+
+        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+
+        allowNewUser(users[1], address(this), 10 ether);
+
+        assertEq(token0.balanceOf(users[1]), 10 ether);
+        assertEq(token1.balanceOf(users[1]), 10 ether);
+
+        depoit(strategyID, users[1], 10 ether, 10 ether);
+
+        ICLTBase.Account memory accounts;
+        ICLTBase.StrategyKey memory key;
+        (key,,,,,,,, accounts) = base.strategies(strategyID);
+        assertEq(token0.balanceOf(users[1]), 10 ether - accounts.balance0);
+        assertEq(token1.balanceOf(users[1]), 0);
+
+        executeSwap(token0, token1, pool.fee(), owner, 50e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        assertEq(checkRange(key.tickLower, key.tickUpper), true);
+
+        (, uint256 shares2,,,,) = base.positions(2);
+        _hevm.prank(users[1]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+        );
+    }
+
+    function testScenario2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        allowNewUser(users[0], address(this), 10 ether);
+
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+
+        positionActions.mode = 2;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(700, users[0], false, positionActions);
+
+        bytes32 strategyID = getStrategyID(users[0], 1);
+
+        depoit(strategyID, users[0], 10 ether, 10 ether);
+
+        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID);
+
+        assertEq(abi.decode(actionStatus, (uint256)), 1);
+
+        allowNewUser(users[1], address(this), 100 ether);
+
+        assertEq(token0.balanceOf(users[1]), 100 ether);
+        assertEq(token1.balanceOf(users[1]), 100 ether);
+
+        depoit(strategyID, users[1], 10 ether, 10 ether);
+
+        ICLTBase.Account memory accounts;
+        ICLTBase.StrategyKey memory key;
+        (key,,,,,,,, accounts) = base.strategies(strategyID);
+        assertEq(token0.balanceOf(users[1]), 100 ether - accounts.balance0);
+        assertEq(token1.balanceOf(users[1]), 100 ether - accounts.balance1);
+
+        executeSwap(token0, token1, pool.fee(), owner, 50e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        assertEq(checkRange(key.tickLower, key.tickUpper), true);
+
+        (, uint256 shares2,,,,) = base.positions(2);
+        _hevm.prank(users[1]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+        );
     }
 }
