@@ -564,8 +564,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         allowNewUser(users[0], address(this), 10 ether);
 
         ICLTBase.PositionActions memory positionActions;
-        ICLTBase.DepositParams memory depositParams;
-
         positionActions.mode = 2;
         positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
         positionActions.rebaseStrategy = rebaseActions;
@@ -627,8 +625,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         allowNewUser(users[0], address(this), 10 ether);
 
         ICLTBase.PositionActions memory positionActions;
-        ICLTBase.DepositParams memory depositParams;
-
         positionActions.mode = 2;
         positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
         positionActions.rebaseStrategy = rebaseActions;

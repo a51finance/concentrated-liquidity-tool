@@ -57,6 +57,34 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(tickLower != key.tickLower, true);
         assertEq(tickUpper != key.tickUpper, true);
         assertEq(false, checkRange(key.tickLower, key.tickUpper));
+
+        // uncompounded
+        (strategyID, key) = createStrategyAndDepositWithActions(owner, false, 2, 2);
+
+        tickLower = key.tickLower;
+        tickUpper = key.tickUpper;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+        (key,,,,,,,,) = base.strategies(strategyID);
+
+        assertEq(tickLower != key.tickLower, true);
+        assertEq(tickUpper != key.tickUpper, true);
+        assertEq(false, checkRange(key.tickLower, key.tickUpper));
     }
 
     function testExecuteStrategyWithInValidOwner() public {
@@ -166,6 +194,48 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(reserve0, 0);
         assertEq(reserve1, 0);
+
+        // uncompounded
+
+        (strategyID, key) = createStrategyAndDepositWithActions(owner, true, 2, 2);
+
+        tickLower = key.tickLower;
+        tickUpper = key.tickUpper;
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(reserve0, 0);
+        assertEq(reserve1, 0);
     }
 
     function testExecuteStrategyWithMintFalseSwapFifty() public {
@@ -198,6 +268,53 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
         (, int24 tick,,,,,) = key.pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 500, key.pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, key.pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = int256(reserve1 / 2);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(reserve0, 0);
+        assertEq(reserve1, 0);
+
+        // Removed 10 token because of slippage
+        assertEq(account.balance0 + account.balance1 <= 200 || account.balance0 + account.balance1 >= 190, true);
+
+        // uncompounded
+
+        (strategyID, key) = createStrategyAndDepositWithActions(owner, false, 2, 2);
+
+        tickLower = key.tickLower;
+        tickUpper = key.tickUpper;
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        executeSwap(token1, token0, key.pool.fee(), owner, 200e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        (, tick,,,,,) = key.pool.slot0();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -278,10 +395,123 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         // since its mode 2 the ticks will roll back
         assertEq(key.tickLower < tick, true);
         assertEq(key.tickUpper < tick, true);
+
+        // uncompounded
+
+        (strategyID, key) = createStrategyAndDepositWithActions(owner, false, 2, 2);
+
+        tickLower = key.tickLower;
+        tickUpper = key.tickUpper;
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (, tick,,,,,) = pool.slot0();
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(key.tickLower > tick, true);
+        assertEq(key.tickUpper > tick, true);
+
+        assertEq(reserve0, 0);
+        assertEq(reserve1, 0);
+
+        // now executing executeStrategies()
+        strategyIds[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIds);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        // since its mode 2 the ticks will roll back
+        assertEq(key.tickLower < tick, true);
+        assertEq(key.tickUpper < tick, true);
     }
 
-    function testExecuteStrategyWithMintFalseInValidSideMode1() public {
+    function testExecuteStrategyWithMintFalseInValidSideMode1Compounded() public {
         (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 1, 1);
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        ICLTBase.Account memory account;
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(key.tickLower < tick, true);
+        assertEq(key.tickUpper < tick, true);
+
+        assertEq(reserve0, 0);
+        assertEq(reserve1, 0);
+
+        // now executing executeStrategies()
+        bytes32[] memory strategyIds = new bytes32[](1);
+        strategyIds[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIds);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        // since its mode 2 the ticks will roll back
+        assertEq(key.tickLower > tick, true);
+        assertEq(key.tickUpper > tick, true);
+    }
+
+    function testExecuteStrategyWithMintFalseInValidSideMode1Uncompounded() public {
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, false, 1, 1);
 
         int24 tickLower = key.tickLower;
         int24 tickUpper = key.tickUpper;
@@ -339,7 +569,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
     // shouldMint True and swap amount (changing)
 
-    function testExecuteStrategyShouldMintTrueAndSwapZeroMode2() public {
+    function testExecuteStrategyShouldMintTrueAndSwapZeroMode2Comp() public {
         (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 2, 1);
 
         int24 tickLower = key.tickLower;
@@ -385,7 +615,53 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(reserve1 > 0, true);
     }
 
-    function testExecuteStrategyShouldMintTrueAndSwapZeroMode1() public {
+    function testExecuteStrategyShouldMintTrueAndSwapZeroMode2Uncomp() public {
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, false, 2, 1);
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        ICLTBase.Account memory account;
+        Accounting memory accounting;
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(reserve0, 0);
+        assertEq(reserve1 > 0, true);
+    }
+
+    function testExecuteStrategyShouldMintTrueAndSwapZeroMode1Comp() public {
         (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 1, 1);
 
         int24 tickLower = key.tickLower;
@@ -431,8 +707,119 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(reserve0 > 0, true);
     }
 
-    function testExecuteStrategyWithMintTrueInValidSideMode2() public {
+    function testExecuteStrategyShouldMintTrueAndSwapZeroMode1Uncomp() public {
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, false, 1, 1);
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        ICLTBase.Account memory account;
+        Accounting memory accounting;
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(reserve1, 0);
+        assertEq(reserve0 > 0, true);
+    }
+
+    function testExecuteStrategyWithMintTrueInValidSideMode2Comp() public {
         (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 2, 1);
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        ICLTBase.Account memory account;
+        Accounting memory accounting;
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (, int24 tick,,,,,) = pool.slot0();
+
+        accounting.balance0Before = account.balance0;
+        accounting.balance1Before = account.balance1;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // 1 wei precision is lost on uniswap
+        assertEq(100e18 - reserve0 - 1, account.balance0);
+        assertEq(100e18 - reserve1 - 1, account.balance1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(key.tickLower > tick, true);
+        assertEq(key.tickUpper > tick, true);
+
+        assertEq(reserve1, 0);
+        assertEq(reserve0 > 0, true);
+
+        // now executing executeStrategies()
+        bytes32[] memory strategyIds = new bytes32[](1);
+        strategyIds[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIds);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // since its mode 2 the ticks will roll back
+        assertEq(key.tickLower < tick, true);
+        assertEq(key.tickUpper < tick, true);
+
+        assertEq(reserve0, 0);
+        assertEq(reserve1 > 0, true);
+    }
+
+    function testExecuteStrategyWithMintTrueInValidSideMode2Uncomp() public {
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, false, 2, 1);
 
         int24 tickLower = key.tickLower;
         int24 tickUpper = key.tickUpper;
