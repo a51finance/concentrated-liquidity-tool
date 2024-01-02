@@ -28,9 +28,9 @@ library StrategyFeeShares {
     {
         account = self[keccak256(abi.encodePacked(key.pool, key.tickLower, key.tickUpper))];
 
-        PoolActions.updatePosition(key);
-
         if (account.totalLiquidity > 0) {
+            PoolActions.updatePosition(key);
+
             (uint256 fees0, uint256 fees1) =
                 PoolActions.collectPendingFees(key, Constants.MAX_UINT128, Constants.MAX_UINT128, address(this));
 

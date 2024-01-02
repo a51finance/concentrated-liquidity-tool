@@ -38,16 +38,14 @@ library LiquidityShares {
     {
         (uint256 reserve0, uint256 reserve1) = getReserves(strategy.key, strategy.account.uniswapLiquidity);
 
+        reserve0 += strategy.account.balance0;
+        reserve1 += strategy.account.balance1;
+
         // If total supply > 0, pool can't be empty
         assert(strategy.account.totalShares == 0 || reserve0 != 0 || reserve1 != 0);
 
-        (shares, amount0, amount1) = calculateShare(
-            amount0Max,
-            amount1Max,
-            reserve0 + strategy.account.balance0,
-            reserve1 + strategy.account.balance1,
-            strategy.account.totalShares
-        );
+        (shares, amount0, amount1) =
+            calculateShare(amount0Max, amount1Max, reserve0, reserve1, strategy.account.totalShares);
     }
 
     function calculateShare(
