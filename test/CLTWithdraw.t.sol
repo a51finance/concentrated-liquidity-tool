@@ -553,10 +553,6 @@ contract CLTWithdrawTest is Test, Fixtures {
 
         (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        console.log("res total", reserves0, reserves1);
-        console.log("fee total", account.fee0, account.fee1);
-        console.log("balance total", account.balance0, account.balance1);
-
         uint256 userShare0 = (account.fee0 + account.balance0 + reserves0) / 2;
         uint256 userShare1 = (account.fee1 + account.balance1 + reserves1) / 2;
 
@@ -591,5 +587,13 @@ contract CLTWithdrawTest is Test, Fixtures {
 
         assertEq(token0.balanceOf(users[1]), userShare0);
         assertEq(token1.balanceOf(users[1]), userShare1);
+
+        (,,,,,,,, account) = base.strategies(strategyId);
+
+        (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // contract should have same assets left for last user
+        assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
+        assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
     }
 }
