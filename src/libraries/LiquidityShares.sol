@@ -5,7 +5,6 @@ import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { console } from "forge-std/console.sol";
 
 library LiquidityShares {
     function getReserves(
