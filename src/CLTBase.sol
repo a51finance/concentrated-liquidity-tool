@@ -346,12 +346,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         vars.balance1 -= vars.fee1;
 
         if (strategy.isCompound) {
-            vars.balance0 += strategy.account.fee0;
-            vars.balance1 += strategy.account.fee1;
+            vars.balance0 += strategy.account.fee0 + strategy.account.balance0;
+            vars.balance1 += strategy.account.fee1 + strategy.account.balance1;
             emit FeeCompounded(params.strategyId, strategy.account.fee0, strategy.account.fee1);
         }
-        vars.balance0 += strategy.account.balance0;
-        vars.balance1 += strategy.account.balance1;
 
         if (params.swapAmount != 0) {
             (int256 amount0Swapped, int256 amount1Swapped) =
