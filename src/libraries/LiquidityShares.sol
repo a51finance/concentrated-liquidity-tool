@@ -41,7 +41,6 @@ library LiquidityShares {
         reserve0 += strategy.account.balance0;
         reserve1 += strategy.account.balance1;
 
-        // If total supply > 0, pool can't be empty
         assert(strategy.account.totalShares == 0 || reserve0 != 0 || reserve1 != 0);
 
         (shares, amount0, amount1) =

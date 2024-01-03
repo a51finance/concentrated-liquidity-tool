@@ -307,6 +307,7 @@ contract CLTWithdrawTest is Test, Fixtures {
         base.toggleOperator(address(this));
 
         vm.prank(address(this));
+
         base.shiftLiquidity(
             ICLTBase.ShiftLiquidityParams({
                 key: key,
