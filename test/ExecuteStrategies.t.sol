@@ -613,7 +613,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         );
     }
 
-    function testScenario2() public {
+    function testFailScenario2() public {
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
 
         rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
