@@ -22,8 +22,6 @@ import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-import "forge-std/console.sol";
-
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
@@ -346,11 +344,15 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         vars.balance1 -= vars.fee1;
 
         if (strategy.isCompound) {
-            vars.balance0 += strategy.account.fee0 + strategy.account.balance0;
-            vars.balance1 += strategy.account.fee1 + strategy.account.balance1;
+            vars.balance0 += strategy.account.fee0;
+            vars.balance1 += strategy.account.fee1;
 
             emit FeeCompounded(params.strategyId, strategy.account.fee0, strategy.account.fee1);
         }
+
+        // add unused assets for new liquidity
+        vars.balance0 += strategy.account.balance0;
+        vars.balance1 += strategy.account.balance1;
 
         if (params.swapAmount != 0) {
             (int256 amount0Swapped, int256 amount1Swapped) =
