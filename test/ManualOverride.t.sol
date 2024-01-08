@@ -849,6 +849,25 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.strategyID = strategyID;
         executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
         executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 0;
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+        (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        console.log(reserve0);
+        console.log(reserve1);
+
+        console.log(account.balance0);
+        console.log(account.balance1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
         executeParams.shouldMint = true;
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
@@ -878,6 +897,9 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(reserve0, 0);
         assertEq(reserve1 > 0, true);
+
+        console.log(account.balance0);
+        console.log(account.balance1);
     }
 
     function testExecuteStrategyWithMintTrueInRangeComp() public {
