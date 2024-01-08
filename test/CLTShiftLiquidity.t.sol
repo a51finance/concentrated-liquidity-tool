@@ -79,6 +79,38 @@ contract CLTShiftLiquidityTest is Test, Fixtures {
         );
     }
 
+    function test_shiftLiquidity_succeedCorrectEventParams() public {
+        vm.expectEmit(true, true, false, true);
+        emit LiquidityShifted(getStrategyID(address(this), 1), true, false, 0);
+
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+
+        vm.expectEmit(true, true, false, true);
+        emit LiquidityShifted(getStrategyID(address(this), 2), false, false, 0);
+
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 2),
+                shouldMint: false,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+    }
+
     function test_shiftLiquidity_protocolShouldReceiveFee() public {
         bytes32 strategyId = getStrategyID(address(this), 1);
 
@@ -117,6 +149,265 @@ contract CLTShiftLiquidityTest is Test, Fixtures {
 
         assertEq(token0.balanceOf(msg.sender), (reserves0 * 10) / 100);
         assertEq(token1.balanceOf(msg.sender), (reserves1 * 10) / 100);
+    }
+
+    function test_shiftLiquidity_succeedShiftLeft() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
+
+        // compounding strategy
+        base.createStrategy(key, actions, 0, 0, true, false);
+        // non compounding strategy
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 3),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 4),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        bytes32[] memory strategyIDs = new bytes32[](2);
+        strategyIDs[0] = getStrategyID(address(this), 3);
+        strategyIDs[1] = getStrategyID(address(this), 4);
+
+        // update pool cardinality
+        pool.increaseObservationCardinalityNext(80);
+        vm.warp(block.timestamp + 1 days);
+
+        base.toggleOperator(address(modes));
+        modes.ShiftBase(strategyIDs);
+
+        (ICLTBase.StrategyKey memory newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 3));
+
+        assertEq(newKey.tickLower, tick + tickSpacing);
+        assertEq(newKey.tickUpper, newKey.tickLower + 200);
+
+        (newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 4));
+
+        assertEq(newKey.tickLower, tick + tickSpacing);
+        assertEq(newKey.tickUpper, newKey.tickLower + 200);
+    }
+
+    function test_shiftLiquidity_succeedShiftRight() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        // compounding strategy
+        base.createStrategy(key, actions, 0, 0, true, false);
+        // non compounding strategy
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 3),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 4),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        bytes32[] memory strategyIDs = new bytes32[](2);
+        strategyIDs[0] = getStrategyID(address(this), 3);
+        strategyIDs[1] = getStrategyID(address(this), 4);
+
+        // update pool cardinality
+        pool.increaseObservationCardinalityNext(80);
+        vm.warp(block.timestamp + 1 days);
+
+        base.toggleOperator(address(modes));
+        modes.ShiftBase(strategyIDs);
+
+        (ICLTBase.StrategyKey memory newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 3));
+
+        assertEq(newKey.tickUpper, tick - tickSpacing);
+        assertEq(newKey.tickLower, newKey.tickUpper - 200);
+
+        (newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 4));
+
+        assertEq(newKey.tickUpper, tick - tickSpacing);
+        assertEq(newKey.tickLower, newKey.tickUpper - 200);
+    }
+
+    function test_shiftLiquidity_mintLiquidityAfterExit() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        // snapshot total reserves
+        (uint128 liquidity, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, liquidity);
+
+        // check compounding strategy balances
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: false,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(getStrategyID(address(this), 1));
+
+        assertEq(account.balance0, reserves0 + fee0);
+        assertEq(account.balance1, reserves1 + fee1);
+
+        assertEq(account.uniswapLiquidity, 0);
+
+        uint256 hodlBalance0Strategy1 = account.balance0;
+        uint256 hodlBalance1Strategy1 = account.balance1;
+
+        // check non-compounding strategy balances
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 2),
+                shouldMint: false,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+
+        (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 2));
+
+        assertEq(account.balance0, reserves0);
+        assertEq(account.balance1, reserves1);
+
+        assertEq(account.fee0, fee0);
+        assertEq(account.fee1, fee1);
+
+        assertEq(account.uniswapLiquidity, 0);
+
+        uint256 hodlBalance0Strategy2 = account.balance0;
+        uint256 hodlBalance1Strategy2 = account.balance1;
+
+        // mint liquidity on dex after HODL
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+
+        (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 1));
+        (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(reserves0, hodlBalance0Strategy1 - account.balance0 - 1);
+        assertEq(reserves1, hodlBalance1Strategy1 - account.balance1 - 1);
+
+        // mint liquidity on dex after HODL
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 2),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+
+        (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 2));
+        (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        assertEq(reserves0, hodlBalance0Strategy2 - account.balance0 - 1);
+        assertEq(reserves1, hodlBalance1Strategy2 - account.balance1 - 1);
     }
 
     function test_shiftLiquidity_() public { }
