@@ -11,6 +11,7 @@ import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandle
 
 import { CLTBase } from "../../src/CLTBase.sol";
 import { CLTModules } from "../../src/CLTModules.sol";
+import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
@@ -34,6 +35,7 @@ contract Fixtures is UniswapDeployer {
     INonfungiblePositionManager manager;
     WETH weth;
 
+    Modes modes;
     CLTBase base;
     RebaseModule rebaseModule;
     CLTModules cltModules;
@@ -110,6 +112,8 @@ contract Fixtures is UniswapDeployer {
 
         base =
         new CLTBase("ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory);
+
+        modes = new Modes(address(base), address(this));
 
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
