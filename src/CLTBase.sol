@@ -108,7 +108,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             })
         });
 
-        (uint256 strategyCreationFeeAmount,,,) = _getGovernanceFee(isPrivate);
+        (, uint256 strategyCreationFeeAmount,,) = _getGovernanceFee(isPrivate);
 
         if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
 
