@@ -1,10 +1,8 @@
 {
-  "name": "Area 51",
-  "description": "Concentrated Liquidity Tool",
+  "name": "@a51finance/concentrated-liquidity-tool",
+  "description": "contracts for managing the liquidity on any concentrated AMM",
   "version": "1.0.0",
-  "author": {
-    "name": "Mudassir",
-  },
+  "author": "a51finance (https://github.com/a51finance)",
   "devDependencies": {
     "prettier": "^3.0.0",
     "solhint-community": "^3.6.0"
@@ -24,6 +22,19 @@
     "lint": "pnpm lint:sol && pnpm prettier:check",
     "lint:sol": "forge fmt --check && pnpm solhint {script,src,test}/**/*.sol",
     "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
-    "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore"
+    "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",
+    "deploy-alp-goerli": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
+    "deploy-rebaseModule-goerli": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
+    "deploy-alp-fork": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0 --broadcast -vvvv",
+    "deploy-rebaseModule-fork": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0 --broadcast -vvvv"
+  },
+  
+
+  "main": "contract.js",
+  "repository": "https://github.com/a51finance/concentrated-liquidity-tool.git",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "web3": "^1.9.0"
   }
 }
