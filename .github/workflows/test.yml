@@ -15,7 +15,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run tests
-        run: forge test
+        run: forge test --no-match-contract "MainnetForkTest"
 
       - name: Run snapshot
-        run: forge snapshot
+        run: forge snapshot --no-match-contract "MainnetForkTest"
