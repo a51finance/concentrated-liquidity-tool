@@ -51,30 +51,10 @@ contract MainnetFixtures is Utilities {
         router = ISwapRouter(Constants.ROUTER);
         positionManager = INonfungiblePositionManager(Constants.MANAGER);
 
-        mintParams.token0 = address(token0);
-        mintParams.token1 = address(token1);
-        mintParams.tickLower = (-600_000 / pool.tickSpacing()) * pool.tickSpacing();
-        mintParams.tickUpper = (600_000 / pool.tickSpacing()) * pool.tickSpacing();
-        mintParams.fee = 500;
-        mintParams.recipient = recepient;
-        mintParams.amount0Desired = 100_000e18;
-        mintParams.amount1Desired = 50e18;
-        mintParams.amount0Min = 0;
-        mintParams.amount1Min = 0;
-        mintParams.deadline = 2_000_000_000;
-
-        _hevm.prank(recepient);
-        token0.approve(address(positionManager), type(uint256).max);
-        _hevm.prank(recepient);
-        token1.approve(address(positionManager), type(uint256).max);
-
         _hevm.prank(recepient);
         token0.approve(address(router), type(uint256).max);
         _hevm.prank(recepient);
         token1.approve(address(router), type(uint256).max);
-
-        _hevm.prank(recepient);
-        positionManager.mint(mintParams);
     }
 
     function initBase(address recepient) internal {
@@ -89,7 +69,7 @@ contract MainnetFixtures is Utilities {
             protcolFeeOnPerformance: 0
         });
 
-        cltModules = new CLTModules( recepient);
+        cltModules = new CLTModules(recepient);
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
@@ -122,5 +102,20 @@ contract MainnetFixtures is Utilities {
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
         _hevm.prank(recepient);
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"));
+    }
+
+    function getStrategyID(address user, uint256 strategyCount) internal pure returns (bytes32 strategyID) {
+        strategyID = keccak256(abi.encode(user, strategyCount));
+    }
+
+    function initStrategy(int24 difference) public {
+        (, int24 tick,,,,,) = pool.slot0();
+
+        int24 tickLower = floorTicks(tick - difference, pool.tickSpacing());
+        int24 tickUpper = floorTicks(tick + difference, pool.tickSpacing());
+
+        strategyKey.pool = pool;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
     }
 }
