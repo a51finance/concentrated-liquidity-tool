@@ -211,7 +211,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
             protocolFee.protcolFeeOnPerformance,
             strategy.performanceFee,
             vars.fee0,
-            vars.fee0,
+            vars.fee1,
             owner,
             strategy.owner
         );
