@@ -9,4 +9,4 @@ import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-contract CLTUpdatePositionLiquidityTest is Test, Fixtures { }
+contract UpdatePositionLiquidityTest is Test, Fixtures { }

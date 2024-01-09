@@ -18,7 +18,7 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 
 import "forge-std/console.sol";
 
-contract CLTShiftLiquidityTest is Test, Fixtures {
+contract ShiftLiquidityTest is Test, Fixtures {
     Utilities utils;
     ICLTBase.StrategyKey key;
 
@@ -371,7 +371,7 @@ contract CLTShiftLiquidityTest is Test, Fixtures {
         uint256 hodlBalance0Strategy2 = account.balance0;
         uint256 hodlBalance1Strategy2 = account.balance1;
 
-        // mint liquidity on dex after HODL
+        // mint liquidity on dex after HODL { strategy 1 }
         vm.prank(msg.sender);
         base.shiftLiquidity(
             ICLTBase.ShiftLiquidityParams({
@@ -390,7 +390,7 @@ contract CLTShiftLiquidityTest is Test, Fixtures {
         assertEq(reserves0, hodlBalance0Strategy1 - account.balance0 - 1);
         assertEq(reserves1, hodlBalance1Strategy1 - account.balance1 - 1);
 
-        // mint liquidity on dex after HODL
+        // mint liquidity on dex after HODL { strategy 2 }
         vm.prank(msg.sender);
         base.shiftLiquidity(
             ICLTBase.ShiftLiquidityParams({
@@ -408,7 +408,310 @@ contract CLTShiftLiquidityTest is Test, Fixtures {
 
         assertEq(reserves0, hodlBalance0Strategy2 - account.balance0 - 1);
         assertEq(reserves1, hodlBalance1Strategy2 - account.balance1 - 1);
+
+        //  previous fee should remain same for non compound after mint
+        assertEq(account.fee0, fee0);
+        assertEq(account.fee1, fee1);
     }
 
-    function test_shiftLiquidity_() public { }
+    function test_shiftLiquidity_shouldNotEarnFeeAfterExit() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        // create compounding strategy again
+        base.createStrategy(key, actions, 0, 0, true, false);
+        // create non compounding strategy again
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        vm.startPrank(address(this));
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 3),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 4),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+        vm.stopPrank();
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 20e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 20e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, uint256 fee0Strategy1Before, uint256 fee1Strategy1Before) =
+            base.getStrategyReserves(getStrategyID(address(this), 1));
+
+        (, uint256 fee0Strategy2Before, uint256 fee1Strategy2Before) =
+            base.getStrategyReserves(getStrategyID(address(this), 2));
+
+        (, uint256 fee0Strategy4Before, uint256 fee1Strategy4Before) =
+            base.getStrategyReserves(getStrategyID(address(this), 4));
+
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 3),
+                shouldMint: false,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: abi.encode(1, true)
+            })
+        );
+
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 4),
+                shouldMint: false,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: abi.encode(1, true)
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 20e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 20e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        uint256 fee0;
+        uint256 fee1;
+
+        vm.prank(address(base));
+        pool.burn(key.tickLower, key.tickUpper, 0);
+        (,,, uint256 totalFee0, uint256 totalFee1) =
+            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+
+        // non exit strategies should earn latest fee share
+        assertEq(fee0, fee0Strategy1Before + (totalFee0 / 2) - 1);
+        assertEq(fee1, fee1Strategy1Before + (totalFee1 / 2) - 1);
+
+        (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
+
+        assertEq(fee0, fee0Strategy2Before + (totalFee0 / 2) - 1);
+        assertEq(fee1, fee1Strategy2Before + (totalFee1 / 2) - 1);
+
+        // exit strategies should not earn latest fee share
+        (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 3));
+
+        assertEq(fee0, 0);
+        assertEq(fee1, 0);
+
+        (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 4));
+
+        assertEq(fee0, fee0Strategy4Before);
+        assertEq(fee1, fee1Strategy4Before);
+
+        /// fee should start earning again if added on dex
+    }
+
+    function test_shiftLiquidity_shouldUpdateFeeGrowthForTicks() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 200, tickUpper: tick - tickSpacing });
+
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+
+        (,,,,,,,, ICLTBase.Account memory accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
+
+        assertEq(accountStrategy1.feeGrowthInside0LastX128, 0);
+        assertEq(accountStrategy1.feeGrowthInside1LastX128, 0);
+
+        (, uint256 fee0Strategy2Before, uint256 fee1Strategy2Before) =
+            base.getStrategyReserves(getStrategyID(address(this), 2));
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        vm.prank(address(base));
+        pool.burn(newKey.tickLower, newKey.tickUpper, 0);
+        (,,, uint256 totalFee0, uint256 totalFee1) =
+            pool.positions(keccak256(abi.encodePacked(address(base), newKey.tickLower, newKey.tickUpper)));
+
+        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+
+        assertEq(fee0, totalFee0 - 1);
+        assertEq(fee1, totalFee1 - 1);
+
+        vm.prank(address(base));
+        pool.burn(key.tickLower, key.tickUpper, 0);
+        (,,, totalFee0, totalFee1) =
+            pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
+        (,,,,,,,, ICLTBase.Account memory accountStrategy2) = base.strategies(getStrategyID(address(this), 2));
+
+        assertEq(fee0, totalFee0 + fee0Strategy2Before - 1);
+        assertEq(fee1, totalFee1 + fee1Strategy2Before - 1);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        base.getStrategyReserves(getStrategyID(address(this), 2));
+
+        (,,,,,,,, accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
+        (,,,,,,,, accountStrategy2) = base.strategies(getStrategyID(address(this), 2));
+
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: key,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: int256(accountStrategy1.balance1 / 2),
+                moduleStatus: ""
+            })
+        );
+
+        (,,,,,,,, accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
+
+        assertEq(accountStrategy1.feeGrowthInside0LastX128, accountStrategy2.feeGrowthInside0LastX128);
+        assertEq(accountStrategy1.feeGrowthInside1LastX128, accountStrategy2.feeGrowthInside1LastX128);
+    }
 }

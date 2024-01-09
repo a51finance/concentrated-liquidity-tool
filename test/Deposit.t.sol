@@ -20,7 +20,7 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 
 import "forge-std/console.sol";
 
-contract CLTDepositTest is Test, Fixtures {
+contract DepositTest is Test, Fixtures {
     Utilities utils;
     ICLTBase.StrategyKey key;
 

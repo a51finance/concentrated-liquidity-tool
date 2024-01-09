@@ -7,9 +7,12 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { Fixtures } from "./utils/Fixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
+import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-contract CLTStrategyTest is Test, Fixtures {
+import "forge-std/console.sol";
+
+contract StrategyTest is Test, Fixtures {
     ICLTBase.StrategyKey key;
 
     event StrategyCreated(bytes32 indexed strategyId);
@@ -40,6 +43,25 @@ contract CLTStrategyTest is Test, Fixtures {
         assertEq(abi.encode(actions), actionsAdded);
         assertEq(key.tickLower, keyAdded.tickLower);
         assertEq(owner, address(this));
+    }
+
+    function test_strategy_shouldPayProtocolFee() public {
+        feeHandler.setPublicFeeRegistry(
+            IGovernanceFeeHandler.ProtocolFeeRegistry({
+                lpAutomationFee: 0,
+                strategyCreationFee: 0.4 ether, // 0.4 ETH strategy creation fee
+                protcolFeeOnManagement: 0,
+                protcolFeeOnPerformance: 0
+            })
+        );
+
+        base.transferOwnership(address(1445));
+
+        ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
+
+        base.createStrategy{ value: 0.4 ether }(key, actions, 0, 0, true, false);
+
+        assertEq(address(1445).balance, 0.4 ether);
     }
 
     function test_strategy_succeedsWithValidInputsForPreference() public { }

@@ -318,5 +318,7 @@ contract ClaimFeeTest is Test, Fixtures {
         assertEq(token1.balanceOf(strategyOwner), strategyOwnerShare1);
     }
 
+    function test_claimFee_shouldPayProtocolFee() public { }
+
     function test_claimFee() public { }
 }

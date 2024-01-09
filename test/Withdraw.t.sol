@@ -15,7 +15,7 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 
 import "forge-std/console.sol";
 
-contract CLTWithdrawTest is Test, Fixtures {
+contract WithdrawTest is Test, Fixtures {
     Utilities utils;
     ICLTBase.StrategyKey key;
 
@@ -597,4 +597,6 @@ contract CLTWithdrawTest is Test, Fixtures {
         assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
         assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
     }
+
+    function test_withdraw_shouldPayProtocolFee() public { }
 }
