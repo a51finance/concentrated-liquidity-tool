@@ -10,6 +10,8 @@ import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+
+import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
@@ -598,5 +600,100 @@ contract WithdrawTest is Test, Fixtures {
         assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
     }
 
-    function test_withdraw_shouldPayProtocolFee() public { }
+    function test_withdraw_shouldPayManagementFee() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        address payable[] memory users = utils.createUsers(1);
+        uint256 depositAmount = 4 ether;
+
+        vm.prank(users[0]);
+        base.createStrategy(key, actions, 0.1 ether, 0, true, false); // 10% fee on management
+
+        vm.startPrank(address(this));
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(users[0], 2),
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        (, uint256 liquidityShare,,,,) = base.positions(2);
+
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+        );
+        vm.stopPrank();
+
+        assertEq(token0.balanceOf(msg.sender), depositAmount - (depositAmount * 10) / 100);
+        assertEq(token1.balanceOf(msg.sender), depositAmount - (depositAmount * 10) / 100);
+
+        assertEq(token0.balanceOf(users[0]), depositAmount * 10 / 100 - 1);
+        assertEq(token1.balanceOf(users[0]), depositAmount * 10 / 100 - 1);
+    }
+
+    function test_withdraw_shouldPayPerformanceFee() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        address payable[] memory users = utils.createUsers(1);
+        uint256 depositAmount = 4 ether;
+
+        vm.prank(users[0]);
+        base.createStrategy(key, actions, 0, 0.1 ether, true, false); // 10% fee on performance
+
+        vm.startPrank(address(this));
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(users[0], 2),
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, uint256 liquidityShare,,,,) = base.positions(2);
+
+        (uint128 liquidity, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(users[0], 2));
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, liquidity);
+
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+        );
+        vm.stopPrank();
+
+        assertEq(token0.balanceOf(msg.sender), reserves0 + (fee0 - (fee0 * 10) / 100));
+        assertEq(token1.balanceOf(msg.sender), reserves1 + (fee1 - (fee1 * 10) / 100));
+
+        assertEq(token0.balanceOf(users[0]), fee0 * 10 / 100);
+        assertEq(token1.balanceOf(users[0]), fee1 * 10 / 100);
+    }
 }

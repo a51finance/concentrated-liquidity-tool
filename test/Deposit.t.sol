@@ -10,6 +10,7 @@ import { Utilities } from "./utils/Utilities.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { Constants } from "../src/libraries/Constants.sol";
+import { FixedPoint128 } from "../src/libraries/FixedPoint128.sol";
 import { LiquidityShares } from "../src/libraries/LiquidityShares.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -671,6 +672,67 @@ contract DepositTest is Test, Fixtures {
 
         assertEq(userShare3, liquidityUser3 - 1);
         assertEq(account.totalShares, ((liquidityUser1 * 2) + liquidityUser3) - 1);
+    }
+
+    function test_deposit_succeedsWithCorrectFeeGrowth() public {
+        initPoolAndAddLiquidity();
+        initRouter();
+
+        uint256 depositAmount = 4 ether;
+
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: getStrategyID(address(this), 2),
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        base.deposit(params);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        vm.prank(address(base));
+        pool.burn(key.tickLower, key.tickUpper, 0);
+        (,,, uint256 totalFee0, uint256 totalFee1) =
+            pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        base.deposit(params);
+
+        (,, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128,,) = base.positions(2);
+
+        assertEq(feeGrowthInside0LastX128, FullMath.mulDiv(totalFee0, FixedPoint128.Q128, depositAmount));
+        assertEq(feeGrowthInside1LastX128, FullMath.mulDiv(totalFee1, FixedPoint128.Q128, depositAmount));
     }
 
     receive() external payable { }
