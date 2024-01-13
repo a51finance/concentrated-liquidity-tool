@@ -54,8 +54,6 @@ contract CLTModules is ICLTModules, Owned {
                 IExitStrategy(vault).checkInputData(array[i]);
             } else if (mode == Constants.LIQUIDITY_DISTRIBUTION) {
                 ILiquidityDistributionStrategy(vault).checkInputData(array[i]);
-            } else {
-                revert InvalidStrategy();
             }
         }
     }
@@ -72,7 +70,7 @@ contract CLTModules is ICLTModules, Owned {
 
         if (performanceFee > Constants.MAX_PERFORMANCE_FEE) revert IGovernanceFeeHandler.PerformanceFeeLimitExceed();
 
-        if (actions.mode < 0 && actions.mode > 4) revert InvalidMode();
+        if (actions.mode < 1 || actions.mode > 4) revert InvalidMode();
 
         if (actions.exitStrategy.length > 0) {
             _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
