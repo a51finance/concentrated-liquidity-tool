@@ -154,6 +154,28 @@ contract DepositTest is Test, Fixtures {
         base.deposit(params);
     }
 
+    function test_deposit_revertsOnlyOwnerInPrivateStrategy() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, true);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 3 ether;
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        vm.prank(msg.sender);
+        vm.expectRevert();
+        base.deposit(params);
+    }
+
     function test_deposit_multipleUsers() public {
         initPoolAndAddLiquidity();
         initRouter();

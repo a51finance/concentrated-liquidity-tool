@@ -58,6 +58,31 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         );
     }
 
+    function test_increaseLiq_revertsOnlyOwnerInPrivateStrategy() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, true, true);
+
+        bytes32 strategyID = getStrategyID(address(this), 3);
+        uint256 depositAmount = 3 ether;
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        base.deposit(params);
+
+        vm.prank(msg.sender);
+        vm.expectRevert();
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({ tokenId: 3, amount0Desired: depositAmount, amount1Desired: depositAmount })
+        );
+    }
+
     function test_increaseLiq_succeedCorrectEventParams() public {
         uint256 depositAmount = 1 ether;
 

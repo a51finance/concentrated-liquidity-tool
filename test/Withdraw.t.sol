@@ -466,139 +466,273 @@ contract WithdrawTest is Test, Fixtures {
         assertEq(account.balance1 + account.fee1 - 2, token1.balanceOf(msg.sender));
     }
 
-    // function test_withdraw_multipleUsersNoCompounding() public {
-    //     address payable[] memory users = utils.createUsers(3);
-    //     uint256 depositAmount = 4 ether;
 
-    //     // create non-compounding strategy
-    //     ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-    //     base.createStrategy(key, actions, 0, 0, false, false);
+     function test_withdraw_multipleUsersNoCompounding() public {
+         address payable[] memory users = utils.createUsers(3);
+         uint256 depositAmount = 4 ether;
 
-    //     bytes32 strategyId = getStrategyID(address(this), 2);
+         // create non-compounding strategy
+         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+         base.createStrategy(key, actions, 0, 0, false, false);
 
-    //     token0.mint(users[0], depositAmount);
-    //     token0.mint(users[1], depositAmount);
-    //     token0.mint(users[2], depositAmount);
+         bytes32 strategyId = getStrategyID(address(this), 2);
 
-    //     token1.mint(users[0], depositAmount);
-    //     token1.mint(users[1], depositAmount);
-    //     token1.mint(users[2], depositAmount);
+         token0.mint(users[0], depositAmount);
+         token0.mint(users[1], depositAmount);
+         token0.mint(users[2], depositAmount);
 
-    //     vm.startPrank(users[0]);
-    //     token0.approve(address(base), depositAmount);
-    //     token1.approve(address(base), depositAmount);
-    //     vm.stopPrank();
+         token1.mint(users[0], depositAmount);
+         token1.mint(users[1], depositAmount);
+         token1.mint(users[2], depositAmount);
 
-    //     vm.startPrank(users[1]);
-    //     token0.approve(address(base), depositAmount);
-    //     token1.approve(address(base), depositAmount);
-    //     vm.stopPrank();
+         vm.startPrank(users[0]);
+         token0.approve(address(base), depositAmount);
+         token1.approve(address(base), depositAmount);
+         vm.stopPrank();
 
-    //     vm.startPrank(users[2]);
-    //     token0.approve(address(base), depositAmount);
-    //     token1.approve(address(base), depositAmount);
-    //     vm.stopPrank();
+         vm.startPrank(users[1]);
+         token0.approve(address(base), depositAmount);
+         token1.approve(address(base), depositAmount);
+         vm.stopPrank();
 
-    //     vm.prank(users[0]);
-    //     base.deposit(
-    //         ICLTBase.DepositParams({
-    //             strategyId: strategyId,
-    //             amount0Desired: depositAmount,
-    //             amount1Desired: depositAmount,
-    //             amount0Min: 0,
-    //             amount1Min: 0,
-    //             recipient: users[0]
-    //         })
-    //     );
+         vm.startPrank(users[2]);
+         token0.approve(address(base), depositAmount);
+         token1.approve(address(base), depositAmount);
+         vm.stopPrank();
 
-    //     vm.prank(users[1]);
-    //     base.deposit(
-    //         ICLTBase.DepositParams({
-    //             strategyId: strategyId,
-    //             amount0Desired: depositAmount,
-    //             amount1Desired: depositAmount,
-    //             amount0Min: 0,
-    //             amount1Min: 0,
-    //             recipient: users[1]
-    //         })
-    //     );
+         vm.prank(users[0]);
+         base.deposit(
+             ICLTBase.DepositParams({
+                 strategyId: strategyId,
+                 amount0Desired: depositAmount,
+                 amount1Desired: depositAmount,
+                 amount0Min: 0,
+                 amount1Min: 0,
+                 recipient: users[0]
+             })
+         );
 
-    //     router.exactInputSingle(
-    //         ISwapRouter.ExactInputSingleParams({
-    //             tokenIn: address(token0),
-    //             tokenOut: address(token1),
-    //             fee: 500,
-    //             recipient: address(this),
-    //             deadline: block.timestamp + 1 days,
-    //             amountIn: 1e30,
-    //             amountOutMinimum: 0,
-    //             sqrtPriceLimitX96: 0
-    //         })
-    //     );
+         vm.prank(users[1]);
+         base.deposit(
+             ICLTBase.DepositParams({
+                 strategyId: strategyId,
+                 amount0Desired: depositAmount,
+                 amount1Desired: depositAmount,
+                 amount0Min: 0,
+                 amount1Min: 0,
+                 recipient: users[1]
+             })
+         );
 
-    //     router.exactInputSingle(
-    //         ISwapRouter.ExactInputSingleParams({
-    //             tokenIn: address(token1),
-    //             tokenOut: address(token0),
-    //             fee: 500,
-    //             recipient: address(this),
-    //             deadline: block.timestamp + 1 days,
-    //             amountIn: 1e30,
-    //             amountOutMinimum: 0,
-    //             sqrtPriceLimitX96: 0
-    //         })
-    //     );
+         router.exactInputSingle(
+             ISwapRouter.ExactInputSingleParams({
+                 tokenIn: address(token0),
+                 tokenOut: address(token1),
+                 fee: 500,
+                 recipient: address(this),
+                 deadline: block.timestamp + 1 days,
+                 amountIn: 1e30,
+                 amountOutMinimum: 0,
+                 sqrtPriceLimitX96: 0
+             })
+         );
 
-    //     // update strategy fee
-    //     base.getStrategyReserves(strategyId);
+         router.exactInputSingle(
+             ISwapRouter.ExactInputSingleParams({
+                 tokenIn: address(token1),
+                 tokenOut: address(token0),
+                 fee: 500,
+                 recipient: address(this),
+                 deadline: block.timestamp + 1 days,
+                 amountIn: 1e30,
+                 amountOutMinimum: 0,
+                 sqrtPriceLimitX96: 0
+             })
+         );
 
-    //     (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
+         // update strategy fee
+         base.getStrategyReserves(strategyId);
 
-    //     (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
 
-    //     uint256 userShare0 = (account.fee0 + account.balance0 + reserves0) / 2;
-    //     uint256 userShare1 = (account.fee1 + account.balance1 + reserves1) / 2;
+         (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-    //     vm.prank(users[2]);
-    //     (,, uint256 amount0, uint256 amount1) = base.deposit(
-    //         ICLTBase.DepositParams({
-    //             strategyId: strategyId,
-    //             amount0Desired: depositAmount,
-    //             amount1Desired: depositAmount,
-    //             amount0Min: 0,
-    //             amount1Min: 0,
-    //             recipient: users[2]
-    //         })
-    //     );
+         uint256 userShare0 = (account.fee0 + account.balance0 + reserves0) / 2;
+         uint256 userShare1 = (account.fee1 + account.balance1 + reserves1) / 2;
 
-    //     (, uint256 liquidityShare,,,,) = base.positions(4);
+         vm.prank(users[2]);
+         (,, uint256 amount0, uint256 amount1) = base.deposit(
+             ICLTBase.DepositParams({
+                 strategyId: strategyId,
+                 amount0Desired: depositAmount,
+                 amount1Desired: depositAmount,
+                 amount0Min: 0,
+                 amount1Min: 0,
+                 recipient: users[2]
+             })
+         );
 
-    //     vm.prank(users[2]);
-    //     base.withdraw(
-    //         ICLTBase.WithdrawParams({ tokenId: 4, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
-    //     );
+         (, uint256 liquidityShare,,,,) = base.positions(4);
 
-    //     assertEq(token0.balanceOf(msg.sender), amount0 - 1);
-    //     assertEq(token1.balanceOf(msg.sender), amount1 - 2);
+         vm.prank(users[2]);
+         base.withdraw(
+             ICLTBase.WithdrawParams({ tokenId: 4, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+         );
 
-    //     (, liquidityShare,,,,) = base.positions(3);
+         assertEq(token0.balanceOf(msg.sender), amount0 - 1);
+         assertEq(token1.balanceOf(msg.sender), amount1 - 2);
 
-    //     vm.prank(users[1]);
-    //     base.withdraw(
-    //         ICLTBase.WithdrawParams({ tokenId: 3, liquidity: liquidityShare, recipient: users[1], refundAsETH: true })
-    //     );
+         (, liquidityShare,,,,) = base.positions(3);
 
-    //     assertEq(token0.balanceOf(users[1]), userShare0);
-    //     assertEq(token1.balanceOf(users[1]), userShare1);
+         vm.prank(users[1]);
+         base.withdraw(
+             ICLTBase.WithdrawParams({ tokenId: 3, liquidity: liquidityShare, recipient: users[1], refundAsETH: true })
+         );
 
-    //     (,,,,,,,, account) = base.strategies(strategyId);
+         assertEq(token0.balanceOf(users[1]), userShare0);
+         assertEq(token1.balanceOf(users[1]), userShare1);
 
-    //     (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+         (,,,,,,,, account) = base.strategies(strategyId);
 
-    //     // contract should have same assets left for last user
-    //     assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
-    //     assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
-    // }
+         (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+         // contract should have same assets left for last user
+         assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
+         assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
+     }
+
+    function test_withdraw_multipleUsersNoCompounding() public {
+        address payable[] memory users = utils.createUsers(3);
+        uint256 depositAmount = 4 ether;
+
+        // create non-compounding strategy
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, false, false);
+
+        token0.mint(users[0], depositAmount);
+        token0.mint(users[1], depositAmount);
+        token0.mint(users[2], depositAmount);
+
+        token1.mint(users[0], depositAmount);
+        token1.mint(users[1], depositAmount);
+        token1.mint(users[2], depositAmount);
+
+        vm.startPrank(users[0]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        vm.startPrank(users[1]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        vm.startPrank(users[2]);
+        token0.approve(address(base), depositAmount);
+        token1.approve(address(base), depositAmount);
+        vm.stopPrank();
+
+        vm.prank(users[0]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 2),
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[0]
+            })
+        );
+
+        vm.prank(users[1]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 2),
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[1]
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        // update strategy fee
+        base.getStrategyReserves(getStrategyID(address(this), 2));
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(getStrategyID(address(this), 2));
+
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        uint256 userShare0 = (account.fee0 + account.balance0 + reserves0) / 2;
+        uint256 userShare1 = (account.fee1 + account.balance1 + reserves1) / 2;
+
+        vm.prank(users[2]);
+        (,, uint256 amount0, uint256 amount1) = base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 2),
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[2]
+            })
+        );
+
+        (, uint256 liquidityShare,,,,) = base.positions(4);
+
+        vm.prank(users[2]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 4, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+        );
+
+        assertEq(token0.balanceOf(msg.sender), amount0 - 1);
+        assertEq(token1.balanceOf(msg.sender), amount1 - 2);
+
+        (, liquidityShare,,,,) = base.positions(3);
+
+        vm.prank(users[1]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 3, liquidity: liquidityShare, recipient: users[1], refundAsETH: true })
+        );
+
+        assertEq(token0.balanceOf(users[1]), userShare0);
+        assertEq(token1.balanceOf(users[1]), userShare1);
+
+        (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 2));
+
+        (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // contract should have same assets left for last user
+        assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
+        assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
+    }
+
 
     function test_withdraw_shouldPayManagementFee() public {
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
