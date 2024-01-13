@@ -64,6 +64,25 @@ contract StrategyTest is Test, Fixtures {
         assertEq(address(1445).balance, 0.4 ether);
     }
 
+    function test_strategy_shouldUpdateStrategy() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyId = getStrategyID(address(this), 1);
+
+        actions = createStrategyActions(3, 1, 0, 0, 100, 200);
+
+        base.updateStrategyBase(strategyId, address(1445), 0.2 ether, 0.3 ether, actions);
+
+        (, address owner, bytes memory actionsAdded,,,, uint256 managementFee, uint256 performanceFee,) =
+            base.strategies(strategyId);
+
+        assertEq(owner, address(1445));
+        assertEq(actionsAdded, abi.encode(actions));
+        assertEq(managementFee, 0.2 ether);
+        assertEq(performanceFee, 0.3 ether);
+    }
+
     function test_strategy_succeedsWithValidInputsForPreference() public { }
 
     function test_strategy_succeedsWithValidInputsForTime() public { }
