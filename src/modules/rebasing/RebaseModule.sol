@@ -8,7 +8,6 @@ import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
-import "forge-std/console.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
