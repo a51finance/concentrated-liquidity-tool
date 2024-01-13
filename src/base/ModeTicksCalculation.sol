@@ -62,13 +62,6 @@ abstract contract ModeTicksCalculation {
         return compressed * tickSpacing;
     }
 
-    function abs(int24 x) internal pure returns (int24) {
-        if (x < 0) {
-            return -x;
-        }
-        return x;
-    }
-
     function getPositionWidth(
         int24 currentTick,
         int24 tickLower,
