@@ -65,6 +65,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
     }
 
     function test_shiftLiquidity_revertsIfNotWhitelistAccount() public {
+        assert(base.isOperator(msg.sender));
+
         vm.prank(address(this));
         vm.expectRevert();
         base.shiftLiquidity(

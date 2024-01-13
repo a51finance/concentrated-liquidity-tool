@@ -45,6 +45,18 @@ contract StrategyTest is Test, Fixtures {
         assertEq(owner, address(this));
     }
 
+    function test_strategy_succeedsWithValidInputsForPreference() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(1, 1, 0, 0, 723, 482);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyId = getStrategyID(address(this), 1);
+
+        (,, bytes memory actionsAdded,,,,,,) = base.strategies(strategyId);
+
+        assertEq(abi.encode(actions), actionsAdded);
+    }
+
     function test_strategy_shouldPayProtocolFee() public {
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
@@ -82,8 +94,6 @@ contract StrategyTest is Test, Fixtures {
         assertEq(managementFee, 0.2 ether);
         assertEq(performanceFee, 0.3 ether);
     }
-
-    function test_strategy_succeedsWithValidInputsForPreference() public { }
 
     function test_strategy_succeedsWithValidInputsForTime() public { }
 }
