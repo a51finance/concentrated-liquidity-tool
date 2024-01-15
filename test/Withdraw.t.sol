@@ -474,6 +474,8 @@ contract WithdrawTest is Test, Fixtures {
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
         base.createStrategy(key, actions, 0, 0, false, false);
 
+        bytes32 strategyId = getStrategyID(address(this), 2);
+
         token0.mint(users[0], depositAmount);
         token0.mint(users[1], depositAmount);
         token0.mint(users[2], depositAmount);
@@ -500,7 +502,7 @@ contract WithdrawTest is Test, Fixtures {
         vm.prank(users[0]);
         base.deposit(
             ICLTBase.DepositParams({
-                strategyId: getStrategyID(address(this), 2),
+                strategyId: strategyId,
                 amount0Desired: depositAmount,
                 amount1Desired: depositAmount,
                 amount0Min: 0,
@@ -512,7 +514,7 @@ contract WithdrawTest is Test, Fixtures {
         vm.prank(users[1]);
         base.deposit(
             ICLTBase.DepositParams({
-                strategyId: getStrategyID(address(this), 2),
+                strategyId: strategyId,
                 amount0Desired: depositAmount,
                 amount1Desired: depositAmount,
                 amount0Min: 0,
@@ -548,9 +550,9 @@ contract WithdrawTest is Test, Fixtures {
         );
 
         // update strategy fee
-        base.getStrategyReserves(getStrategyID(address(this), 2));
+        base.getStrategyReserves(strategyId);
 
-        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(getStrategyID(address(this), 2));
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
 
         (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
 
@@ -560,7 +562,7 @@ contract WithdrawTest is Test, Fixtures {
         vm.prank(users[2]);
         (,, uint256 amount0, uint256 amount1) = base.deposit(
             ICLTBase.DepositParams({
-                strategyId: getStrategyID(address(this), 2),
+                strategyId: strategyId,
                 amount0Desired: depositAmount,
                 amount1Desired: depositAmount,
                 amount0Min: 0,
@@ -589,7 +591,7 @@ contract WithdrawTest is Test, Fixtures {
         assertEq(token0.balanceOf(users[1]), userShare0);
         assertEq(token1.balanceOf(users[1]), userShare1);
 
-        (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 2));
+        (,,,,,,,, account) = base.strategies(strategyId);
 
         (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
 
