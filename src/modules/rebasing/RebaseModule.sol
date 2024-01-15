@@ -126,7 +126,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
         } else if (mode == 3) {
             (tickLower, tickUpper) = shiftBothSide(key);
         }
-        return (tickLower, tickUpper);
     }
 
     /// @notice Checks and processes strategies based on their validity.
@@ -218,11 +217,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
     {
         if (rebaseAction.actionName == PRICE_PREFERENCE) {
             return _checkRebasePreferenceStrategies(key, rebaseAction.data, mode);
-        } else if (rebaseAction.actionName == REBASE_INACTIVITY) {
+        } else {
             return true;
         }
-
-        return false;
     }
 
     /// @notice Checks if rebase preference strategies are satisfied for the given key and action data.
@@ -315,7 +312,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
     function checkStrategiesArray(bytes32[] memory data) public returns (bool) {
-        // this function has a comlexity of O(n^2).
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }

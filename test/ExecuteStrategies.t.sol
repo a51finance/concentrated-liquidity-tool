@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { RebaseFixtures } from "./utils/RebaseModuleFixtures.sol";
+import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { CLTBase } from "../src/CLTBase.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
@@ -39,6 +39,127 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         assertEq(address(strategyKey.pool), address(key.pool));
     }
 
+    /*
+     * check input data test cases
+     */
+
+    // Price Preference
+    function test_fuzz_pricePreferenceWithValidInputs(uint256 amount0, uint256 amount1) public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
+
+        vm.assume(amount0 > 0 && amount0 < 8_388_608 && amount1 < 8_388_608 && amount1 > 0);
+        strategyDetail.data = abi.encode(uint256(amount0), uint256(amount1));
+        rebaseModule.checkInputData(strategyDetail);
+    }
+
+    function test_fuzz_pricePreferenceWithLowerPriceZero(uint256 amount1) public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
+
+        vm.assume(amount1 < 8_388_608 && amount1 > 0);
+        strategyDetail.data = abi.encode(uint256(0), uint256(30));
+        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        _hevm.expectRevert(selector);
+        rebaseModule.checkInputData(strategyDetail);
+    }
+
+    function test_fuzz_pricePreferenceWithUpperPriceZero(uint256 amount0) public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
+
+        vm.assume(amount0 < 8_388_608 && amount0 > 0);
+        strategyDetail.data = abi.encode(uint256(amount0), uint256(0));
+        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        _hevm.expectRevert(selector);
+        rebaseModule.checkInputData(strategyDetail);
+    }
+
+    function testPricePreferenceWithBothPriceZero() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
+        strategyDetail.data = abi.encode(uint256(0), uint256(0));
+        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModule.checkInputData(strategyDetail);
+    }
+
+    function testPricePreferenceWithZeroData() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
+        strategyDetail.data = "";
+        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModule.checkInputData(strategyDetail);
+    }
+
+    // Rebase Inactivity
+
+    function testInputDataRebaseInActivityWithValidInputs(uint256 amount) public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        vm.assume(amount > 0);
+        strategyDetail.data = abi.encode(uint256(amount));
+        strategyDetail.actionName = rebaseModule.REBASE_INACTIVITY();
+        assertTrue(rebaseModule.checkInputData(strategyDetail));
+    }
+
+    function testInputDataRebaseInActivityWithInValidInputs() public {
+        ICLTBase.StrategyPayload memory strategyDetail;
+        strategyDetail.actionName = rebaseModule.REBASE_INACTIVITY();
+        strategyDetail.data = abi.encode(uint256(0));
+
+        bytes4 selector = bytes4(keccak256("RebaseInactivityCannotBeZero()"));
+        _hevm.expectRevert(selector);
+        rebaseModule.checkInputData(strategyDetail);
+    }
+
+    // combined cases
+
+    function testInputDataWithValidFuzzing(uint256 _actionIndex, uint256 _value1, uint256 _value2) public {
+        uint256 arrayLength = _actionIndex % 3 + 1; // to ensures length is always between 1 and 3
+        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](arrayLength);
+
+        for (uint256 i = 0; i < arrayLength; i++) {
+            if (i % 2 == 0) {
+                vm.assume(_value1 > 0);
+                strategyDetailArray[i].actionName = rebaseModule.REBASE_INACTIVITY();
+                strategyDetailArray[i].data = abi.encode(_value1);
+            } else if (i % 2 == 1) {
+                vm.assume(_value1 > 0 && _value1 < 8_388_608 && _value2 < 8_388_608 && _value2 > 0);
+                strategyDetailArray[i].actionName = rebaseModule.PRICE_PREFERENCE();
+                strategyDetailArray[i].data = abi.encode(_value1, _value2);
+            }
+        }
+
+        for (uint256 i = 0; i < arrayLength; i++) {
+            assertTrue(rebaseModule.checkInputData(strategyDetailArray[i]));
+        }
+    }
+
+    function testInputDataWithInvalidFuzzing(uint256 _actionIndex, uint256 _value1, uint256 _value2) public {
+        // Define the array length based on fuzzed value
+        uint256 arrayLength = _actionIndex % 3 + 1; // Ensures length is always between 1 and 3
+        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](arrayLength);
+
+        // Fuzzing different action names with intentionally invalid data
+        for (uint256 i = 0; i < arrayLength; i++) {
+            if (i % 2 == 0) {
+                vm.assume(_value1 <= 0);
+                strategyDetailArray[i].actionName = rebaseModule.REBASE_INACTIVITY();
+                strategyDetailArray[i].data = abi.encode(0);
+            } else if (i % 2 == 1) {
+                vm.assume(_value1 <= 0 && _value2 <= 0);
+                strategyDetailArray[i].actionName = rebaseModule.PRICE_PREFERENCE();
+                strategyDetailArray[i].data = abi.encode(_value1, _value2);
+            }
+        }
+
+        for (uint256 i = 0; i < arrayLength; i++) {
+            _hevm.expectRevert();
+            rebaseModule.checkInputData(strategyDetailArray[i]);
+        }
+    }
+
     function testDepositInAlp() public {
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
         rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
@@ -65,6 +186,55 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseModule.executeStrategies(strategyIDs);
         (bytes32 strategyID,,,,,) = base.positions(1);
         assertEq(strategyID, strategyId);
+    }
+
+    function testArrayWithDuplicatesReverts() public {
+        createStrategyAndDepositWithActions(address(this), false, 1, 1);
+        createStrategyAndDepositWithActions(address(this), true, 1, 2);
+        createStrategyAndDepositWithActions(address(this), true, 2, 3);
+        createStrategyAndDepositWithActions(address(this), true, 3, 4);
+        createStrategyAndDepositWithActions(address(this), true, 4, 5);
+
+        bytes32[] memory data = new bytes32[](6);
+        data[0] = keccak256(abi.encode(address(this), 1));
+        data[1] = keccak256(abi.encode(address(this), 2));
+        data[2] = keccak256(abi.encode(address(this), 3));
+        data[3] = keccak256(abi.encode(address(this), 4));
+        data[4] = keccak256(abi.encode(address(this), 5));
+        data[5] = data[0];
+
+        bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", data[0]);
+        vm.expectRevert(encodedError);
+        rebaseModule.checkStrategiesArray(data);
+    }
+
+    function testArrays() public {
+        createStrategyAndDepositWithActions(address(this), false, 1, 1);
+        createStrategyAndDepositWithActions(address(this), true, 1, 2);
+
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = keccak256(abi.encode(address(this), 2));
+        data[1] = keccak256(abi.encode(""));
+
+        vm.expectRevert();
+        rebaseModule.checkStrategiesArray(data);
+    }
+
+    function testValidArrays() public {
+        createStrategyAndDepositWithActions(address(this), false, 1, 1);
+        createStrategyAndDepositWithActions(address(this), true, 1, 2);
+        createStrategyAndDepositWithActions(address(this), true, 2, 3);
+        createStrategyAndDepositWithActions(address(this), true, 3, 4);
+        createStrategyAndDepositWithActions(address(this), true, 4, 5);
+
+        bytes32[] memory data = new bytes32[](5);
+        data[0] = keccak256(abi.encode(address(this), 1));
+        data[1] = keccak256(abi.encode(address(this), 2));
+        data[2] = keccak256(abi.encode(address(this), 3));
+        data[3] = keccak256(abi.encode(address(this), 4));
+        data[4] = keccak256(abi.encode(address(this), 5));
+
+        rebaseModule.checkStrategiesArray(data);
     }
 
     function testExecutingStrategyWithEmptyID() public {
@@ -108,7 +278,93 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseModule.executeStrategies(strategyIDs);
     }
 
-    function testExecuteStrategiesWithLargeStrategiesArrays() public { }
+    function testGetPreferenceTicks(int24 lpd, int24 upd) public {
+        vm.assume(lpd > 0 && lpd < 887_272 && upd < 887_272 && upd > 0);
+
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(lpd, upd);
+
+        bytes32 strategyId = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
+
+        (int24 lowerPreferenceTick, int24 upperPreferenceTick) = rebaseModule.getPreferenceTicks(strategyId);
+        assertTrue(upperPreferenceTick > lowerPreferenceTick);
+    }
+
+    function testEmptyArrayReverts() public {
+        bytes32[] memory data = new bytes32[](0);
+        bytes memory encodedError = abi.encodeWithSignature("StrategyIdsCannotBeEmpty()");
+        vm.expectRevert(encodedError);
+        rebaseModule.checkStrategiesArray(data);
+    }
+
+    function testArrayWithAllElementsZeroReverts() public {
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = bytes32(0);
+        data[1] = bytes32(0);
+        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1]);
+        vm.expectRevert(encodedError);
+        rebaseModule.checkStrategiesArray(data);
+    }
+
+    function testArrayWithAllElementsIdenticalReverts() public {
+        bytes32 identicalId = keccak256(abi.encodePacked("strategy"));
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = identicalId;
+        data[1] = identicalId;
+        data[2] = identicalId;
+        // bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", identicalId);
+        vm.expectRevert();
+        rebaseModule.checkStrategiesArray(data);
+    }
+
+    function testExecuteStrategiesWithLowLiquidity() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 43);
+
+        ICLTBase.PositionActions memory positionActions;
+
+        positionActions.mode = 1;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        initStrategy(800);
+        base.createStrategy(strategyKey, positionActions, 0, 0, true, false);
+
+        ICLTBase.DepositParams memory depositParams;
+
+        bytes32 strategyID = getStrategyID(owner, 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 1000;
+        depositParams.amount1Desired = 1000;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = owner;
+
+        base.deposit(depositParams);
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
+        bytes memory encodedError = abi.encodeWithSignature("InvalidThreshold()");
+        vm.expectRevert(encodedError);
+        rebaseModule.updateLiquidityThreshold(0);
+
+        rebaseModule.updateLiquidityThreshold(1000);
+
+        bytes32[] memory strategyIDs = new bytes32[]( 1);
+
+        strategyIDs[0] = strategyID;
+
+        rebaseModule.executeStrategies(strategyIDs);
+        (ICLTBase.StrategyKey memory key,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+        assertEq(reserve0 > 0, true);
+        assertEq(reserve1 == 0, true);
+    }
 
     // edge
     // 5
@@ -690,4 +946,129 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
             ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
         );
     }
+
+    // strategyID should not execute as shares are less than threshold
+    function testInvalidDataScenario1() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 43);
+
+        ICLTBase.PositionActions memory positionActions;
+
+        positionActions.mode = 1;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        initStrategy(800);
+        base.createStrategy(strategyKey, positionActions, 0, 0, true, false);
+        bytes32 strategyID1 = getStrategyID(owner, 1);
+
+        ICLTBase.DepositParams memory depositParams;
+
+        bytes32 strategyID = getStrategyID(owner, 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 1000;
+        depositParams.amount1Desired = 1000;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = owner;
+
+        base.deposit(depositParams);
+
+        rebaseModule.updateLiquidityThreshold(1000);
+
+        executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        int24 ticksLowerBefore = key.tickLower;
+        int24 ticksUpperBefore = key.tickUpper;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (key,,,,,,,,) = base.strategies(strategyID1);
+
+        assertEq(ticksLowerBefore, key.tickLower);
+        assertEq(ticksUpperBefore, key.tickUpper);
+    }
+
+    function testInvalidDataScenario2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
+
+        executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        int24 ticksLowerBefore = key.tickLower;
+        int24 ticksUpperBefore = key.tickUpper;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (key,,,,,,,,) = base.strategies(strategyID1);
+
+        assertEq(ticksLowerBefore != key.tickLower, true);
+        assertEq(ticksUpperBefore != key.tickUpper, true);
+    }
+
+    function testInvalidDataScenario3() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        rebaseActions[0].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[0].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
+
+        executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
+        assertEq(actionStatus, "");
+    }
+
+    // function testInValidScenario4() public {
+    //     ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+    //     rebaseActions[0].actionName = keccak256("TIME_PREFERENCE");
+    //     rebaseActions[0].data = abi.encode(block.timestamp);
+
+    //     bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
+
+    //     executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
+    //     _hevm.warp(block.timestamp + 3600);
+
+    //     bytes32[] memory strategyIDs = new bytes32[](1);
+
+    //     strategyIDs[0] = strategyID1;
+
+    //     rebaseModule.executeStrategies(strategyIDs);
+
+    //     (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
+    //     assertEq(actionStatus, "");
+    // }
 }
