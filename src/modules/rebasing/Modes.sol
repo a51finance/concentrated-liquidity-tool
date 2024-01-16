@@ -4,6 +4,7 @@ pragma solidity =0.8.15;
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
+import { console } from "forge-std/console.sol";
 
 contract Modes is ModeTicksCalculation, AccessControl {
     error InvalidModeId(uint256 modeId);
