@@ -310,8 +310,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
 
     /// @inheritdoc ICLTBase
     function shiftLiquidity(ShiftLiquidityParams calldata params) external override onlyOperator {
-        PoolActions.checkRange(params.key.tickLower, params.key.tickUpper, params.key.pool.tickSpacing());
-
         StrategyData storage strategy = strategies[params.strategyId];
         StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, params.strategyId);
 

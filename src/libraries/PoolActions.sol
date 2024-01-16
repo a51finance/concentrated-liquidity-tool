@@ -239,12 +239,4 @@ library PoolActions {
             ? (amount0Recieved - amount0, amount1Recieved + amount1)
             : (amount0Recieved + amount0, amount1Recieved - amount1);
     }
-
-    function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) external pure {
-        require(tickLower < tickUpper, "TLU");
-        require(tickLower >= TickMath.MIN_TICK, "TLM");
-        require(tickUpper <= TickMath.MAX_TICK, "TUM");
-        require(tickLower % tickSpacing == 0, "TLI");
-        require(tickUpper % tickSpacing == 0, "TUI");
-    }
 }
