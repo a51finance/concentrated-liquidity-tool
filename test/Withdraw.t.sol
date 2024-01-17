@@ -227,7 +227,20 @@ contract WithdrawTest is Test, Fixtures {
         );
     }
 
-    function test_withdraw_revertsIfZeroLiquidity() public {
+    function test_withdraw_revertsIfNoLiquidity() public {
+        (, uint256 liquidityShare,,,,) = base.positions(1);
+
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+        );
+
+        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+        );
+    }
+
+    function test_withdraw_revertsIfZeroLiquidityInput() public {
         vm.prank(address(this));
         vm.expectRevert(ICLTBase.InvalidShare.selector);
         base.withdraw(ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 0, recipient: msg.sender, refundAsETH: true }));
@@ -596,6 +609,88 @@ contract WithdrawTest is Test, Fixtures {
         // contract should have same assets left for last user
         assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
         assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
+    }
+
+    function test_withdraw_shouldRecieveSingleAssetToken0() public {
+        uint256 depositAmount = 5 ether;
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 2),
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        (uint128 liquidity,,) = base.getStrategyReserves(getStrategyID(address(this), 2));
+        (uint256 reserves0,) = getStrategyReserves(key, liquidity);
+
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
+        );
+
+        assertEq(token0.balanceOf(msg.sender), reserves0);
+    }
+
+    function test_withdraw_shouldRecieveSingleAssetToken1() public {
+        uint256 depositAmount = 5 ether;
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 2),
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        (uint128 liquidity,,) = base.getStrategyReserves(getStrategyID(address(this), 2));
+        (, uint256 reserves1) = getStrategyReserves(key, liquidity);
+
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
+        );
+
+        assertEq(token1.balanceOf(msg.sender), reserves1);
     }
 
     function test_withdraw_shouldPayManagementFee() public {

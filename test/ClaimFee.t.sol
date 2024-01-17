@@ -48,6 +48,48 @@ contract ClaimFeeTest is Test, Fixtures {
         );
     }
 
+    function test_claimFee_revertsIfCompounder() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 2),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        // earn fee
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        vm.expectRevert(ICLTBase.onlyNonCompounders.selector);
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 2, refundAsETH: true }));
+    }
+
+    function test_claimFee_revertsIfNoLiquidity() public {
+        base.withdraw(
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 4 ether, recipient: msg.sender, refundAsETH: true })
+        );
+
+        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
+    }
+
     function test_claimFee_feeShare() public {
         router.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
