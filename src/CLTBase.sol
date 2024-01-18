@@ -11,14 +11,12 @@ import { AccessControl } from "./base/AccessControl.sol";
 import { Position } from "./libraries/Position.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { PoolActions } from "./libraries/PoolActions.sol";
-import { FixedPoint128 } from "./libraries/FixedPoint128.sol";
 import { UserPositions } from "./libraries/UserPositions.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
 import { ERC721 } from "@solmate/tokens/ERC721.sol";
-import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
@@ -27,7 +25,7 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
 /// user preferences with the help of basic and advance liquidity modes
 /// Holds the state for all strategies and it's users
-contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
+contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Position for StrategyData;
     using UserPositions for UserPositions.Data;
 
@@ -120,6 +118,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
         external
         payable
         override
+        whenNotPaused
         returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
         _authorizationOfStrategy(params.strategyId);
@@ -148,6 +147,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     function updatePositionLiquidity(UpdatePositionParams calldata params)
         external
         override
+        whenNotPaused
         returns (uint256 share, uint256 amount0, uint256 amount1)
     {
         UserPositions.Data storage position = positions[params.tokenId];
@@ -173,6 +173,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     function withdraw(WithdrawParams calldata params)
         external
         override
+        whenNotPaused
         isAuthorizedForToken(params.tokenId)
         returns (uint256 amount0, uint256 amount1)
     {
@@ -271,7 +272,12 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
     }
 
     /// @inheritdoc ICLTBase
-    function claimPositionFee(ClaimFeesParams calldata params) external override isAuthorizedForToken(params.tokenId) {
+    function claimPositionFee(ClaimFeesParams calldata params)
+        external
+        override
+        whenNotPaused
+        isAuthorizedForToken(params.tokenId)
+    {
         UserPositions.Data storage position = positions[params.tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
 
@@ -440,7 +446,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, Context, ERC721 {
                 strategy.account.balance1 + strategy.account.fee1
             );
 
-            strategy.updateForCompound(global, vars.uniswapLiquidity, vars.balance0, vars.balance1);
+            strategy.updateForCompound(vars.uniswapLiquidity, vars.balance0, vars.balance1);
 
             emit FeeCompounded(strategyId, vars.balance0, vars.balance1);
         }

@@ -2,8 +2,9 @@
 pragma solidity =0.8.15;
 
 import { Owned } from "../../lib/solmate/src/auth/Owned.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
-abstract contract AccessControl is Owned {
+abstract contract AccessControl is Owned, Pausable {
     mapping(address => bool) internal _operatorApproved;
 
     modifier onlyOperator() {
@@ -23,5 +24,15 @@ abstract contract AccessControl is Owned {
     /// @notice Returns the status for a given operator that can operate readjust & pull liquidity
     function isOperator(address _operator) external view returns (bool) {
         return _operatorApproved[_operator];
+    }
+
+    /// @dev Triggers stopped state.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @dev Returns to normal state.
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
