@@ -105,6 +105,28 @@ contract DepositTest is Test, Fixtures {
         base.deposit(params);
     }
 
+    function test_deposit_revertsIfDepositPaused() public {
+        bytes32 strategyID = getStrategyID(address(this), 1);
+        uint256 depositAmount = 5 ether;
+
+        base.pause();
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        vm.expectRevert("Pausable: paused");
+        base.deposit(params);
+
+        base.unpause();
+        base.deposit(params);
+    }
+
     function test_deposit_succeedsWithNativeToken() public {
         pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
