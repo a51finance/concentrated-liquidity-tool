@@ -11,6 +11,8 @@ import { ILiquidityDistributionStrategy } from "./interfaces/modules/ILiquidityD
 import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
 
+/// @title  CLTModules
+/// @notice CLTModules contains methods for managing modes and it's actions of strategy
 contract CLTModules is ICLTModules, Owned {
     mapping(bytes32 => address) public modeVaults;
 
@@ -37,6 +39,9 @@ contract CLTModules is ICLTModules, Owned {
         modeVaults[moduleKey] = modeVault;
     }
 
+    /// @notice Turn on or off any mode of strategy
+    /// @param moduleKey Hash of the module for which is need to be updated
+    /// @param module Hash of the module action for which is need to be updated
     function toggleModule(bytes32 moduleKey, bytes32 module) external onlyOwner {
         _checkModuleKey(moduleKey);
 
@@ -58,6 +63,10 @@ contract CLTModules is ICLTModules, Owned {
         }
     }
 
+    /// @notice Validates the strategy inputs
+    /// @param actions The ids of all actions selected for new strategy creation
+    /// @param managementFee  The value of strategist management fee on strategy
+    /// @param performanceFee The value of strategist perofrmance fee on strategy
     function validateModes(
         ICLTBase.PositionActions calldata actions,
         uint256 managementFee,

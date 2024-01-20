@@ -40,8 +40,8 @@ interface ICLTBase {
 
     /// @param fee0 Amount of fees0 collected by strategy
     /// @param fee1 Amount of fees1 collected by strategy
-    /// @param balance0 Amount of token0 left that are not added on AMM's position
-    /// @param balance1 Amount of token0 left that are not added on AMM's position
+    /// @param balance0 Amount of token0 left in strategy that were not added in pool
+    /// @param balance1 Amount of token1 left in strategy that were not added in pool
     /// @param totalShares Total no of shares minted for this A51's strategy
     /// @param uniswapLiquidity Total no of liquidity added on AMM for this strategy
     /// @param feeGrowthInside0LastX128 The fee growth of token0 collected per unit of liquidity for

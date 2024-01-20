@@ -9,6 +9,8 @@ import { IWETH9 } from "../interfaces/external/IWETH9.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+/// @title CLTPayments
+/// @notice Contain helper methods for safe token transfers with custom logic
 abstract contract CLTPayments is ICLTPayments {
     address private immutable WETH9;
     IUniswapV3Factory private immutable factory;
@@ -22,6 +24,12 @@ abstract contract CLTPayments is ICLTPayments {
 
     fallback() external payable { }
 
+    /// @notice Pull in tokens from sender. Called to `msg.sender` after minting liquidity to a position from
+    /// IUniswapV3Pool#mint.
+    /// @dev In the implementation you must pay to the pool for the minted liquidity.
+    /// @param amount0Owed The amount of token0 due to the pool for the minted liquidity
+    /// @param amount1Owed The amount of token1 due to the pool for the minted liquidity
+    /// @param data Any data passed through by the caller via the IUniswapV3PoolActions#mint call
     function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
         MintCallbackData memory decodedData = abi.decode(data, (MintCallbackData));
 
@@ -35,6 +43,11 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
+    /// @notice Called to `msg.sender` after minting swaping from IUniswapV3Pool#swap.
+    /// @dev In the implementation you must pay to the pool for swap.
+    /// @param amount0Delta The amount of token0 due to the pool for the swap
+    /// @param amount1Delta The amount of token1 due to the pool for the swap
+    /// @param data Any data passed through by the caller via the IUniswapV3PoolActions#swap call
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external override {
         SwapCallbackData memory decoded = abi.decode(data, (SwapCallbackData));
 
@@ -66,6 +79,10 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
+    /// @param refundAsETH Bool value to convert WETH amount into ETH and refund to the recipient held by strategy
+    /// @param recipient The entity that will receive payment
+    /// @param token The token to pay
+    /// @param amount The amount to pay
     function transferFunds(bool refundAsETH, address recipient, address token, uint256 amount) internal {
         if (refundAsETH && token == WETH9) {
             IWETH9(WETH9).withdraw(amount);
@@ -75,6 +92,13 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
+    /// @param key A51 strategy key details
+    /// @param protcolPercentage The value of percentage to deduct from strategist earned fee
+    /// @param percentage The value of percentage to deduct from liquidity or eanrned fee & transfer it to strategist
+    /// @param amount0 The amount of token0 from which the strategist fee will deduct
+    /// @param amount1 The amount of token1 from which the strategist fee will deduct
+    /// @param governance Address of protocol owner
+    /// @param strategyOwner Address of strategy owner
     function transferFee(
         ICLTBase.StrategyKey memory key,
         uint256 protcolPercentage,

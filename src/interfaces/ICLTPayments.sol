@@ -2,8 +2,8 @@
 
 pragma solidity >=0.5.0;
 
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
+import { IUniswapV3MintCallback } from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import { IUniswapV3SwapCallback } from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 
 /// @title Liquidity management functions
 /// @notice Internal functions for safely managing liquidity in Uniswap V3

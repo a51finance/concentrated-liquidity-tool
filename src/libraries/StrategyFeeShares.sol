@@ -10,7 +10,16 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
+/// @title StrategyFeeShares
+/// @dev StrategyFeeShares contains methods for tracking fees owed to the strategy w.r.t global fees
 library StrategyFeeShares {
+    /// @param positionFee0 The uncollected amount of token0 owed to the global position as of the last computation
+    /// @param positionFee1 The uncollected amount of token1 owed to the global position as of the last computation
+    /// @param totalLiquidity The sum of liquidity of all strategies having global position ticks
+    /// @param feeGrowthInside0LastX128 The all-time fee growth in token0, per unit of liquidity, inside the position's
+    /// tick boundaries
+    /// @param feeGrowthInside1LastX128 The all-time fee growth in token1, per unit of liquidity, inside the position's
+    /// tick boundaries
     struct GlobalAccount {
         uint256 positionFee0;
         uint256 positionFee1;
@@ -19,6 +28,10 @@ library StrategyFeeShares {
         uint256 feeGrowthInside1LastX128;
     }
 
+    /// @notice Collects total uncollected fee owed to the global position from AMM & updates all-time fee growth
+    /// @param self The individual global position to update
+    /// @param key A51 strategy key details
+    /// @return account The position info struct of the given global position
     function updateGlobalStrategyFees(
         mapping(bytes32 => GlobalAccount) storage self,
         ICLTBase.StrategyKey memory key
@@ -42,6 +55,11 @@ library StrategyFeeShares {
         }
     }
 
+    /// @notice Credits accumulated fees to a strategy from global position
+    /// @param self The individual strategy position to update
+    /// @param global The individual global position
+    /// @dev strategy will not recieve fee share from global position because it's liquidity is HODL in contract balance
+    /// during activation of exit mode
     function updateStrategyFees(
         ICLTBase.StrategyData storage self,
         GlobalAccount storage global
@@ -59,6 +77,7 @@ library StrategyFeeShares {
         }
 
         if (isExit == false) {
+            // calculate accumulated fees
             total0 = uint128(
                 FullMath.mulDiv(
                     feeGrowthInside0LastX128 - self.account.feeGrowthInside0LastX128,
@@ -76,10 +95,11 @@ library StrategyFeeShares {
             );
         }
 
-        // precesion loss expected here so rounding the value to zero to prevent overflow
+        // precesion loss expected here so rounding the value to zero to prevent underflow
         (, global.positionFee0) = SafeMath.trySub(global.positionFee0, total0);
         (, global.positionFee1) = SafeMath.trySub(global.positionFee1, total1);
 
+        // update the position
         self.account.fee0 += total0;
         self.account.fee1 += total1;
 

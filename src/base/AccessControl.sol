@@ -21,7 +21,8 @@ abstract contract AccessControl is Owned, Pausable {
         _operatorApproved[_operator] = !_operatorApproved[_operator];
     }
 
-    /// @notice Returns the status for a given operator that can operate readjust & pull liquidity
+    /// @notice Returns the status for a given operator that can execute operations
+    /// @param _operator Account to check status
     function isOperator(address _operator) external view returns (bool) {
         return _operatorApproved[_operator];
     }
