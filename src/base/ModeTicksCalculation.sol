@@ -5,10 +5,10 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-/// @title ModeTicksCalculation
+/// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
 abstract contract ModeTicksCalculation {
-    uint32 twapDuration = 300;
+    uint32 internal _twapDuration = 300;
 
     /// @notice Computes new tick lower and upper for the individual strategy downside
     /// @dev shift left will trail the strategy position closer to the cuurent tick, current tick will be one tick left
@@ -77,7 +77,7 @@ abstract contract ModeTicksCalculation {
 
         uint32 timeDiff = uint32(block.timestamp) - lastTimeStamp;
 
-        (twap,) = OracleLibrary.consult(address(pool), timeDiff > twapDuration ? twapDuration : timeDiff);
+        (twap,) = OracleLibrary.consult(address(pool), timeDiff > _twapDuration ? _twapDuration : timeDiff);
     }
 
     /// @dev Rounds tick down towards negative infinity so that it's a multiple

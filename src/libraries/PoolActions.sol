@@ -15,7 +15,7 @@ import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { SqrtPriceMath } from "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
 
-/// @title PoolActions
+/// @title  PoolActions
 /// @notice Provides functions for computing and safely managing liquidity on AMM
 library PoolActions {
     using SafeCastExtended for int256;
@@ -46,7 +46,7 @@ library PoolActions {
         external
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        // only use individual liquidity of strategy we need otherwise it will pull all strategy liquidity
+        // only use individual liquidity of strategy we need otherwise it will pull all strategies liquidity
         if (strategyliquidity > 0) {
             (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, strategyliquidity);
 
@@ -80,7 +80,6 @@ library PoolActions {
 
             (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
 
-            // collect user liquidity + unclaimed fee both now in compounding
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
                     key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
@@ -138,7 +137,6 @@ library PoolActions {
         external
         returns (int256 amount0, int256 amount1)
     {
-        // manually specify sqrtPrice limit from bot
         (uint160 sqrtPriceX96,,) = getSqrtRatioX96AndTick(pool);
 
         uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (1e5 / 2)) / 1e6;

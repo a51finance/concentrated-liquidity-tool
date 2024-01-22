@@ -9,7 +9,7 @@ import { IWETH9 } from "../interfaces/external/IWETH9.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-/// @title CLTPayments
+/// @title  CLTPayments
 /// @notice Contain helper methods for safe token transfers with custom logic
 abstract contract CLTPayments is ICLTPayments {
     address private immutable WETH9;

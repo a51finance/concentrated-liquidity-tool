@@ -7,8 +7,8 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-/// @title UserPositions
-/// @dev UserPositions store additional state for tracking fees owed to the user compounding or non-compounding strategy
+/// @title  UserPositions
+/// @notice UserPositions store additional state for tracking fees owed to the user compound or no compound strategy
 library UserPositions {
     struct Data {
         bytes32 strategyId;

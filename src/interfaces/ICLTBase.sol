@@ -60,10 +60,13 @@ interface ICLTBase {
     }
 
     /// @param key A51 position's key details
+    /// @param owner The address of the strategy owner
     /// @param actions Ids of all modes selected by the strategist encoded together in a single hash
     /// @param actionStatus The encoded data for each of the strategy to track any detail for futher actions
     /// @param isCompound Bool weather the strategy has compunding activated or not
     /// @param isPrivate Bool weather strategy is open for all users or not
+    /// @param managementFee  The value of fee in percentage applied on strategy users liquidity by strategy owner
+    /// @param performanceFee The value of fee in percentage applied on strategy users earned fee by strategy owner
     /// @param account Strategy accounts of balances and fee account details
     struct StrategyData {
         StrategyKey key;
@@ -118,7 +121,7 @@ interface ICLTBase {
     /// @param strategyId Hash of strategy ID
     event StrategyUpdated(bytes32 indexed strategyId);
 
-    /// @notice Emitted when fee of strategy is updated
+    /// @notice Emitted when fee of strategy is collected
     /// @param strategyId Hash of strategy ID
     /// @param fee0 Amount of fees0 collected by strategy
     /// @param fee1 Amount of fees1 collected by strategy
@@ -131,11 +134,12 @@ interface ICLTBase {
     /// @param amount1 The amount of token1 that was paid for the increase in liquidity
     event PositionUpdated(uint256 indexed tokenId, uint256 share, uint256 amount0, uint256 amount1);
 
-    /// @notice Emitted when strategy is shifted
+    /// @notice Emitted when strategy position is updated or shifted
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
-    /// @param isLiquidityMinted Bool
-    /// @param zeroForOne Bool
-    /// @param swapAmount Amount
+    /// @param isLiquidityMinted Bool whether the new liquidity position is minted in pool or HODL in contract
+    /// @param zeroForOne Bool The direction of the swap, true for token0 to token1, false for token1 to token0
+    /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
+    /// exact output (negative)
     event LiquidityShifted(bytes32 indexed strategyId, bool isLiquidityMinted, bool zeroForOne, int256 swapAmount);
 
     /// @notice Emitted when collected fee of strategy is compounded
@@ -146,14 +150,12 @@ interface ICLTBase {
 
     /// @notice Creates new LP strategy on AMM
     /// @dev Call this when the pool does exist and is initialized
-    /// List of whitelisted IDs could be fetched by the modules function for each basic & advance mode.
-    /// If any ID is selected of any module it is mandatory to encode data for it then pass it to actions array
-    /// E.g: actions: [1, 3], it's should be: actionsData: [dataOfID1, dataOfID2]
-    /// otherwise it will revert
+    /// List of whitelisted IDs could be fetched by the modules contract for each basic & advance mode.
+    /// If any ID is selected of any module it is mandatory to encode data for it then pass it to StrategyPayload.data
     /// @param key The params necessary to select a position, encoded as `StrategyKey` in calldata
     /// @param actions It is hash of all encoded data of whitelisted IDs which are being passed
-    /// @param managementFee b
-    /// @param performanceFee b
+    /// @param managementFee  The value of fee in percentage applied on strategy users liquidity by strategy owner
+    /// @param performanceFee The value of fee in percentage applied on strategy users earned fee by strategy owner
     /// @param isCompound Bool weather the strategy should have compunding activated or not
     /// @param isPrivate Bool weather strategy is open for all users or not
     function createStrategy(
@@ -170,13 +172,13 @@ interface ICLTBase {
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @return key A51 position's key details associated with this strategy
-    /// @return owner
+    /// @return owner The address of the strategy owner
     /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
     /// @return actionStatus It is a hash of a additional data of strategy for further required actions
     /// @return isCompound Bool weather the strategy has compunding activated or not
     /// @return isPrivate Bool weather strategy is open for all users or not
-    /// @return managementFee b
-    /// @return performanceFee b
+    /// @return managementFee The value of fee in percentage applied on strategy users liquidity by strategy owner
+    /// @return performanceFee The value of fee in percentage applied on strategy users earned fee by strategy owner
     /// @return account Strategy values of balances and fee accounting details
     function strategies(bytes32 strategyId)
         external

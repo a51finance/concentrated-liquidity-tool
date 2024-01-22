@@ -12,7 +12,7 @@ import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
 
 /// @title  CLTModules
-/// @notice CLTModules contains methods for managing modes and it's actions of strategy
+/// @notice CLTModules contains methods for managing modes and it's actions for strategy
 contract CLTModules is ICLTModules, Owned {
     mapping(bytes32 => address) public modeVaults;
 
@@ -63,10 +63,7 @@ contract CLTModules is ICLTModules, Owned {
         }
     }
 
-    /// @notice Validates the strategy inputs
-    /// @param actions The ids of all actions selected for new strategy creation
-    /// @param managementFee  The value of strategist management fee on strategy
-    /// @param performanceFee The value of strategist perofrmance fee on strategy
+    /// @inheritdoc ICLTModules
     function validateModes(
         ICLTBase.PositionActions calldata actions,
         uint256 managementFee,
@@ -97,12 +94,14 @@ contract CLTModules is ICLTModules, Owned {
         }
     }
 
+    /// @dev Common checks for valid inputs.
     function _checkModeIds(bytes32 mode, ICLTBase.StrategyPayload[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
             if (!modulesActions[mode][array[i].actionName]) revert InvalidStrategyAction();
         }
     }
 
+    /// @dev Common checks for valid inputs.
     function _checkModuleKey(bytes32 moduleKey) private pure {
         require(
             moduleKey == Constants.MODE || moduleKey == Constants.REBASE_STRATEGY

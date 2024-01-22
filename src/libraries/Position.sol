@@ -4,8 +4,8 @@ pragma solidity >=0.5.0;
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { StrategyFeeShares } from "../libraries/StrategyFeeShares.sol";
 
-/// @title Position
-/// @dev Positions store state for indivdual A51 strategy and manage th
+/// @title  Position
+/// @notice Positions store state for indivdual A51 strategy and manage th
 library Position {
     /// @notice updates the liquidity and balance of strategy
     /// @param self The individual strategy position to update

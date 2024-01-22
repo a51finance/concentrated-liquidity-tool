@@ -6,7 +6,7 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
-/// @title LiquidityShares
+/// @title  LiquidityShares
 /// @notice Provides functions for computing liquidity amounts and shares for individual strategy
 library LiquidityShares {
     /// @notice Returns the token reserves for individual strategy position in pool

@@ -10,8 +10,8 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
-/// @title StrategyFeeShares
-/// @dev StrategyFeeShares contains methods for tracking fees owed to the strategy w.r.t global fees
+/// @title  StrategyFeeShares
+/// @notice StrategyFeeShares contains methods for tracking fees owed to the strategy w.r.t global fees
 library StrategyFeeShares {
     /// @param positionFee0 The uncollected amount of token0 owed to the global position as of the last computation
     /// @param positionFee1 The uncollected amount of token1 owed to the global position as of the last computation

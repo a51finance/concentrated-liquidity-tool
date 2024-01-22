@@ -33,8 +33,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     uint256 private _strategyId = 1;
 
+    /// @notice The address of modes managment of strategy
     address public immutable cltModules;
 
+    /// @notice The address of fee managment of strategy
     address public immutable feeHandler;
 
     /// @inheritdoc ICLTBase
@@ -43,6 +45,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @inheritdoc ICLTBase
     mapping(uint256 => UserPositions.Data) public override positions;
 
+    /// @notice The global fee growth as of last action on individual liquidity position in pool
+    /// @dev The uncollected fee earned by individual position is first collected by global account and then distributed
+    /// among the strategies having same ticks as of global account ticks according to the strategy fee growth & share
     mapping(bytes32 => StrategyFeeShares.GlobalAccount) private strategyGlobalFees;
 
     modifier isAuthorizedForToken(uint256 tokenId) {
@@ -118,6 +123,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         external
         payable
         override
+        nonReentrancy
         whenNotPaused
         returns (uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1)
     {
@@ -147,6 +153,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     function updatePositionLiquidity(UpdatePositionParams calldata params)
         external
         override
+        nonReentrancy
         whenNotPaused
         returns (uint256 share, uint256 amount0, uint256 amount1)
     {
@@ -173,6 +180,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     function withdraw(WithdrawParams calldata params)
         external
         override
+        nonReentrancy
         whenNotPaused
         isAuthorizedForToken(params.tokenId)
         returns (uint256 amount0, uint256 amount1)
@@ -275,6 +283,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     function claimPositionFee(ClaimFeesParams calldata params)
         external
         override
+        nonReentrancy
         whenNotPaused
         isAuthorizedForToken(params.tokenId)
     {
@@ -392,6 +401,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         emit LiquidityShifted(params.strategyId, params.shouldMint, params.zeroForOne, params.swapAmount);
     }
 
+    /// @notice updates the info of strategy
+    /// @dev The strategy can be update only by owner
     function updateStrategyBase(
         bytes32 strategyId,
         address owner,
@@ -410,8 +421,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         emit StrategyUpdated(strategyId);
     }
-
-    function tokenURI(uint256 id) public view override returns (string memory) { }
 
     function _deposit(
         bytes32 strategyId,
@@ -480,6 +489,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         feeGrowthInside1LastX128 = strategy.account.feeGrowthInside1LastX128;
     }
 
+    /// @notice Returns maximum amount of fees owed to a specific user position
+    /// @param tokenId The ID of the Unpilot NFT for which tokens will be collected
+    /// @return fee0 Amount of fees in token0
+    /// @return fee1 Amount of fees in token1
     function getUserfee(uint256 tokenId) external returns (uint256 fee0, uint256 fee1) {
         UserPositions.Data storage position = positions[tokenId];
         StrategyData storage strategy = strategies[position.strategyId];
@@ -489,6 +502,36 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         (fee0, fee1) = position.claimFeeForNonCompounders(strategy);
     }
 
+    /// @dev Collects liquidity position fee and update global fee growth so earned fees are
+    /// updated. Should be called if total amounts needs to include up-to-date fees
+    function _updateGlobals(
+        StrategyData storage strategy,
+        bytes32 strategyId
+    )
+        private
+        returns (StrategyFeeShares.GlobalAccount storage global)
+    {
+        global = StrategyFeeShares.updateGlobalStrategyFees(strategyGlobalFees, strategy.key);
+        (uint256 earned0, uint256 earned1) = StrategyFeeShares.updateStrategyFees(strategy, global);
+
+        emit StrategyFee(strategyId, earned0, earned1);
+    }
+
+    /// @notice Returns the liquidity and fee earned by A51 strategy.
+    /// @param strategyId Hash of strategy ID
+    /// @return liquidity The currently liquidity available to the pool by strategy
+    /// @return fee0 The computed amount of token0 owed to the strategy as of the global update
+    /// @return fee1 The computed amount of token1 owed to the strategy as of the global update
+    function getStrategyReserves(bytes32 strategyId) external returns (uint128 liquidity, uint256 fee0, uint256 fee1) {
+        StrategyData storage strategy = strategies[strategyId];
+
+        _updateGlobals(strategy, strategyId);
+
+        (liquidity, fee0, fee1) = (strategy.account.uniswapLiquidity, strategy.account.fee0, strategy.account.fee1);
+    }
+
+    /// @notice Returns the protocol fee value
+    /// @param isPrivate Bool value weather strategy is private or public
     function _getGovernanceFee(bool isPrivate)
         private
         view
@@ -502,6 +545,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         return IGovernanceFeeHandler(feeHandler).getGovernanceFee(isPrivate);
     }
 
+    /// @dev Common checks for valid inputs.
     function _validateModes(PositionActions calldata actions, uint256 managementFee, uint256 performanceFee) private {
         ICLTModules(cltModules).validateModes(actions, managementFee, performanceFee);
     }
@@ -516,24 +560,5 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         }
     }
 
-    function _updateGlobals(
-        StrategyData storage strategy,
-        bytes32 strategyId
-    )
-        private
-        returns (StrategyFeeShares.GlobalAccount storage global)
-    {
-        global = StrategyFeeShares.updateGlobalStrategyFees(strategyGlobalFees, strategy.key);
-        (uint256 earned0, uint256 earned1) = StrategyFeeShares.updateStrategyFees(strategy, global);
-
-        emit StrategyFee(strategyId, earned0, earned1);
-    }
-
-    function getStrategyReserves(bytes32 strategyId) external returns (uint128 liquidity, uint256 fee0, uint256 fee1) {
-        StrategyData storage strategy = strategies[strategyId];
-
-        _updateGlobals(strategy, strategyId);
-
-        (liquidity, fee0, fee1) = (strategy.account.uniswapLiquidity, strategy.account.fee0, strategy.account.fee1);
-    }
+    function tokenURI(uint256 id) public view override returns (string memory) { }
 }
