@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
@@ -13,7 +11,7 @@ import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 /// @author undefined_0x
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
-contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, ReentrancyGuard {
+contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     ICLTBase _cltBase;
 
     /// @notice Threshold for liquidity consideration
@@ -34,10 +32,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
     /// @notice Executes given strategies.
     /// @dev Can only be called by the operator.
     /// @param strategyIDs Array of strategy IDs to be executed.
-    /// @notice Executes given strategies.
-    /// @dev Can only be called by the operator.
-    /// @param strategyIDs Array of strategy IDs to be executed.
-    function executeStrategies(bytes32[] calldata strategyIDs) external nonReentrant {
+    function executeStrategies(bytes32[] calldata strategyIDs) external nonReentrancy {
         checkStrategiesArray(strategyIDs);
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
 
@@ -76,7 +71,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
         }
     }
 
-    function executeStrategy(ExectuteStrategyParams calldata executeParams) external nonReentrant {
+    function executeStrategy(ExectuteStrategyParams calldata executeParams) external nonReentrancy {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
@@ -126,7 +121,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
         } else if (mode == 3) {
             (tickLower, tickUpper) = shiftBothSide(key);
         }
-        return (tickLower, tickUpper);
     }
 
     /// @notice Checks and processes strategies based on their validity.
@@ -218,11 +212,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
     {
         if (rebaseAction.actionName == PRICE_PREFERENCE) {
             return _checkRebasePreferenceStrategies(key, rebaseAction.data, mode);
-        } else if (rebaseAction.actionName == REBASE_INACTIVITY) {
+        } else {
             return true;
         }
-
-        return false;
     }
 
     /// @notice Checks if rebase preference strategies are satisfied for the given key and action data.
@@ -315,7 +307,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy, R
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
     function checkStrategiesArray(bytes32[] memory data) public returns (bool) {
-        // this function has a comlexity of O(n^2).
         if (data.length == 0) {
             revert StrategyIdsCannotBeEmpty();
         }

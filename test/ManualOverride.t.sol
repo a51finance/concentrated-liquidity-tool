@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { RebaseFixtures } from "./utils/RebaseModuleFixtures.sol";
+import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { Test } from "forge-std/Test.sol";

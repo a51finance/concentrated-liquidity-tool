@@ -3,8 +3,6 @@ pragma solidity >=0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-//import "../interfaces/external/IERC20.sol";
-
 library TransferHelper {
     /// @notice Transfers tokens from the targeted address to the given destination
     /// @notice Errors with 'STF' if transfer fails

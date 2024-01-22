@@ -58,6 +58,31 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         );
     }
 
+    function test_increaseLiq_revertsOnlyOwnerInPrivateStrategy() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, true, true);
+
+        bytes32 strategyID = getStrategyID(address(this), 3);
+        uint256 depositAmount = 3 ether;
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        base.deposit(params);
+
+        vm.prank(msg.sender);
+        vm.expectRevert();
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({ tokenId: 3, amount0Desired: depositAmount, amount1Desired: depositAmount })
+        );
+    }
+
     function test_increaseLiq_succeedCorrectEventParams() public {
         uint256 depositAmount = 1 ether;
 
@@ -158,5 +183,63 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
 
         assertEq(accountStrategy2.balance0, balance0Before + depositAmount);
         assertEq(accountStrategy2.balance1, balance1Before + depositAmount);
+    }
+
+    function test_increaseLiq_shouldUpdateFeeGrowth() public {
+        uint256 depositAmount = 5 ether;
+        bytes32 strategyId = getStrategyID(address(this), 2);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        vm.prank(address(base));
+        pool.burn(key.tickLower, key.tickUpper, 0);
+        (,,, uint256 totalFee0, uint256 totalFee1) =
+            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        base.getStrategyReserves(strategyId);
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
+
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
+        );
+
+        (
+            ,
+            ,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        ) = base.positions(2);
+
+        assertEq(feeGrowthInside0LastX128, account.feeGrowthInside0LastX128);
+        assertEq(feeGrowthInside1LastX128, account.feeGrowthInside1LastX128);
+
+        assertEq(tokensOwed0, totalFee0 / 2 - 1);
+        assertEq(tokensOwed1, totalFee1 / 2 - 1);
     }
 }

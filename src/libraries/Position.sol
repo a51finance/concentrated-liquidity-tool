@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import { Constants } from "./Constants.sol";
-import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
-import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { StrategyFeeShares } from "../libraries/StrategyFeeShares.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-
-/// @notice Positions represent an owner in A51 liquidity
+/// @title  Position
+/// @notice Positions store state for indivdual A51 strategy and manage th
 library Position {
+    /// @notice updates the liquidity and balance of strategy
+    /// @param self The individual strategy position to update
+    /// @param global The individual global position
+    /// @param liquidityAdded A new amount of liquidity added on AMM
+    /// @param share The amount of shares minted by strategy
+    /// @param amount0Desired The amount of token0 that was paid to mint the given amount of shares
+    /// @param amount1Desired The amount of token1 that was paid to mint the given amount of shares
+    /// @param amount0Added The actual amount of token0 added on AMM
+    /// @param amount1Added The actual amount of token1 added on AMM
     function update(
         ICLTBase.StrategyData storage self,
         StrategyFeeShares.GlobalAccount storage global,
@@ -38,9 +43,13 @@ library Position {
         }
     }
 
+    /// @notice updates the position of strategy after fee compound
+    /// @param self The individual strategy position to update
+    /// @param liquidityAdded A new amount of liquidity added on AMM
+    /// @param amount0Added The amount of token0 added to the liquidity position
+    /// @param amount1Added The amount of token1 added to the liquidity position
     function updateForCompound(
         ICLTBase.StrategyData storage self,
-        StrategyFeeShares.GlobalAccount storage global,
         uint128 liquidityAdded,
         uint256 amount0Added,
         uint256 amount1Added
@@ -59,6 +68,14 @@ library Position {
         }
     }
 
+    /// @notice updates the strategy and mint new position on AMM
+    /// @param self The individual strategy position to update
+    /// @param global The mapping containing all global positions
+    /// @param key A51 strategy key details
+    /// @param status Additional data of strategy passed through by the modules contract
+    /// @param liquidity A new amount of liquidity added on AMM
+    /// @param balance0 Amount of token0 left that are not added on AMM
+    /// @param balance1 Amount of token1 left that are not added on AMM
     function updateStrategy(
         ICLTBase.StrategyData storage self,
         mapping(bytes32 => StrategyFeeShares.GlobalAccount) storage global,
@@ -80,7 +97,7 @@ library Position {
         self.account.balance1 = balance1;
 
         self.actionStatus = status;
-        self.account.uniswapLiquidity = liquidity; // this can affect feeGrowth if it's zero updated?
+        self.account.uniswapLiquidity = liquidity;
 
         bool isExit;
 
@@ -91,17 +108,24 @@ library Position {
         // if liquidity is on HODL it shouldn't recieve fee shares but calculations will remain for existing users
         if (isExit == false) globalAccount.totalLiquidity += self.account.totalShares;
 
-        // fee should remain for non-compounding strategy's existing users
+        // fee should remain for non-compounding strategy existing users
         if (self.isCompound) {
             self.account.fee0 = 0;
             self.account.fee1 = 0;
         }
 
-        // assigning again feeGrowth here because if liquidity ticks are changed then calculations will be messed
+        // assigning again feeGrowth here because if position ticks are changed then calculations will be messed
         self.account.feeGrowthInside0LastX128 = globalAccount.feeGrowthInside0LastX128;
         self.account.feeGrowthInside1LastX128 = globalAccount.feeGrowthInside1LastX128;
     }
 
+    /// @notice updates the info of strategy
+    /// @param self The individual strategy position to update
+    /// @param newOwner The address of owner to update
+    /// @param managementFee The percentage of management fee to update
+    /// @param performanceFee The percentage of performance fee to update
+    /// @param newActions The ids of new modes to update
+    /// @dev The status of previous actions will be overwrite after update
     function updateStrategyState(
         ICLTBase.StrategyData storage self,
         address newOwner,
@@ -114,7 +138,7 @@ library Position {
         self.owner = newOwner;
         self.managementFee = managementFee;
         self.performanceFee = performanceFee;
-        self.actions = newActions; // this can effect balances and actionStatus?
-        self.actionStatus = ""; // alert user during update that all previous data will be cleared
+        self.actions = newActions;
+        self.actionStatus = "";
     }
 }

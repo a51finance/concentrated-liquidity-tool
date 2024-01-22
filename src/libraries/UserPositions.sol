@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import { Constants } from "./Constants.sol";
-import { PoolActions } from "./PoolActions.sol";
-
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
-import { Position } from "../libraries/Position.sol";
 import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
-
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
+/// @title  UserPositions
+/// @notice UserPositions store additional state for tracking fees owed to the user compound or no compound strategy
 library UserPositions {
     struct Data {
         bytes32 strategyId;
@@ -22,6 +19,10 @@ library UserPositions {
         uint128 tokensOwed1;
     }
 
+    /// @notice Collects up to a maximum amount of fees owed to a user from the strategy fees
+    /// @param self The individual user position to update
+    /// @param feeGrowthInside0LastX128 The all-time fee growth in token0, per unit of liquidity in strategy
+    /// @param feeGrowthInside1LastX128 The all-time fee growth in token1, per unit of liquidity in strategy
     function updateUserPosition(
         Data storage self,
         uint256 feeGrowthInside0LastX128,
@@ -45,6 +46,11 @@ library UserPositions {
         self.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
     }
 
+    /// @notice Collects up to a maximum amount of fees owed to a user poistion in non-compounding strategy
+    /// @param self The individual user position to update
+    /// @param strategy The individual strategy position
+    /// @return total0 The amount of fees collected in token0
+    /// @return total1 The amount of fees collected in token1
     function claimFeeForNonCompounders(
         Data storage self,
         ICLTBase.StrategyData storage strategy
@@ -77,11 +83,16 @@ library UserPositions {
         self.tokensOwed0 = total0;
         self.tokensOwed1 = total1;
 
-        // precesion loss expected here so rounding the value to zero to prevent overflow
+        // precesion loss expected here so rounding the value to zero to prevent underflow
         (, strategy.account.fee0) = SafeMath.trySub(strategy.account.fee0, total0);
         (, strategy.account.fee1) = SafeMath.trySub(strategy.account.fee1, total1);
     }
 
+    /// @notice Collects up to a maximum amount of fees owed to a user poistion in compounding strategy
+    /// @param self The individual user position to update
+    /// @param strategy The individual strategy position
+    /// @return fee0 The amount of fees collected in token0
+    /// @return fee1 The amount of fees collected in token1
     function claimFeeForCompounders(
         Data storage self,
         ICLTBase.StrategyData storage strategy

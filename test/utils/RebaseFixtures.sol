@@ -12,7 +12,7 @@ import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
 import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandler.sol";
 
 import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
-import { RebaseModuleMock } from "../mocks/RebaseModule.mock.sol";
+import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { Utilities } from "./Utilities.sol";
 
@@ -36,7 +36,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     Quoter quote;
 
     ICLTBase.StrategyKey strategyKey;
-    RebaseModuleMock rebaseModule;
+    RebaseModule rebaseModule;
     CLTModules cltModules;
     CLTBase base;
     Modes modes;
@@ -176,7 +176,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.prank(recepient);
         token1.approve(address(base), type(uint256).max);
 
-        rebaseModule = new RebaseModuleMock(recepient, address(base));
+        rebaseModule = new RebaseModule(recepient, address(base));
 
         modes = new Modes(address(base),recepient);
 

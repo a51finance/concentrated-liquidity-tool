@@ -6,7 +6,14 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
+/// @title  LiquidityShares
+/// @notice Provides functions for computing liquidity amounts and shares for individual strategy
 library LiquidityShares {
+    /// @notice Returns the token reserves for individual strategy position in pool
+    /// @param key A51 strategy key details
+    /// @param liquidity The amount of liquidity for this strategy
+    /// @return reserves0 The amount of token0 in the liquidity position
+    /// @return reserves1 The amount of token1 in the liquidity position
     function getReserves(
         ICLTBase.StrategyKey memory key,
         uint128 liquidity
@@ -28,6 +35,13 @@ library LiquidityShares {
         }
     }
 
+    /// @notice Mints shares to the recipient based on the amount of tokens recieved.
+    /// @param strategy The individual strategy position to mint shares for
+    /// @param amount0Max The desired amount of token0 to be spent
+    /// @param amount1Max The desired amount of token1 to be spent
+    /// @return shares The amount of share minted to the sender
+    /// @return amount0 The amount of token0 needs to transfered from sender to strategy
+    /// @return amount1 The amount of token1 needs to transfered from sender to strategy
     function computeLiquidityShare(
         ICLTBase.StrategyData storage strategy,
         uint256 amount0Max,
@@ -36,17 +50,31 @@ library LiquidityShares {
         external
         returns (uint256 shares, uint256 amount0, uint256 amount1)
     {
+        // check existing liquidity before the add
         (uint256 reserve0, uint256 reserve1) = getReserves(strategy.key, strategy.account.uniswapLiquidity);
 
+        // includes unused balance + fees (if componding strategy otherwise not)
         reserve0 += strategy.account.balance0;
         reserve1 += strategy.account.balance1;
 
+        // If total supply > 0, strategy can't be empty
         assert(strategy.account.totalShares == 0 || reserve0 != 0 || reserve1 != 0);
 
         (shares, amount0, amount1) =
             calculateShare(amount0Max, amount1Max, reserve0, reserve1, strategy.account.totalShares);
     }
 
+    /// @dev Calculates the largest possible `amount0` and `amount1` such that
+    /// they're in the same proportion as total amounts, but not greater than
+    /// `amount0Desired` and `amount1Desired` respectively.
+    /// @param amount0Max The desired amount of token0 to be spent
+    /// @param amount1Max The desired amount of token1 to be spent
+    /// @param reserve0 The strategy total holdings of token0
+    /// @param reserve1 The strategy total holdings of token1
+    /// @param totalSupply Total amount of shares minted from current strategy
+    /// @return shares The amount of share minted to the sender
+    /// @return amount0 The amount of token0 needs to transfered from sender to strategy
+    /// @return amount1 The amount of token1 needs to transfered from sender to strategy
     function calculateShare(
         uint256 amount0Max,
         uint256 amount1Max,

@@ -5,37 +5,44 @@ import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 
+/// @title  GovernanceFeeHandler
+/// @notice GovernanceFeeHandler contains methods for managing governance fee parameters in strategies
 contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
-    ProtocolFeeRegistry private publicStrategyFeeRegistry;
-    ProtocolFeeRegistry private privateStrategyFeeRegistry;
+    /// @notice The protocol fee value in percentage for public strategy,  decimal value <1
+    ProtocolFeeRegistry private _publicStrategyFeeRegistry;
+    /// @notice The protocol fee value in percentage for private strategy, decimal value <1
+    ProtocolFeeRegistry private _privateStrategyFeeRegistry;
 
     constructor(
         address _owner,
-        ProtocolFeeRegistry memory _publicStrategyFeeRegistry,
-        ProtocolFeeRegistry memory _privateStrategyFeeRegistry
+        ProtocolFeeRegistry memory publicStrategyFeeRegistry_,
+        ProtocolFeeRegistry memory privateStrategyFeeRegistry_
     )
         Owned(_owner)
     {
-        publicStrategyFeeRegistry = _publicStrategyFeeRegistry;
-        privateStrategyFeeRegistry = _privateStrategyFeeRegistry;
+        _publicStrategyFeeRegistry = publicStrategyFeeRegistry_;
+        _privateStrategyFeeRegistry = privateStrategyFeeRegistry_;
     }
 
+    /// @inheritdoc IGovernanceFeeHandler
     function setPublicFeeRegistry(ProtocolFeeRegistry calldata newPublicStrategyFeeRegistry) external onlyOwner {
         _checkLimit(newPublicStrategyFeeRegistry);
 
-        publicStrategyFeeRegistry = newPublicStrategyFeeRegistry;
+        _publicStrategyFeeRegistry = newPublicStrategyFeeRegistry;
 
         emit PublicFeeRegistryUpdated(newPublicStrategyFeeRegistry);
     }
 
+    /// @inheritdoc IGovernanceFeeHandler
     function setPrivateFeeRegistry(ProtocolFeeRegistry calldata newPrivateStrategyFeeRegistry) external onlyOwner {
         _checkLimit(newPrivateStrategyFeeRegistry);
 
-        privateStrategyFeeRegistry = newPrivateStrategyFeeRegistry;
+        _privateStrategyFeeRegistry = newPrivateStrategyFeeRegistry;
 
         emit PrivateFeeRegistryUpdated(newPrivateStrategyFeeRegistry);
     }
 
+    /// @inheritdoc IGovernanceFeeHandler
     function getGovernanceFee(bool isPrivate)
         external
         view
@@ -49,21 +56,22 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
     {
         if (isPrivate) {
             (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) = (
-                privateStrategyFeeRegistry.lpAutomationFee,
-                privateStrategyFeeRegistry.strategyCreationFee,
-                privateStrategyFeeRegistry.protcolFeeOnManagement,
-                privateStrategyFeeRegistry.protcolFeeOnPerformance
+                _privateStrategyFeeRegistry.lpAutomationFee,
+                _privateStrategyFeeRegistry.strategyCreationFee,
+                _privateStrategyFeeRegistry.protcolFeeOnManagement,
+                _privateStrategyFeeRegistry.protcolFeeOnPerformance
             );
         } else {
             (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) = (
-                publicStrategyFeeRegistry.lpAutomationFee,
-                publicStrategyFeeRegistry.strategyCreationFee,
-                publicStrategyFeeRegistry.protcolFeeOnManagement,
-                publicStrategyFeeRegistry.protcolFeeOnPerformance
+                _publicStrategyFeeRegistry.lpAutomationFee,
+                _publicStrategyFeeRegistry.strategyCreationFee,
+                _publicStrategyFeeRegistry.protcolFeeOnManagement,
+                _publicStrategyFeeRegistry.protcolFeeOnPerformance
             );
         }
     }
 
+    /// @dev Common checks for valid fee inputs.
     function _checkLimit(ProtocolFeeRegistry calldata feeParams) private pure {
         if (feeParams.lpAutomationFee > Constants.MAX_AUTOMATION_FEE) revert LPAutomationFeeLimitExceed();
         if (feeParams.strategyCreationFee > Constants.MAX_STRATEGY_CREATION_FEE) revert StrategyFeeLimitExceed();
