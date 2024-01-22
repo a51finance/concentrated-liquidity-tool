@@ -4,12 +4,23 @@ pragma solidity =0.8.15;
 import { Owned } from "../../lib/solmate/src/auth/Owned.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
+/// @title  AccessControl
+/// @notice Contain helper methods for accessibility of functions
 abstract contract AccessControl is Owned, Pausable {
+    uint32 private _unlocked = 1;
+
     mapping(address => bool) internal _operatorApproved;
 
     modifier onlyOperator() {
         require(_operatorApproved[msg.sender]);
         _;
+    }
+
+    modifier nonReentrancy() {
+        require(_unlocked == 1);
+        _unlocked = 2;
+        _;
+        _unlocked = 1;
     }
 
     constructor(address _owner) Owned(_owner) { }
