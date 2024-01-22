@@ -15,12 +15,15 @@ import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { SqrtPriceMath } from "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
 
-/// @title Liquidity and ticks functions
-/// @notice Provides functions for computing liquidity and ticks for token amounts and prices
+/// @title  PoolActions
+/// @notice Provides functions for computing and safely managing liquidity on AMM
 library PoolActions {
     using SafeCastExtended for int256;
     using SafeCastExtended for uint256;
 
+    /// @notice Returns the liquidity for individual strategy position in pool
+    /// @param key A51 strategy key details
+    /// @return liquidity The amount of liquidity for this strategy
     function updatePosition(ICLTBase.StrategyKey memory key) external returns (uint128 liquidity) {
         (liquidity,,,,) = getPositionLiquidity(key);
 
@@ -29,6 +32,13 @@ library PoolActions {
         }
     }
 
+    /// @notice Burn complete liquidity of strategy in a range from pool
+    /// @param key A51 strategy key details
+    /// @param strategyliquidity The amount of liquidity to burn for this strategy
+    /// @return amount0 The amount of token0 that was accounted for the decrease in liquidity
+    /// @return amount1 The amount of token1 that was accounted for the decrease in liquidity
+    /// @return fees0 The amount of fees collected in token0
+    /// @return fees1 The amount of fees collected in token1
     function burnLiquidity(
         ICLTBase.StrategyKey memory key,
         uint128 strategyliquidity
@@ -36,9 +46,7 @@ library PoolActions {
         external
         returns (uint256 amount0, uint256 amount1, uint256 fees0, uint256 fees1)
     {
-        (uint128 liquidity,,,,) = getPositionLiquidity(key);
-        // bug we can't use above liquidity value it will pull all other strategies liquidity aswell
-        // only use above we need to calculate share of any strategy
+        // only use individual liquidity of strategy we need otherwise it will pull all strategies liquidity
         if (strategyliquidity > 0) {
             (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, strategyliquidity);
 
@@ -51,6 +59,14 @@ library PoolActions {
         }
     }
 
+    /// @notice Burn liquidity in share proportion to the strategy's totalSupply
+    /// @param strategyliquidity The total amount of liquidity for this strategy
+    /// @param userSharePercentage The value of user share in strategy in terms of percentage
+    /// @return liquidity The amount of liquidity decrease
+    /// @return amount0 The amount of token0 withdrawn to the recipient
+    /// @return amount1 The amount of token1 withdrawn to the recipient
+    /// @return fees0 The amount of fees collected in token0 to the recipient
+    /// @return fees1 The amount of fees collected in token1 to the recipient
     function burnUserLiquidity(
         ICLTBase.StrategyKey storage key,
         uint128 strategyliquidity,
@@ -64,18 +80,21 @@ library PoolActions {
 
             (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
 
-            // collect user liquidity + unclaimed fee both now in compounding
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
-                // bug for non compound here because fee will return zero that is
-                // already claimed thus strategist can't deduct fee [FIXED needs testing]
-                 key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
+                    key.pool.collect(address(this), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
 
                 (fees0, fees1) = (collect0 - amount0, collect1 - amount1);
             }
         }
     }
 
+    /// @notice Adds liquidity for the given strategy/tickLower/tickUpper position
+    /// @param amount0Desired The amount of token0 that was paid for the increase in liquidity
+    /// @param amount1Desired The amount of token1 that was paid for the increase in liquidity
+    /// @return liquidity The amount of liquidity minted for this strategy
+    /// @return amount0 The amount of token0 added
+    /// @return amount1 The amount of token1 added
     function mintLiquidity(
         ICLTBase.StrategyKey memory key,
         uint256 amount0Desired,
@@ -104,6 +123,12 @@ library PoolActions {
         }
     }
 
+    /// @notice Swap token0 for token1, or token1 for token0
+    /// @param pool The address of the AMM Pool
+    /// @param zeroForOne The direction of swap
+    /// @param amountSpecified The amount of tokens to swap
+    /// @return amount0 The delta of the balance of token0 of the pool, exact when negative, minimum when positive
+    /// @return amount1 The delta of the balance of token1 of the pool, exact when negative, minimum when positive
     function swapToken(
         IUniswapV3Pool pool,
         bool zeroForOne,
@@ -112,7 +137,6 @@ library PoolActions {
         external
         returns (int256 amount0, int256 amount1)
     {
-        // manually specify sqrtPrice limit from bot
         (uint160 sqrtPriceX96,,) = getSqrtRatioX96AndTick(pool);
 
         uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (1e5 / 2)) / 1e6;
@@ -129,6 +153,13 @@ library PoolActions {
         );
     }
 
+    /// @notice Collects up to a maximum amount of fees owed to a specific position to the recipient
+    /// @param key A51 strategy key details
+    /// @param tokensOwed0 The maximum amount of token0 to collect,
+    /// @param tokensOwed1 The maximum amount of token1 to collect
+    /// @param recipient The account that should receive the tokens,
+    /// @return collect0 The amount of fees collected in token0
+    /// @return collect1 The amount of fees collected in token1
     function collectPendingFees(
         ICLTBase.StrategyKey memory key,
         uint128 tokensOwed0,
@@ -141,6 +172,13 @@ library PoolActions {
         (collect0, collect1) = key.pool.collect(recipient, key.tickLower, key.tickUpper, tokensOwed0, tokensOwed1);
     }
 
+    /// @notice Claims the trading fees earned and uses it to add liquidity.
+    /// @param key A51 strategy key details
+    /// @param balance0 Amount of token0 left in strategy that were not added in pool
+    /// @param balance1 Amount of token1 left in strategy that were not added in pool
+    /// @return liquidity The new liquidity amount as a result of the increase
+    /// @return balance0AfterMint The amount of token0 not added to the liquidity position
+    /// @return balance1AfterMint The amount of token1 not added to the liquidity position
     function compoundFees(
         ICLTBase.StrategyKey memory key,
         uint256 balance0,
@@ -159,6 +197,13 @@ library PoolActions {
         (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
     }
 
+    /// @notice Get the info of the given strategy position
+    /// @param key A51 strategy key details
+    /// @return liquidity The amount of liquidity of the position
+    /// @return feeGrowthInside0LastX128 The fee growth of token0 as of the last action on the individual position
+    /// @return feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
+    /// @return tokensOwed0 Amount of token0 owed
+    /// @return tokensOwed1 Amount of token1 owed
     function getPositionLiquidity(ICLTBase.StrategyKey memory key)
         public
         view
@@ -175,6 +220,12 @@ library PoolActions {
             key.pool.positions(positionKey);
     }
 
+    /// @notice Computes the maximum amount of liquidity received for a given amount of token0, token1, the current
+    /// pool prices and the prices at the tick boundaries
+    /// @param key A51 strategy key details
+    /// @param amount0 The amount of token0 being sent in
+    /// @param amount1 The amount of token1 being sent in
+    /// @return liquidity The maximum amount of liquidity received
     function getLiquidityForAmounts(
         ICLTBase.StrategyKey memory key,
         uint256 amount0,
@@ -195,6 +246,12 @@ library PoolActions {
         );
     }
 
+    /// @notice Computes the token0 and token1 value for a given amount of liquidity, the current
+    /// pool prices and the prices at the tick boundaries
+    /// @param key A51 strategy key details
+    /// @param liquidity The liquidity being valued
+    /// @return amount0 The amount of token0
+    /// @return amount1 The amount of token1
     function getAmountsForLiquidity(
         ICLTBase.StrategyKey memory key,
         uint128 liquidity
@@ -216,6 +273,11 @@ library PoolActions {
         (amount0, amount1) = (uint256(amount0Delta), uint256(amount1Delta));
     }
 
+    /// @notice Look up information about a specific pool
+    /// @param pool The address of the AMM Pool
+    /// @return sqrtRatioX96 The current price of the pool as a sqrt(token1/token0) Q64.96 value
+    /// @return tick The current tick of the pool, i.e. according to the last tick transition that was run
+    /// @return observationCardinality The current maximum number of observations stored in the pool
     function getSqrtRatioX96AndTick(IUniswapV3Pool pool)
         public
         view
@@ -224,6 +286,14 @@ library PoolActions {
         (sqrtRatioX96, tick,, observationCardinality,,,) = pool.slot0();
     }
 
+    /// @notice Computes the direction of tokens recieved after swap to merge in strategy reserves
+    /// @param zeroForOne The direction of swap
+    /// @param amount0Recieved The delta of the balance of token0 of the pool
+    /// @param amount1Recieved The delta of the balance of token1 of the pool
+    /// @param amount0 The amount of token0 in the strategy position
+    /// @param amount1 The amount of token1 in the strategy position
+    /// @return reserves0 The total amount of token0 in the strategy position
+    /// @return reserves1 The total amount of token1 in the strategy position
     function amountsDirection(
         bool zeroForOne,
         uint256 amount0Recieved,
@@ -238,13 +308,5 @@ library PoolActions {
         (reserves0, reserves1) = zeroForOne
             ? (amount0Recieved - amount0, amount1Recieved + amount1)
             : (amount0Recieved + amount0, amount1Recieved - amount1);
-    }
-
-    function checkRange(int24 tickLower, int24 tickUpper, int24 tickSpacing) external pure {
-        require(tickLower < tickUpper, "TLU");
-        require(tickLower >= TickMath.MIN_TICK, "TLM");
-        require(tickUpper <= TickMath.MAX_TICK, "TUM");
-        require(tickLower % tickSpacing == 0, "TLI");
-        require(tickUpper % tickSpacing == 0, "TUI");
     }
 }

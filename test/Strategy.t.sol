@@ -57,6 +57,15 @@ contract StrategyTest is Test, Fixtures {
         assertEq(abi.encode(actions), actionsAdded);
     }
 
+    function test_strategy_revertsIfNotStrategyOwner() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        vm.prank(msg.sender);
+        vm.expectRevert(ICLTBase.InvalidCaller.selector);
+        base.updateStrategyBase(getStrategyID(address(this), 1), address(1445), 0.2 ether, 0.3 ether, actions);
+    }
+
     function test_strategy_shouldPayProtocolFee() public {
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({

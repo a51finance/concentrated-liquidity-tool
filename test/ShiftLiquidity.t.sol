@@ -118,7 +118,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
-                lpAutomationFee: 100_000_000_000_000_000, // 10% protocol fee
+                lpAutomationFee: 0.1 ether, // 10% protocol fee
                 strategyCreationFee: 0,
                 protcolFeeOnManagement: 0,
                 protcolFeeOnPerformance: 0
