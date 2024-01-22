@@ -9,26 +9,26 @@ import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 /// @notice GovernanceFeeHandler contains methods for managing governance fee parameters in strategies
 contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
     /// @notice The protocol fee value in percentage for public strategy,  decimal value <1
-    ProtocolFeeRegistry private publicStrategyFeeRegistry;
+    ProtocolFeeRegistry private _publicStrategyFeeRegistry;
     /// @notice The protocol fee value in percentage for private strategy, decimal value <1
-    ProtocolFeeRegistry private privateStrategyFeeRegistry;
+    ProtocolFeeRegistry private _privateStrategyFeeRegistry;
 
     constructor(
         address _owner,
-        ProtocolFeeRegistry memory _publicStrategyFeeRegistry,
-        ProtocolFeeRegistry memory _privateStrategyFeeRegistry
+        ProtocolFeeRegistry memory publicStrategyFeeRegistry_,
+        ProtocolFeeRegistry memory privateStrategyFeeRegistry_
     )
         Owned(_owner)
     {
-        publicStrategyFeeRegistry = _publicStrategyFeeRegistry;
-        privateStrategyFeeRegistry = _privateStrategyFeeRegistry;
+        _publicStrategyFeeRegistry = publicStrategyFeeRegistry_;
+        _privateStrategyFeeRegistry = privateStrategyFeeRegistry_;
     }
 
     /// @inheritdoc IGovernanceFeeHandler
     function setPublicFeeRegistry(ProtocolFeeRegistry calldata newPublicStrategyFeeRegistry) external onlyOwner {
         _checkLimit(newPublicStrategyFeeRegistry);
 
-        publicStrategyFeeRegistry = newPublicStrategyFeeRegistry;
+        _publicStrategyFeeRegistry = newPublicStrategyFeeRegistry;
 
         emit PublicFeeRegistryUpdated(newPublicStrategyFeeRegistry);
     }
@@ -37,7 +37,7 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
     function setPrivateFeeRegistry(ProtocolFeeRegistry calldata newPrivateStrategyFeeRegistry) external onlyOwner {
         _checkLimit(newPrivateStrategyFeeRegistry);
 
-        privateStrategyFeeRegistry = newPrivateStrategyFeeRegistry;
+        _privateStrategyFeeRegistry = newPrivateStrategyFeeRegistry;
 
         emit PrivateFeeRegistryUpdated(newPrivateStrategyFeeRegistry);
     }
@@ -56,17 +56,17 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
     {
         if (isPrivate) {
             (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) = (
-                privateStrategyFeeRegistry.lpAutomationFee,
-                privateStrategyFeeRegistry.strategyCreationFee,
-                privateStrategyFeeRegistry.protcolFeeOnManagement,
-                privateStrategyFeeRegistry.protcolFeeOnPerformance
+                _privateStrategyFeeRegistry.lpAutomationFee,
+                _privateStrategyFeeRegistry.strategyCreationFee,
+                _privateStrategyFeeRegistry.protcolFeeOnManagement,
+                _privateStrategyFeeRegistry.protcolFeeOnPerformance
             );
         } else {
             (lpAutomationFee, strategyCreationFee, protcolFeeOnManagement, protcolFeeOnPerformance) = (
-                publicStrategyFeeRegistry.lpAutomationFee,
-                publicStrategyFeeRegistry.strategyCreationFee,
-                publicStrategyFeeRegistry.protcolFeeOnManagement,
-                publicStrategyFeeRegistry.protcolFeeOnPerformance
+                _publicStrategyFeeRegistry.lpAutomationFee,
+                _publicStrategyFeeRegistry.strategyCreationFee,
+                _publicStrategyFeeRegistry.protcolFeeOnManagement,
+                _publicStrategyFeeRegistry.protcolFeeOnPerformance
             );
         }
     }
