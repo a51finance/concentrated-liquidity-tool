@@ -208,6 +208,19 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseModule.checkStrategiesArray(data);
     }
 
+    function testMultipleArray() public {
+        createStrategyAndDepositWithActions(address(this), false, 1, 1);
+        createStrategyAndDepositWithActions(address(this), true, 1, 2);
+
+        bytes32[] memory data = new bytes32[](6);
+        data[0] = keccak256(abi.encode(address(this), 1));
+        data[1] = bytes32(0);
+
+        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1]);
+        vm.expectRevert(encodedError);
+        rebaseModule.checkStrategiesArray(data);
+    }
+
     function testArrays() public {
         createStrategyAndDepositWithActions(address(this), false, 1, 1);
         createStrategyAndDepositWithActions(address(this), true, 1, 2);
@@ -1050,25 +1063,4 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
         assertEq(actionStatus, "");
     }
-
-    // function testInValidScenario4() public {
-    //     ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
-
-    //     rebaseActions[0].actionName = keccak256("TIME_PREFERENCE");
-    //     rebaseActions[0].data = abi.encode(block.timestamp);
-
-    //     bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
-
-    //     executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
-    //     _hevm.warp(block.timestamp + 3600);
-
-    //     bytes32[] memory strategyIDs = new bytes32[](1);
-
-    //     strategyIDs[0] = strategyID1;
-
-    //     rebaseModule.executeStrategies(strategyIDs);
-
-    //     (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID1);
-    //     assertEq(actionStatus, "");
-    // }
 }
