@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
@@ -73,11 +73,9 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
 
     /// @dev Common checks for valid fee inputs.
     function _checkLimit(ProtocolFeeRegistry calldata feeParams) private pure {
-        if (feeParams.lpAutomationFee > Constants.MAX_AUTOMATION_FEE) revert LPAutomationFeeLimitExceed();
-        if (feeParams.strategyCreationFee > Constants.MAX_STRATEGY_CREATION_FEE) revert StrategyFeeLimitExceed();
-        if (feeParams.protcolFeeOnManagement > Constants.MAX_PROTCOL_MANAGEMENT_FEE) revert ManagementFeeLimitExceed();
-        if (feeParams.protcolFeeOnPerformance > Constants.MAX_PROTCOL_PERFORMANCE_FEE) {
-            revert PerformanceFeeLimitExceed();
-        }
+        require(feeParams.lpAutomationFee < Constants.MAX_AUTOMATION_FEE, "LPAutomationFeeLimitExceed");
+        require(feeParams.strategyCreationFee < Constants.MAX_STRATEGY_CREATION_FEE, "StrategyFeeLimitExceed");
+        require(feeParams.protcolFeeOnManagement < Constants.MAX_PROTCOL_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
+        require(feeParams.protcolFeeOnPerformance < Constants.MAX_PROTCOL_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
     }
 }

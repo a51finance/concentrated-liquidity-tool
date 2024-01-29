@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "./interfaces/modules/IRebaseStrategy.sol";
@@ -72,11 +72,9 @@ contract CLTModules is ICLTModules, Owned {
         external
         override
     {
-        if (managementFee > Constants.MAX_MANAGEMENT_FEE) revert IGovernanceFeeHandler.ManagementFeeLimitExceed();
-
-        if (performanceFee > Constants.MAX_PERFORMANCE_FEE) revert IGovernanceFeeHandler.PerformanceFeeLimitExceed();
-
-        if (actions.mode < 1 || actions.mode > 4) revert InvalidMode();
+        require(actions.mode > 0 || actions.mode < 4, "InvalidMode");
+        require(managementFee < Constants.MAX_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
+        require(performanceFee < Constants.MAX_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
 
         if (actions.exitStrategy.length > 0) {
             _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
@@ -97,7 +95,7 @@ contract CLTModules is ICLTModules, Owned {
     /// @dev Common checks for valid inputs.
     function _checkModeIds(bytes32 mode, ICLTBase.StrategyPayload[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
-            if (!modulesActions[mode][array[i].actionName]) revert InvalidStrategyAction();
+            require(modulesActions[mode][array[i].actionName], "InvalidStrategyAction");
         }
     }
 

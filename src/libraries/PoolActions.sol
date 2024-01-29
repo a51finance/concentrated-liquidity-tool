@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
+pragma abicoder v2;
 
 import { Constants } from "./Constants.sol";
 
@@ -7,13 +8,13 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { SafeCastExtended } from "./SafeCastExtended.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 
-import { PositionKey } from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
-import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { SqrtPriceMath } from "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { TokenDeltaMath } from "@cryptoalgebra/core/contracts/libraries/TokenDeltaMath.sol";
+
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 /// @title  PoolActions
 /// @notice Provides functions for computing and safely managing liquidity on AMM
@@ -130,7 +131,7 @@ library PoolActions {
     /// @return amount0 The delta of the balance of token0 of the pool, exact when negative, minimum when positive
     /// @return amount1 The delta of the balance of token1 of the pool, exact when negative, minimum when positive
     function swapToken(
-        IUniswapV3Pool pool,
+        IAlgebraPool pool,
         bool zeroForOne,
         int256 amountSpecified
     )
@@ -215,9 +216,14 @@ library PoolActions {
             uint128 tokensOwed1
         )
     {
-        bytes32 positionKey = PositionKey.compute(address(this), key.tickLower, key.tickUpper);
-        (liquidity, feeGrowthInside0LastX128, feeGrowthInside1LastX128, tokensOwed0, tokensOwed1) =
-            key.pool.positions(positionKey);
+        bytes32 positionKey;
+        address vault = address(this);
+
+        assembly {
+            positionKey := or(shl(24, or(shl(24, vault), and(_tickLower, 0xFFFFFF))), and(_tickUpper, 0xFFFFFF))
+        }
+
+        (liquidity,,,, tokensOwed0, tokensOwed1) = key.pool.positions(positionKey);
     }
 
     /// @notice Computes the maximum amount of liquidity received for a given amount of token0, token1, the current
@@ -262,11 +268,11 @@ library PoolActions {
     {
         (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
 
-        int256 amount0Delta = SqrtPriceMath.getAmount0Delta(
+        int256 amount0Delta = TokenDeltaMath.getToken0Delta(
             sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
         );
 
-        int256 amount1Delta = SqrtPriceMath.getAmount1Delta(
+        int256 amount1Delta = TokenDeltaMath.getToken1Delta(
             TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
         );
 
@@ -278,7 +284,7 @@ library PoolActions {
     /// @return sqrtRatioX96 The current price of the pool as a sqrt(token1/token0) Q64.96 value
     /// @return tick The current tick of the pool, i.e. according to the last tick transition that was run
     /// @return observationCardinality The current maximum number of observations stored in the pool
-    function getSqrtRatioX96AndTick(IUniswapV3Pool pool)
+    function getSqrtRatioX96AndTick(IAlgebraPool pool)
         public
         view
         returns (uint160 sqrtRatioX96, int24 tick, uint16 observationCardinality)

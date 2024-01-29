@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { Vm } from "forge-std/Vm.sol";
 
@@ -110,8 +110,9 @@ contract Fixtures is UniswapDeployer {
 
         feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
-        base =
-        new CLTBase("ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory);
+        base = new CLTBase(
+            "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
+        );
 
         modes = new Modes(address(base), address(this));
 

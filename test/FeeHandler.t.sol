@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { Test } from "forge-std/Test.sol";
 import { Fixtures } from "./utils/Fixtures.sol";

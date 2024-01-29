@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { WETH } from "@solmate/tokens/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
@@ -77,10 +77,9 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         router = new SwapRouter(address(factory), address(weth));
-        positionManager = new
-    NonfungiblePositionManager(address(factory),address(weth),address(factory));
+        positionManager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
         pool.increaseObservationCardinalityNext(80);
-        quote = new Quoter(address(factory),address(weth));
+        quote = new Quoter(address(factory), address(weth));
 
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);
@@ -178,7 +177,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         rebaseModule = new RebaseModule(recepient, address(base));
 
-        modes = new Modes(address(base),recepient);
+        modes = new Modes(address(base), recepient);
 
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);

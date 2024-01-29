@@ -1,24 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import "../ICLTBase.sol";
 
 interface IRebaseStrategy {
-    error InvalidCaller();
-    error InvalidThreshold();
-    error InvalidModesLength();
-    error InvalidMode();
-    error InvalidStrategyId(bytes32);
-    error InvalidPricePreferenceDifference();
-    error StrategyIdsCannotBeEmpty();
-    error StrategyIdCannotBeZero();
-    error DuplicateStrategyId(bytes32);
-    error StrategyIdDonotExist(bytes32);
-    error BothTicksCannotBeZero();
-    error RebaseStrategyDataCannotBeZero();
-    error OnlyRebaseInactivityCannotBeSelected();
-    error RebaseInactivityCannotBeZero();
-
     struct ExecutableStrategiesData {
         bytes32 strategyID;
         uint256 mode;

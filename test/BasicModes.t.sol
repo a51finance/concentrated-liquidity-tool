@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";

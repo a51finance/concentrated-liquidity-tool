@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { CLTBase } from "../src/CLTBase.sol";
@@ -177,7 +177,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyId = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         strategyIDs[0] = strategyId;
 
@@ -251,7 +251,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
     }
 
     function testExecutingStrategyWithEmptyID() public {
-        bytes32[] memory strategyIDs = new bytes32[]( 10);
+        bytes32[] memory strategyIDs = new bytes32[](10);
         vm.expectRevert();
         rebaseModule.executeStrategies(strategyIDs);
     }
@@ -263,7 +263,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         bytes32 strategyID = keccak256(abi.encode(users[2], 1));
 
@@ -280,7 +280,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         bytes32 strategyID = bytes32(0);
 
@@ -367,7 +367,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         rebaseModule.updateLiquidityThreshold(1000);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         strategyIDs[0] = strategyID;
 
@@ -390,7 +390,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, mode, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         strategyIDs[0] = strategyID;
 
@@ -820,7 +820,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
      * Random scenario 1
      * Rebase inactivity 2 and another user comes after 1 rebase
      */
-
     function testScenario1() public {
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
 

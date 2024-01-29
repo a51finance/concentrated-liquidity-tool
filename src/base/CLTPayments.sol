@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { Constants } from "../libraries/Constants.sol";
 import { TransferHelper } from "../libraries/TransferHelper.sol";
@@ -7,15 +7,15 @@ import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { IWETH9 } from "../interfaces/external/IWETH9.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 /// @title  CLTPayments
 /// @notice Contain helper methods for safe token transfers with custom logic
 abstract contract CLTPayments is ICLTPayments {
     address private immutable WETH9;
-    IUniswapV3Factory private immutable factory;
+    IAlgebraFactory private immutable factory;
 
-    constructor(IUniswapV3Factory _factory, address _WETH9) {
+    constructor(IAlgebraFactory _factory, address _WETH9) {
         factory = _factory;
         WETH9 = _WETH9;
     }
@@ -30,7 +30,7 @@ abstract contract CLTPayments is ICLTPayments {
     /// @param amount0Owed The amount of token0 due to the pool for the minted liquidity
     /// @param amount1Owed The amount of token1 due to the pool for the minted liquidity
     /// @param data Any data passed through by the caller via the IUniswapV3PoolActions#mint call
-    function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
+    function algebraMintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
         MintCallbackData memory decodedData = abi.decode(data, (MintCallbackData));
 
         _verifyCallBack(decodedData.token0, decodedData.token1, decodedData.fee);
@@ -48,7 +48,7 @@ abstract contract CLTPayments is ICLTPayments {
     /// @param amount0Delta The amount of token0 due to the pool for the swap
     /// @param amount1Delta The amount of token1 due to the pool for the swap
     /// @param data Any data passed through by the caller via the IUniswapV3PoolActions#swap call
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external override {
+    function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external override {
         SwapCallbackData memory decoded = abi.decode(data, (SwapCallbackData));
 
         _verifyCallBack(decoded.token0, decoded.token1, decoded.fee);

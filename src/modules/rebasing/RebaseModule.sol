@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
@@ -75,8 +75,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
-        if (strategyOwner == address(0)) revert StrategyIdDonotExist(executeParams.strategyID);
-        if (strategyOwner != msg.sender) revert InvalidCaller();
+        require(strategyOwner == _msgSender(), "InvalidCaller");
+        require(strategyOwner != address(0), "StrategyIdDonotExist");
 
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
@@ -273,21 +273,18 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         // need to check here whether the preference ticks are outside of range
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
-            if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
-                revert InvalidPricePreferenceDifference();
-            }
+            require(lowerPreferenceDiff > 0 || upperPreferenceDiff > 0, "InvalidPricePreferenceDifference");
             return true;
         }
 
         if (hasInActivity) {
             //   check needs to be added on frontend so that rebase inactivity cannot be seleted independently
             uint256 preferredInActivity = abi.decode(actionsData.data, (uint256));
-            if (preferredInActivity == 0) {
-                revert RebaseInactivityCannotBeZero();
-            }
+            require(preferredInActivity > 0, "RebaseInactivityCannotBeZero");
             return true;
         }
-        revert RebaseStrategyDataCannotBeZero();
+
+        revert();
     }
 
     /// @notice Checks the bytes value is non zero or not.
@@ -307,22 +304,17 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
     function checkStrategiesArray(bytes32[] memory data) public returns (bool) {
-        if (data.length == 0) {
-            revert StrategyIdsCannotBeEmpty();
-        }
+        require(data.length > 0, "StrategyIdsCannotBeEmpty");
+
         // check 0 strategyId
         uint256 dataLength = data.length;
         for (uint256 i = 0; i < dataLength; i++) {
             (, address strategyOwner,,,,,,,) = _cltBase.strategies(data[i]);
-            if (data[i] == bytes32(0) || strategyOwner == address(0)) {
-                revert InvalidStrategyId(data[i]);
-            }
+            require(data[i] != bytes32(0) || strategyOwner != address(0), "InvalidStrategyId");
 
             // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {
-                if (data[i] == data[j]) {
-                    revert DuplicateStrategyId(data[i]);
-                }
+                require(data[i] != data[j], "DuplicateStrategyId");
             }
         }
 
@@ -365,9 +357,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @dev Reverts if the new threshold is less than or equal to zero.
     /// @param _newThreshold The new liquidity threshold value.
     function updateLiquidityThreshold(uint256 _newThreshold) external onlyOperator {
-        if (_newThreshold <= 0) {
-            revert InvalidThreshold();
-        }
+        require(_newThreshold > 0, "InvalidThreshold");
         liquidityThreshold = _newThreshold;
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
 import { ICLTModules } from "./interfaces/ICLTModules.sol";
@@ -17,8 +17,8 @@ import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
 import { ERC721 } from "@solmate/tokens/ERC721.sol";
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
@@ -62,7 +62,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         address _weth9,
         address _feeHandler,
         address _cltModules,
-        IUniswapV3Factory _factory
+        IAlgebraFactory _factory
     )
         AccessControl(_owner)
         ERC721(_name, _symbol)
@@ -190,9 +190,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, position.strategyId);
 
-        if (params.liquidity == 0) revert InvalidShare();
-        if (position.liquidityShare == 0) revert NoLiquidity();
-        if (position.liquidityShare < params.liquidity) revert InvalidShare();
+        require(params.liquidity > 0, "InvalidShare");
+        require(position.liquidityShare > 0, "NoLiquidity");
+        require(params.liquidity > position.liquidityShare, "InvalidShare");
 
         // these vars used for multipurpose || strategist fee & contract balance
         Account memory vars;
@@ -292,8 +292,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         _updateGlobals(strategy, position.strategyId);
 
-        if (strategy.isCompound) revert onlyNonCompounders();
-        if (position.liquidityShare == 0) revert NoLiquidity();
+        require(!strategy.isCompound, "onlyNonCompounders");
+        require(position.liquidityShare > 0, "NoLiquidity");
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
@@ -415,7 +415,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         _validateModes(actions, managementFee, performanceFee);
 
         StrategyData storage strategy = strategies[strategyId];
-        if (strategy.owner != _msgSender()) revert InvalidCaller();
+        require(strategy.owner == _msgSender(), "InvalidCaller");
 
         strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
 
@@ -464,10 +464,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(strategy, amount0Desired, amount1Desired);
 
         // liquidity frontrun checks here
-        if (share == 0) revert InvalidShare();
+        require(share > 0, "InvalidShare");
 
         if (strategy.account.totalShares == 0) {
-            if (share < Constants.MIN_INITIAL_SHARES) revert InvalidShare();
+            require(share > Constants.MIN_INITIAL_SHARES, "InvalidShare");
         }
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);

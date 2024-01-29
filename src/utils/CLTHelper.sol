@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";

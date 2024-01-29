@@ -1,21 +1,14 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 interface ICLTBase {
-    error NoLiquidity();
-    error InvalidInput();
-    error InvalidShare();
-    error InvalidCaller();
-    error onlyNonCompounders();
-    error TransactionTooAged();
-
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
     /// @param tickUpper The upper tick of the A51's LP position
     struct StrategyKey {
-        IUniswapV3Pool pool;
+        IAlgebraPool pool;
         int24 tickLower;
         int24 tickUpper;
     }

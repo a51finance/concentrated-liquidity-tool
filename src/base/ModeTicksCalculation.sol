@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
-import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { WeightedDataStorageLibrary } from "@cryptoalgebra/periphery/contracts/libraries/WeightedDataStorageLibrary.sol";
 
 /// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
@@ -70,14 +70,14 @@ abstract contract ModeTicksCalculation {
     /// @dev Check price has not moved a lot recently. This mitigates price
     /// manipulation during shifting of position
     /// @return twap The time-weighted average price
-    function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
+    function getTwap(IAlgebraPool pool) internal view returns (int24 twap) {
         (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
 
         (uint32 lastTimeStamp,,,) = pool.observations((observationIndex + 1) % observationCardinality);
 
         uint32 timeDiff = uint32(block.timestamp) - lastTimeStamp;
 
-        (twap,) = OracleLibrary.consult(address(pool), timeDiff > _twapDuration ? _twapDuration : timeDiff);
+        (twap,) = WeightedDataStorageLibrary.consult(address(pool), timeDiff > _twapDuration ? _twapDuration : timeDiff);
     }
 
     /// @dev Rounds tick down towards negative infinity so that it's a multiple
