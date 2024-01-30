@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -14,9 +15,9 @@ import { Constants } from "../src/libraries/Constants.sol";
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -68,16 +69,15 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
-        vm.expectRevert(ICLTBase.onlyNonCompounders.selector);
+        vm.expectRevert("onlyNonCompounders");
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 2, refundAsETH: true }));
     }
 
@@ -86,7 +86,7 @@ contract ClaimFeeTest is Test, Fixtures {
             ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 4 ether, recipient: msg.sender, refundAsETH: true })
         );
 
-        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        vm.expectRevert("NoLiquidity");
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
     }
 
@@ -95,12 +95,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -108,12 +107,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -179,12 +177,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -207,12 +204,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -243,12 +239,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -256,12 +251,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -269,12 +263,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -318,12 +311,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -331,12 +323,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 

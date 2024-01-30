@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { Test } from "forge-std/Test.sol";
-import { IQuoter } from "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
+import { IQuoter } from "@cryptoalgebra/periphery/contracts/interfaces/IQuoter.sol";
 import { console } from "forge-std/console.sol";
 
 contract ManualOverrideTest is Test, RebaseFixtures {
@@ -37,11 +38,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -65,11 +66,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         tickUpper = key.tickUpper;
 
         assertEq(true, checkRange(tickLower, tickUpper));
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -97,11 +98,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -128,11 +129,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = keccak256(abi.encode(users[1], 1));
@@ -173,11 +174,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -215,11 +216,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(100e18 - reserve0 - 1, account.balance0);
         assertEq(100e18 - reserve1 - 1, account.balance1);
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -261,13 +262,13 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, key.pool.fee(), owner, 200e18, 0, 0);
+        executeSwap(token1, token0, owner, 200e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        (, int24 tick,,,,,) = key.pool.slot0();
+        (, int24 tick,,,,,) = key.pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -308,13 +309,13 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(100e18 - reserve0 - 1, account.balance0);
         assertEq(100e18 - reserve1 - 1, account.balance1);
 
-        executeSwap(token1, token0, key.pool.fee(), owner, 200e18, 0, 0);
+        executeSwap(token1, token0, owner, 200e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        (, tick,,,,,) = key.pool.slot0();
+        (, tick,,,,,) = key.pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -345,7 +346,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         ICLTBase.Account memory account;
         Accounting memory accounting;
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -360,11 +361,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -404,7 +405,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         tickUpper = key.tickUpper;
 
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -417,11 +418,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(100e18 - reserve0 - 1, account.balance0);
         assertEq(100e18 - reserve1 - 1, account.balance1);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -473,11 +474,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -530,11 +531,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -592,11 +593,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -638,11 +639,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -684,11 +685,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -730,11 +731,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -761,7 +762,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -773,14 +774,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         base.getStrategyReserves(strategyID);
         (,,,,,,,, account) = base.strategies(strategyID);
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -824,7 +825,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -836,14 +837,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         base.getStrategyReserves(strategyID);
         (,,,,,,,, account) = base.strategies(strategyID);
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -936,7 +937,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -948,11 +949,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1019,7 +1020,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -1031,11 +1032,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1103,7 +1104,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1118,12 +1119,12 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1180,7 +1181,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1195,12 +1196,12 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1257,7 +1258,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1272,12 +1273,12 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1338,7 +1339,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1353,12 +1354,12 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1411,7 +1412,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         base.getStrategyReserves(strategyID);
         (key,,,,,,,, account) = base.strategies(strategyID);
@@ -1426,7 +1427,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1501,7 +1502,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         base.getStrategyReserves(strategyID);
         (key,,,,,,,, account) = base.strategies(strategyID);
@@ -1516,7 +1517,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1586,11 +1587,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1625,10 +1626,10 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(reserve0 > 0, true);
 
         // generate some fees
-        executeSwap(token0, token1, pool.fee(), owner, 10e18, 0, 0);
-        executeSwap(token1, token0, pool.fee(), owner, 10e18, 0, 0);
-        executeSwap(token0, token1, pool.fee(), owner, 10e18, 0, 0);
-        executeSwap(token1, token0, pool.fee(), owner, 10e18, 0, 0);
+        executeSwap(token0, token1, owner, 10e18, 0, 0);
+        executeSwap(token1, token0, owner, 10e18, 0, 0);
+        executeSwap(token0, token1, owner, 10e18, 0, 0);
+        executeSwap(token1, token0, owner, 10e18, 0, 0);
 
         // user 2 withdraws
         (, uint256 liquidityShare,,,,) = base.positions(2);
@@ -1659,11 +1660,11 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1698,10 +1699,10 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(reserve0 > 0, true);
 
         // generate some fees
-        executeSwap(token0, token1, pool.fee(), owner, 10e18, 0, 0);
-        executeSwap(token1, token0, pool.fee(), owner, 10e18, 0, 0);
-        executeSwap(token0, token1, pool.fee(), owner, 10e18, 0, 0);
-        executeSwap(token1, token0, pool.fee(), owner, 10e18, 0, 0);
+        executeSwap(token0, token1, owner, 10e18, 0, 0);
+        executeSwap(token1, token0, owner, 10e18, 0, 0);
+        executeSwap(token0, token1, owner, 10e18, 0, 0);
+        executeSwap(token1, token0, owner, 10e18, 0, 0);
 
         // user 2 withdraws
         (, uint256 liquidityShare,,,,) = base.positions(2);
@@ -1749,7 +1750,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         ICLTBase.Account memory account;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -1761,12 +1762,12 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1838,7 +1839,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         ICLTBase.Account memory account;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -1850,12 +1851,12 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.slot0();
+        (, tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;

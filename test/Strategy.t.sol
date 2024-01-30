@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -8,7 +9,7 @@ import { Fixtures } from "./utils/Fixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 import "forge-std/console.sol";
 
@@ -62,7 +63,7 @@ contract StrategyTest is Test, Fixtures {
         base.createStrategy(key, actions, 0, 0, true, false);
 
         vm.prank(msg.sender);
-        vm.expectRevert(ICLTBase.InvalidCaller.selector);
+        vm.expectRevert("InvalidCaller");
         base.updateStrategyBase(getStrategyID(address(this), 1), address(1445), 0.2 ether, 0.3 ether, actions);
     }
 

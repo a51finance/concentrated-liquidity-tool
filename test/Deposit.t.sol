@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -14,10 +15,10 @@ import { FixedPoint128 } from "../src/libraries/FixedPoint128.sol";
 import { LiquidityShares } from "../src/libraries/LiquidityShares.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -68,7 +69,7 @@ contract DepositTest is Test, Fixtures {
         assertEq(account.totalShares, depositAmount);
         assertEq(base.balanceOf(msg.sender), 1);
         assertEq(liquidityShare, depositAmount);
-        assertEq(account.uniswapLiquidity, 200_510_416_479_002_803_287);
+        assertEq(uint256(account.uniswapLiquidity), 200_510_416_479_002_803_287);
     }
 
     function test_deposit_revertsIfZeroAmount() public {
@@ -84,7 +85,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.deposit(params);
     }
 
@@ -101,7 +102,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.deposit(params);
     }
 
@@ -128,7 +129,7 @@ contract DepositTest is Test, Fixtures {
     }
 
     function test_deposit_succeedsWithNativeToken() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
@@ -155,7 +156,7 @@ contract DepositTest is Test, Fixtures {
 
         assertEq(account.totalShares, depositAmount);
         assertEq(liquidityShare, depositAmount);
-        assertEq(account.uniswapLiquidity, 601_531_249_437_008_409_863);
+        assertEq(uint256(account.uniswapLiquidity), 601_531_249_437_008_409_863);
     }
 
     function test_deposit_revertsWithInSufficientFunds() public {
@@ -248,12 +249,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -261,12 +261,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -304,12 +303,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -321,7 +319,7 @@ contract DepositTest is Test, Fixtures {
     }
 
     function test_deposit_shouldReturnExtraETH() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
@@ -411,12 +409,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -479,12 +476,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -589,12 +585,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -679,12 +674,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -692,12 +686,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -744,12 +737,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -757,18 +749,17 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,, uint256 totalFee0, uint256 totalFee1) =
+        (,,,, uint256 totalFee0, uint256 totalFee1) =
             pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
 
         base.deposit(params);

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -10,9 +11,9 @@ import { Utilities } from "./utils/Utilities.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract UpdatePositionLiquidityTest is Test, Fixtures {
     Utilities utils;
@@ -193,12 +194,11 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -206,18 +206,17 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,, uint256 totalFee0, uint256 totalFee1) =
+        (,,,, uint128 totalFee0, uint128 totalFee1) =
             key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
 
         base.getStrategyReserves(strategyId);
@@ -239,7 +238,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         assertEq(feeGrowthInside0LastX128, account.feeGrowthInside0LastX128);
         assertEq(feeGrowthInside1LastX128, account.feeGrowthInside1LastX128);
 
-        assertEq(tokensOwed0, totalFee0 / 2 - 1);
-        assertEq(tokensOwed1, totalFee1 / 2 - 1);
+        assertEq(uint256(tokensOwed0), totalFee0 / 2 - 1);
+        assertEq(uint256(tokensOwed1), totalFee1 / 2 - 1);
     }
 }

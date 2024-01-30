@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
-import { WETH } from "@solmate/tokens/WETH.sol";
+import { WETH } from "../mocks/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { CLTBase } from "../../src/CLTBase.sol";
@@ -18,20 +19,21 @@ import { Utilities } from "./Utilities.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
-import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { Quoter } from "@uniswap/v3-periphery/contracts/lens/Quoter.sol";
-import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
-import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { SwapRouter } from "@cryptoalgebra/periphery/contracts/SwapRouter.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
+import { Quoter } from "@cryptoalgebra/periphery/contracts/lens/Quoter.sol";
+import { NonfungiblePositionManager } from "@cryptoalgebra/periphery/contracts/NonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from
+    "@cryptoalgebra/periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
-import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
-    IUniswapV3Pool pool;
+    IAlgebraPool pool;
     SwapRouter router;
     Quoter quote;
 
@@ -61,7 +63,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
     }
 
-    function initPool(address recepient) internal returns (IUniswapV3Factory factory) {
+    function initPool(address recepient) internal returns (IAlgebraFactory factory) {
         INonfungiblePositionManager.MintParams memory mintParams;
         ERC20Mock[] memory tokens = deployTokens(recepient, 2, 1e50);
 
@@ -73,19 +75,18 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
 
         // intialize uniswap contracts
-        factory = IUniswapV3Factory(deployUniswapV3Factory());
-        pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
+        factory = IAlgebraFactory(deployUniswapV3Factory());
+        pool = IAlgebraPool(factory.createPool(address(token0), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
-        router = new SwapRouter(address(factory), address(weth));
-        positionManager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
-        pool.increaseObservationCardinalityNext(80);
-        quote = new Quoter(address(factory), address(weth));
+        router = new SwapRouter(address(factory), address(weth), address(this));
+        positionManager = new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(0));
+        // pool.increaseObservationCardinalityNext(80);
+        quote = new Quoter(address(factory), address(weth), address(0));
 
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);
         mintParams.tickLower = (-600_000 / pool.tickSpacing()) * pool.tickSpacing();
         mintParams.tickUpper = (600_000 / pool.tickSpacing()) * pool.tickSpacing();
-        mintParams.fee = 500;
         mintParams.recipient = recepient;
         mintParams.amount0Desired = 1000e18;
         mintParams.amount1Desired = 1000e18;
@@ -112,7 +113,6 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     function executeSwap(
         ERC20Mock tokenIn,
         ERC20Mock tokenOut,
-        uint24 fee,
         address recipient,
         uint256 amountIn,
         uint256 amountOutMinimum,
@@ -124,12 +124,11 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         swapParams.tokenIn = address(tokenIn);
         swapParams.tokenOut = address(tokenOut);
-        swapParams.fee = fee;
         swapParams.recipient = recipient;
         swapParams.deadline = block.timestamp + 100;
         swapParams.amountIn = amountIn;
         swapParams.amountOutMinimum = amountOutMinimum;
-        swapParams.sqrtPriceLimitX96 = sqrtPriceLimitX96;
+        swapParams.limitSqrtPrice = sqrtPriceLimitX96;
 
         _hevm.prank(recipient);
         router.exactInputSingle(swapParams);
@@ -138,22 +137,22 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     function generateMultipleSwapsWithTime(address recipient) public {
         _hevm.warp(block.timestamp + 3600);
         _hevm.roll(block.number + 30);
-        executeSwap(token0, token1, 500, recipient, 10e18, 0, 0);
+        executeSwap(token0, token1, recipient, 10e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
         _hevm.roll(block.number + 30);
-        executeSwap(token1, token0, 500, recipient, 5e18, 0, 0);
+        executeSwap(token1, token0, recipient, 5e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
         _hevm.roll(block.number + 30);
-        executeSwap(token0, token1, 500, recipient, 10e18, 0, 0);
+        executeSwap(token0, token1, recipient, 10e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
         _hevm.roll(block.number + 30);
-        executeSwap(token1, token0, 500, recipient, 5e18, 0, 0);
+        executeSwap(token1, token0, recipient, 5e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
         _hevm.roll(block.number + 30);
     }
 
     function initBase(address recepient) internal {
-        IUniswapV3Factory factory;
+        IAlgebraFactory factory;
 
         (factory) = initPool(recepient);
 
@@ -164,9 +163,9 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             protcolFeeOnPerformance: 0
         });
 
-        cltModules = new CLTModules(address(this));
+        cltModules = new CLTModules();
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         base = new CLTBase("ALP Base", "ALP", recepient, address(0), address(feeHandler), address(cltModules), factory);
 
@@ -175,9 +174,9 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.prank(recepient);
         token1.approve(address(base), type(uint256).max);
 
-        rebaseModule = new RebaseModule(recepient, address(base));
+        rebaseModule = new RebaseModule(recepient);
 
-        modes = new Modes(address(base), recepient);
+        modes = new Modes(recepient);
 
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);
@@ -199,7 +198,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function initStrategy(int24 difference) public {
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         int24 tickLower = floorTicks(tick - difference, pool.tickSpacing());
         int24 tickUpper = floorTicks(tick + difference, pool.tickSpacing());
@@ -316,7 +315,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         view
         returns (uint256 reserves0, uint256 reserves1)
     {
-        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.slot0();
+        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.globalState();
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(keyInput.tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(keyInput.tickUpper);
 
@@ -327,7 +326,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function checkRange(int24 tickLower, int24 tickUpper) public view returns (bool) {
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         if (tick > tickLower && tick < tickUpper) return true;
         return false;

@@ -21,7 +21,7 @@ abstract contract ModeTicksCalculation {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick < key.tickLower) {
-            (, currentTick,,,,,) = key.pool.slot0();
+            (, currentTick,,,,,) = key.pool.globalState();
 
             currentTick = floorTick(currentTick, tickSpacing);
 
@@ -43,7 +43,7 @@ abstract contract ModeTicksCalculation {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick > key.tickUpper) {
-            (, currentTick,,,,,) = key.pool.slot0();
+            (, currentTick,,,,,) = key.pool.globalState();
 
             currentTick = floorTick(currentTick, tickSpacing);
 
@@ -71,13 +71,26 @@ abstract contract ModeTicksCalculation {
     /// manipulation during shifting of position
     /// @return twap The time-weighted average price
     function getTwap(IAlgebraPool pool) internal view returns (int24 twap) {
-        (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
+        (,,, uint16 observationIndex,,,) = pool.globalState();
 
-        (uint32 lastTimeStamp,,,) = pool.observations((observationIndex + 1) % observationCardinality);
+        uint16 oldestIndex;
+        // check if we have overflow in the past
+        uint16 nextIndex = observationIndex + 1; // considering overflow
+
+        (bool initialized,,,,,,) = pool.timepoints(nextIndex);
+
+        if (initialized) {
+            oldestIndex = nextIndex;
+        }
+
+        (, uint32 lastTimeStamp,,,,,) = pool.timepoints(oldestIndex);
 
         uint32 timeDiff = uint32(block.timestamp) - lastTimeStamp;
 
-        (twap,) = WeightedDataStorageLibrary.consult(address(pool), timeDiff > _twapDuration ? _twapDuration : timeDiff);
+        WeightedDataStorageLibrary.PeriodTimepoint memory twapPayload =
+            WeightedDataStorageLibrary.consult(address(pool), timeDiff > _twapDuration ? _twapDuration : timeDiff);
+
+        twap = twapPayload.arithmeticMeanTick;
     }
 
     /// @dev Rounds tick down towards negative infinity so that it's a multiple

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Constants } from "../libraries/Constants.sol";
 import { TransferHelper } from "../libraries/TransferHelper.sol";
@@ -33,7 +34,7 @@ abstract contract CLTPayments is ICLTPayments {
     function algebraMintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
         MintCallbackData memory decodedData = abi.decode(data, (MintCallbackData));
 
-        _verifyCallBack(decodedData.token0, decodedData.token1, decodedData.fee);
+        _verifyCallBack(decodedData.token0, decodedData.token1);
 
         if (amount0Owed > 0) {
             TransferHelper.safeTransfer(decodedData.token0, msg.sender, amount0Owed);
@@ -51,7 +52,7 @@ abstract contract CLTPayments is ICLTPayments {
     function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external override {
         SwapCallbackData memory decoded = abi.decode(data, (SwapCallbackData));
 
-        _verifyCallBack(decoded.token0, decoded.token1, decoded.fee);
+        _verifyCallBack(decoded.token0, decoded.token1);
 
         if (amount0Delta > 0) {
             TransferHelper.safeTransfer(decoded.token0, msg.sender, uint256(amount0Delta));
@@ -132,7 +133,7 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
-    function _verifyCallBack(address token0, address token1, uint24 fee) private view {
-        require(msg.sender == factory.getPool(token0, token1, fee));
+    function _verifyCallBack(address token0, address token1) private view {
+        require(msg.sender == factory.poolByPair(token0, token1));
     }
 }

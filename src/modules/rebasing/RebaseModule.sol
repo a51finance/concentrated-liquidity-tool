@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
@@ -23,9 +24,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     bytes32 public constant REBASE_INACTIVITY = keccak256("REBASE_INACTIVITY");
 
     /// @notice Constructs the RebaseModule with the provided parameters.
-    /// @param _governance Address of the owner.
     /// @param _baseContractAddress Address of the base contract.
-    constructor(address _governance, address _baseContractAddress) AccessControl(_governance) {
+    constructor(address _baseContractAddress) AccessControl() {
         _cltBase = ICLTBase(payable(_baseContractAddress));
     }
 

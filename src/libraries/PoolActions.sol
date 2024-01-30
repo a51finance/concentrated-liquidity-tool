@@ -26,7 +26,7 @@ library PoolActions {
     /// @param key A51 strategy key details
     /// @return liquidity The amount of liquidity for this strategy
     function updatePosition(ICLTBase.StrategyKey memory key) external returns (uint128 liquidity) {
-        (liquidity,,,,) = getPositionLiquidity(key);
+        (liquidity,,,,) = getPositionLiquidity(key.pool, key.tickLower, key.tickUpper);
 
         if (liquidity > 0) {
             key.pool.burn(key.tickLower, key.tickUpper, 0);
@@ -107,7 +107,8 @@ library PoolActions {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
 
         if (liquidity > 0) {
-            (amount0, amount1) = key.pool.mint(
+            (amount0, amount1,) = key.pool.mint(
+                address(this),
                 address(this),
                 key.tickLower,
                 key.tickUpper,
@@ -116,7 +117,6 @@ library PoolActions {
                     ICLTPayments.MintCallbackData({
                         token0: key.pool.token0(),
                         token1: key.pool.token1(),
-                        fee: key.pool.fee(),
                         payer: address(this)
                     })
                 )
@@ -150,7 +150,7 @@ library PoolActions {
             zeroForOne,
             amountSpecified,
             sqrtPriceLimitX96,
-            abi.encode(ICLTPayments.SwapCallbackData({ token0: pool.token0(), token1: pool.token1(), fee: pool.fee() }))
+            abi.encode(ICLTPayments.SwapCallbackData({ token0: pool.token0(), token1: pool.token1() }))
         );
     }
 
@@ -199,13 +199,19 @@ library PoolActions {
     }
 
     /// @notice Get the info of the given strategy position
-    /// @param key A51 strategy key details
+    /// @param pool Algebra V3 pool
+    /// @param _tickLower The lower tick of the range
+    /// @param _tickUpper The upper tick of the range
     /// @return liquidity The amount of liquidity of the position
     /// @return feeGrowthInside0LastX128 The fee growth of token0 as of the last action on the individual position
     /// @return feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
     /// @return tokensOwed0 Amount of token0 owed
     /// @return tokensOwed1 Amount of token1 owed
-    function getPositionLiquidity(ICLTBase.StrategyKey memory key)
+    function getPositionLiquidity(
+        IAlgebraPool pool,
+        int24 _tickLower,
+        int24 _tickUpper
+    )
         public
         view
         returns (
@@ -223,7 +229,7 @@ library PoolActions {
             positionKey := or(shl(24, or(shl(24, vault), and(_tickLower, 0xFFFFFF))), and(_tickUpper, 0xFFFFFF))
         }
 
-        (liquidity,,,, tokensOwed0, tokensOwed1) = key.pool.positions(positionKey);
+        (liquidity,,,, tokensOwed0, tokensOwed1) = pool.positions(positionKey);
     }
 
     /// @notice Computes the maximum amount of liquidity received for a given amount of token0, token1, the current
@@ -241,7 +247,7 @@ library PoolActions {
         view
         returns (uint128)
     {
-        (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
+        (uint160 sqrtRatioX96,,,,,,) = key.pool.globalState();
 
         return LiquidityAmounts.getLiquidityForAmounts(
             sqrtRatioX96,
@@ -266,7 +272,7 @@ library PoolActions {
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
+        (uint160 sqrtRatioX96,,,,,,) = key.pool.globalState();
 
         int256 amount0Delta = TokenDeltaMath.getToken0Delta(
             sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
@@ -289,7 +295,7 @@ library PoolActions {
         view
         returns (uint160 sqrtRatioX96, int24 tick, uint16 observationCardinality)
     {
-        (sqrtRatioX96, tick,, observationCardinality,,,) = pool.slot0();
+        (sqrtRatioX96, tick,, observationCardinality,,,) = pool.globalState();
     }
 
     /// @notice Computes the direction of tokens recieved after swap to merge in strategy reserves

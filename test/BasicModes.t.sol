@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
@@ -53,7 +54,7 @@ contract BasicModes is Test, RebaseFixtures {
         );
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 1 days);
 
         assertEq(checkRange(key.tickLower, key.tickUpper), false);
@@ -64,7 +65,7 @@ contract BasicModes is Test, RebaseFixtures {
         modes.ShiftBase(strategyIDs);
         (key,,,,,,,,) = base.strategies(strategyID);
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(key.tickLower > tick, true);
         assertEq(key.tickUpper > key.tickLower, true);
@@ -107,7 +108,7 @@ contract BasicModes is Test, RebaseFixtures {
         );
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 1 days);
 
         assertEq(checkRange(key.tickLower, key.tickUpper), false);
@@ -118,7 +119,7 @@ contract BasicModes is Test, RebaseFixtures {
         modes.ShiftBase(strategyIDs);
         (key,,,,,,,,) = base.strategies(strategyID);
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(key.tickLower < key.tickUpper, true);
         assertEq(key.tickUpper < tick, true);
@@ -161,7 +162,7 @@ contract BasicModes is Test, RebaseFixtures {
         );
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 1 days);
 
         assertEq(checkRange(key.tickLower, key.tickUpper), false);
@@ -172,7 +173,7 @@ contract BasicModes is Test, RebaseFixtures {
         modes.ShiftBase(strategyIDs);
         (key,,,,,,,,) = base.strategies(strategyID);
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(key.tickLower < key.tickUpper, true);
         assertEq(key.tickUpper < tick, true);
@@ -202,7 +203,7 @@ contract BasicModes is Test, RebaseFixtures {
 
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 1 days);
 
         assertEq(checkRange(key.tickLower, key.tickUpper), false);
@@ -306,21 +307,21 @@ contract BasicModes is Test, RebaseFixtures {
             modules = abi.decode(actions, (ICLTBase.PositionActions));
 
             if (modules.mode == 1) {
-                executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+                executeSwap(token0, token1, owner, 500e18, 0, 0);
                 _hevm.warp(block.timestamp + 1 days);
                 (key,,,,,,,,) = base.strategies(strategyIDs[0]);
                 assertEq(checkRange(key.tickLower, key.tickUpper), false);
                 _strategyIDs[0] = strategyIDs[0];
                 modes.ShiftBase(_strategyIDs);
             } else if (modules.mode == 2) {
-                executeSwap(token1, token0, pool.fee(), owner, 1000e18, 0, 0);
+                executeSwap(token1, token0, owner, 1000e18, 0, 0);
                 _hevm.warp(block.timestamp + 1 days);
                 (key,,,,,,,,) = base.strategies(strategyIDs[1]);
                 assertEq(checkRange(key.tickLower, key.tickUpper), false);
                 _strategyIDs[0] = strategyIDs[1];
                 modes.ShiftBase(_strategyIDs);
             } else if (modules.mode == 3) {
-                executeSwap(token1, token0, pool.fee(), owner, 1000e18, 0, 0);
+                executeSwap(token1, token0, owner, 1000e18, 0, 0);
                 _hevm.warp(block.timestamp + 1 days);
                 (key,,,,,,,,) = base.strategies(strategyIDs[2]);
                 assertEq(checkRange(key.tickLower, key.tickUpper), false);

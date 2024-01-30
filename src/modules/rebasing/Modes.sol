@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { AccessControl } from "../../base/AccessControl.sol";
@@ -11,7 +12,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
     /// @notice The address of base vault
     ICLTBase public baseVault;
 
-    constructor(address vault, address owner) AccessControl(owner) {
+    constructor(address vault) AccessControl() {
         baseVault = ICLTBase(vault);
     }
 

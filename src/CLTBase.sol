@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
 import { ICLTModules } from "./interfaces/ICLTModules.sol";
@@ -16,9 +17,10 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
-import { ERC721 } from "@solmate/tokens/ERC721.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
@@ -45,8 +47,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @inheritdoc ICLTBase
     mapping(uint256 => UserPositions.Data) public override positions;
 
-    /// @notice The global fee growth as of last action on individual liquidity position in pool
-    /// @dev The uncollected fee earned by individual position is first collected by global account and then distributed
+    /// @dev The global fee growth as of last action on individual liquidity position in pool
+    /// The uncollected fee earned by individual position is first collected by global account and then distributed
     /// among the strategies having same ticks as of global account ticks according to the strategy fee growth & share
     mapping(bytes32 => StrategyFeeShares.GlobalAccount) private strategyGlobalFees;
 
@@ -64,7 +66,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         address _cltModules,
         IAlgebraFactory _factory
     )
-        AccessControl(_owner)
+        AccessControl()
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
     {
@@ -113,7 +115,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         (, uint256 strategyCreationFeeAmount,,) = _getGovernanceFee(isPrivate);
 
-        if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
+        if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner(), strategyCreationFeeAmount);
 
         emit StrategyCreated(strategyID);
     }
@@ -221,7 +223,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.performanceFee,
             vars.fee0,
             vars.fee1,
-            owner,
+            owner(),
             strategy.owner
         );
 
@@ -234,7 +236,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.managementFee,
             amount0,
             amount1,
-            owner,
+            owner(),
             strategy.owner
         );
 
@@ -305,7 +307,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.performanceFee,
             tokensOwed0,
             tokensOwed1,
-            owner,
+            owner(),
             strategy.owner
         );
 
@@ -351,7 +353,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         // deduct any fees if required for protocol
         (vars.fee0, vars.fee1) =
-            transferFee(strategy.key, 0, automationFee, vars.balance0, vars.balance1, address(0), owner);
+            transferFee(strategy.key, 0, automationFee, vars.balance0, vars.balance1, address(0), owner());
 
         vars.balance0 -= vars.fee0;
         vars.balance1 -= vars.fee1;

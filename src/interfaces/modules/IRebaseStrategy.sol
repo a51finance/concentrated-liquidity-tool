@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import "../ICLTBase.sol";
 
@@ -18,7 +19,7 @@ interface IRebaseStrategy {
     function checkInputData(ICLTBase.StrategyPayload memory data) external returns (bool);
 
     struct ExectuteStrategyParams {
-        IUniswapV3Pool pool;
+        IAlgebraPool pool;
         bytes32 strategyID;
         int24 tickLower;
         int24 tickUpper;

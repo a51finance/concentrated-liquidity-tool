@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -8,12 +9,12 @@ import { Fixtures } from "./utils/Fixtures.sol";
 import { Utilities } from "./utils/Utilities.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -78,7 +79,7 @@ contract WithdrawTest is Test, Fixtures {
         assertEq(account.balance1, 0);
 
         assertEq(account.totalShares, 0);
-        assertEq(account.uniswapLiquidity, 0);
+        assertEq(uint256(account.uniswapLiquidity), 0);
     }
 
     function test_withdraw_multipleUsers() public {
@@ -119,12 +120,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -132,12 +132,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -184,7 +183,7 @@ contract WithdrawTest is Test, Fixtures {
     }
 
     function test_withdraw_shouldPayInETH() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
@@ -234,7 +233,7 @@ contract WithdrawTest is Test, Fixtures {
             ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
 
-        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        vm.expectRevert("NoLiquidity");
         base.withdraw(
             ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
@@ -242,7 +241,7 @@ contract WithdrawTest is Test, Fixtures {
 
     function test_withdraw_revertsIfZeroLiquidityInput() public {
         vm.prank(address(this));
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.withdraw(ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 0, recipient: msg.sender, refundAsETH: true }));
     }
 
@@ -250,7 +249,7 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         vm.prank(address(this));
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
@@ -290,12 +289,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -303,12 +301,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -407,12 +404,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -420,12 +416,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -538,12 +533,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -551,12 +545,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -622,12 +615,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -663,12 +655,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -751,12 +742,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -764,12 +754,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
