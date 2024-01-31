@@ -166,14 +166,14 @@ interface ICLTBase {
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @return key A51 position's key details associated with this strategy
-    /// @return owner The address of the strategy owner
-    /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
-    /// @return actionStatus It is a hash of a additional data of strategy for further required actions
-    /// @return isCompound Bool weather the strategy has compunding activated or not
-    /// @return isPrivate Bool weather strategy is open for all users or not
-    /// @return managementFee The value of fee in percentage applied on strategy users liquidity by strategy owner
-    /// @return performanceFee The value of fee in percentage applied on strategy users earned fee by strategy owner
-    /// @return account Strategy values of balances and fee accounting details
+    /// owner The address of the strategy owner
+    /// actions It is a hash of a preimage composed by all modes IDs selected by the strategist
+    /// actionStatus It is a hash of a additional data of strategy for further required actions
+    /// isCompound Bool weather the strategy has compunding activated or not
+    /// isPrivate Bool weather strategy is open for all users or not
+    /// managementFee The value of fee in percentage applied on strategy users liquidity by strategy owner
+    /// performanceFee The value of fee in percentage applied on strategy users earned fee by strategy owner
+    /// account Strategy values of balances and fee accounting details
     function strategies(bytes32 strategyId)
         external
         returns (
@@ -192,11 +192,11 @@ interface ICLTBase {
     /// @dev Throws if the token ID is not valid.
     /// @param positionId The ID of the token that represents the position
     /// @return strategyId strategy ID assigned to this token ID
-    /// @return liquidityShare Shares assigned to this token ID
-    /// @return feeGrowthInside0LastX128 The fee growth of token0 as of the last action on the individual position
-    /// @return feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
-    /// @return tokensOwed0 The uncollected amount of token0 owed to the position as of the last computation
-    /// @return tokensOwed1 The uncollected amount of token1 owed to the position as of the last computation
+    /// liquidityShare Shares assigned to this token ID
+    /// feeGrowthInside0LastX128 The fee growth of token0 as of the last action on the individual position
+    /// feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
+    /// tokensOwed0 The uncollected amount of token0 owed to the position as of the last computation
+    /// tokensOwed1 The uncollected amount of token1 owed to the position as of the last computation
     function positions(uint256 positionId)
         external
         returns (

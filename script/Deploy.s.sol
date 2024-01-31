@@ -14,7 +14,6 @@ import "../src/modules/rebasing/RebaseModule.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 contract DeployALP is Script {
-    address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
     address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
 
     IAlgebraFactory _factoryAddress = IAlgebraFactory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
@@ -35,7 +34,7 @@ contract DeployALP is Script {
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         CLTBase baseContract =
-            new CLTBase("ALP_TOKEN", "ALPT", _owner, _weth9, address(feeHandler), address(cltModules), _factoryAddress);
+            new CLTBase("ALP_TOKEN", "ALPT", _weth9, address(feeHandler), address(cltModules), _factoryAddress);
 
         new CLTHelper();
 

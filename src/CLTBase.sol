@@ -60,7 +60,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     constructor(
         string memory _name,
         string memory _symbol,
-        address _owner,
         address _weth9,
         address _feeHandler,
         address _cltModules,

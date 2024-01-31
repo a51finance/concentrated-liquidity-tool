@@ -26,7 +26,7 @@ library PoolActions {
     /// @param key A51 strategy key details
     /// @return liquidity The amount of liquidity for this strategy
     function updatePosition(ICLTBase.StrategyKey memory key) external returns (uint128 liquidity) {
-        (liquidity,,,,) = getPositionLiquidity(key.pool, key.tickLower, key.tickUpper);
+        (liquidity,,) = getPositionLiquidity(key.pool, key.tickLower, key.tickUpper);
 
         if (liquidity > 0) {
             key.pool.burn(key.tickLower, key.tickUpper, 0);
@@ -203,8 +203,6 @@ library PoolActions {
     /// @param _tickLower The lower tick of the range
     /// @param _tickUpper The upper tick of the range
     /// @return liquidity The amount of liquidity of the position
-    /// @return feeGrowthInside0LastX128 The fee growth of token0 as of the last action on the individual position
-    /// @return feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
     /// @return tokensOwed0 Amount of token0 owed
     /// @return tokensOwed1 Amount of token1 owed
     function getPositionLiquidity(
@@ -214,13 +212,7 @@ library PoolActions {
     )
         public
         view
-        returns (
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        )
+        returns (uint128 liquidity, uint128 tokensOwed0, uint128 tokensOwed1)
     {
         bytes32 positionKey;
         address vault = address(this);
