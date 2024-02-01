@@ -23,6 +23,8 @@ import { SwapRouter } from "@cryptoalgebra/periphery/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
+import { AlgebraFactory } from "@cryptoalgebra/core/contracts/AlgebraFactory.sol";
+import { AlgebraPoolDeployer } from "@cryptoalgebra/core/contracts/AlgebraPoolDeployer.sol";
 
 import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
 import { NonfungiblePositionManager } from "@cryptoalgebra/periphery/contracts/NonfungiblePositionManager.sol";
@@ -32,6 +34,7 @@ import { INonfungiblePositionManager } from
 import "forge-std/console.sol";
 
 contract Fixtures is UniswapDeployer {
+    AlgebraPoolDeployer deployer;
     IAlgebraFactory factory;
     IAlgebraPool pool;
     SwapRouter router;
@@ -55,8 +58,12 @@ contract Fixtures is UniswapDeployer {
     }
 
     function initPool() internal {
-        // intialize uniswap contracts
-        factory = IAlgebraFactory(deployUniswapV3Factory());
+        // intialize algebra contracts
+        deployer = new AlgebraPoolDeployer();
+        factory = new AlgebraFactory(address(deployer), address(0));
+
+        deployer.setFactory(address(factory));
+
         pool = IAlgebraPool(factory.createPool(address(token0), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
