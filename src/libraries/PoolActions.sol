@@ -266,15 +266,12 @@ library PoolActions {
     {
         (uint160 sqrtRatioX96,,,,,,) = key.pool.globalState();
 
-        int256 amount0Delta = TokenDeltaMath.getToken0Delta(
-            sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtRatioX96,
+            TickMath.getSqrtRatioAtTick(key.tickLower),
+            TickMath.getSqrtRatioAtTick(key.tickUpper),
+            liquidity
         );
-
-        int256 amount1Delta = TokenDeltaMath.getToken1Delta(
-            TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
-        );
-
-        (amount0, amount1) = (uint256(amount0Delta), uint256(amount1Delta));
     }
 
     /// @notice Look up information about a specific pool
