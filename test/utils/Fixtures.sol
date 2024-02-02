@@ -24,6 +24,8 @@ import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwap
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 import { AlgebraFactory } from "@cryptoalgebra/core/contracts/AlgebraFactory.sol";
+import { AlgebraPool } from "@cryptoalgebra/core/contracts/AlgebraPool.sol";
+
 import { AlgebraPoolDeployer } from "@cryptoalgebra/core/contracts/AlgebraPoolDeployer.sol";
 
 import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
@@ -63,13 +65,15 @@ contract Fixtures is UniswapDeployer {
         factory = new AlgebraFactory(address(deployer), address(0));
 
         deployer.setFactory(address(factory));
+        factory.createPool(address(token0), address(token1));
 
-        pool = IAlgebraPool(factory.createPool(address(token0), address(token1)));
+        pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
+
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
 
     function initPoolAndAddLiquidity() internal {
-        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(this));
+        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(deployer));
 
         token0.approve(address(manager), type(uint256).max);
         token1.approve(address(manager), type(uint256).max);
@@ -91,7 +95,7 @@ contract Fixtures is UniswapDeployer {
     }
 
     function initRouter() internal {
-        router = new SwapRouter(address(factory), address(weth), address(0));
+        router = new SwapRouter(address(factory), address(weth), address(deployer));
 
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
