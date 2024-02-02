@@ -34,7 +34,7 @@ contract DepositTest is Test, Fixtures {
         deployFreshState();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -180, tickUpper: 180 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -69,7 +69,7 @@ contract DepositTest is Test, Fixtures {
         assertEq(account.totalShares, depositAmount);
         assertEq(base.balanceOf(msg.sender), 1);
         assertEq(liquidityShare, depositAmount);
-        assertEq(uint256(account.uniswapLiquidity), 200_510_416_479_002_803_287);
+        assertEq(uint256(account.uniswapLiquidity), 111_617_416_535_568_857_032);
     }
 
     function test_deposit_revertsIfZeroAmount() public {
@@ -132,7 +132,7 @@ contract DepositTest is Test, Fixtures {
         pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -156,7 +156,7 @@ contract DepositTest is Test, Fixtures {
 
         assertEq(account.totalShares, depositAmount);
         assertEq(liquidityShare, depositAmount);
-        assertEq(uint256(account.uniswapLiquidity), 601_531_249_437_008_409_863);
+        assertEq(uint256(account.uniswapLiquidity), 251_515_499_634_488_186_477);
     }
 
     function test_deposit_revertsWithInSufficientFunds() public {
@@ -315,14 +315,14 @@ contract DepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 250_968_146_844_201_956);
+        assertEq(liquidityShareUser2, 497_725_126_939_380_199);
     }
 
     function test_deposit_shouldReturnExtraETH() public {
         pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
