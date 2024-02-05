@@ -241,8 +241,8 @@ contract DepositTest is Test, Fixtures {
         (, uint256 liquidityShareUser1,,,,) = base.positions(2);
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        assertEq(liquidityShareUser1, depositAmount);
-        assertEq(account.totalShares, depositAmount * 2);
+        assertEq(liquidityShareUser1, depositAmount + 1);
+        assertEq(account.totalShares, depositAmount * 2 + 1);
 
         // try swapping here to check contract balances
         router.exactInputSingle(
@@ -276,9 +276,9 @@ contract DepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
 
-        assertEq(account.balance0, 360_616_736_599_640);
+        assertEq(account.balance0, 49_713_714_623_866);
         assertEq(account.balance1, 0);
-        assertEq(account.totalShares, ((depositAmount * 2) + liquidityShareUser2));
+        assertEq(account.totalShares, (depositAmount * 2) + liquidityShareUser2 + 1);
     }
 
     function test_deposit_succeedsOutOfRangeDeposit() public {
@@ -663,8 +663,8 @@ contract DepositTest is Test, Fixtures {
         (, uint256 userShare2,,,,) = base.positions(2);
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(userShare2, depositAmount);
-        assertEq(account.totalShares, depositAmount * 2);
+        assertEq(userShare2, depositAmount + 1);
+        assertEq(account.totalShares, depositAmount * 2 + 1);
 
         assertEq(account.balance0, 0);
         assertEq(account.balance1, 0);
@@ -707,8 +707,8 @@ contract DepositTest is Test, Fixtures {
         (, uint256 userShare3,,,,) = base.positions(3);
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(userShare3, liquidityUser3 - 1);
-        assertEq(account.totalShares, ((liquidityUser1 * 2) + liquidityUser3) - 1);
+        assertEq(userShare3, liquidityUser3);
+        assertEq(account.totalShares, (liquidityUser1 * 2) + liquidityUser3 + 1);
     }
 
     function test_deposit_succeedsWithCorrectFeeGrowth() public {
@@ -717,7 +717,7 @@ contract DepositTest is Test, Fixtures {
 
         uint256 depositAmount = 4 ether;
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, false, false);

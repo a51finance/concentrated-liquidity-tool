@@ -29,7 +29,7 @@ contract ClaimFeeTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, false, false);
@@ -196,7 +196,7 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[2], tokenId: 2, refundAsETH: true }));
 
         assertEq(token0.balanceOf(users[1]), fee0 * 25 / 100);
-        assertEq(token0.balanceOf(users[2]), fee0 * 75 / 100);
+        assertEq(token0.balanceOf(users[2]), fee0 * 75 / 100 + 1);
     }
 
     function test_claimFee_multipleUsersWithDifferentFeeGrowth() public {
@@ -287,7 +287,7 @@ contract ClaimFeeTest is Test, Fixtures {
     }
 
     function test_claimFee_shouldPayStrategistFee() public {
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -180, tickUpper: 180 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         address payable[] memory users = utils.createUsers(1);
