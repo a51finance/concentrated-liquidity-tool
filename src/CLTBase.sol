@@ -193,7 +193,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         require(params.liquidity > 0, "InvalidShare");
         require(position.liquidityShare > 0, "NoLiquidity");
-        require(params.liquidity > position.liquidityShare, "InvalidShare");
+        require(position.liquidityShare >= params.liquidity, "InvalidShare");
 
         // these vars used for multipurpose || strategist fee & contract balance
         Account memory vars;
