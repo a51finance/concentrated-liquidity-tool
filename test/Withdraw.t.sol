@@ -36,7 +36,7 @@ contract WithdrawTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -165,8 +165,8 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        assertEq(token0.balanceOf(msg.sender) + 12, amount0);
-        assertEq(token1.balanceOf(msg.sender) + 13, amount1);
+        assertEq(token0.balanceOf(msg.sender) + 4, amount0);
+        assertEq(token1.balanceOf(msg.sender) + 3, amount1);
 
         vm.prank(address(this));
         base.withdraw(
@@ -178,15 +178,15 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        assertEq(token0.balanceOf(users[0]) - 5, userShare0);
-        assertEq(token1.balanceOf(users[0]) - 6, userShare1);
+        assertEq(token0.balanceOf(users[0]) + 8, userShare0);
+        assertEq(token1.balanceOf(users[0]) + 6, userShare1);
     }
 
     function test_withdraw_shouldPayInETH() public {
         pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -120, tickUpper: 120 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -582,8 +582,8 @@ contract WithdrawTest is Test, Fixtures {
             ICLTBase.WithdrawParams({ tokenId: 4, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(msg.sender), amount0 - 1);
-        assertEq(token1.balanceOf(msg.sender), amount1 - 2);
+        assertEq(token0.balanceOf(msg.sender) + 11, amount0);
+        assertEq(token1.balanceOf(msg.sender) + 12, amount1);
 
         (, liquidityShare,,,,) = base.positions(3);
 
@@ -592,8 +592,8 @@ contract WithdrawTest is Test, Fixtures {
             ICLTBase.WithdrawParams({ tokenId: 3, liquidity: liquidityShare, recipient: users[1], refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(users[1]), userShare0);
-        assertEq(token1.balanceOf(users[1]), userShare1);
+        assertEq(token0.balanceOf(users[1]) - 4, userShare0);
+        assertEq(token1.balanceOf(users[1]) - 6, userShare1);
 
         (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 2));
 
@@ -601,13 +601,13 @@ contract WithdrawTest is Test, Fixtures {
 
         // contract should have same assets left for last user
         assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
-        assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
+        assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]));
     }
 
     function test_withdraw_shouldRecieveSingleAssetToken0() public {
         uint256 depositAmount = 5 ether;
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
 
         base.createStrategy(key, actions, 0, 0, true, false);
 
@@ -647,7 +647,7 @@ contract WithdrawTest is Test, Fixtures {
     function test_withdraw_shouldRecieveSingleAssetToken1() public {
         uint256 depositAmount = 5 ether;
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
 
         base.createStrategy(key, actions, 0, 0, true, false);
 
