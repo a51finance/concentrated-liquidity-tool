@@ -19,6 +19,7 @@ import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 import { ERC721 } from "@solmate/tokens/ERC721.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "forge-std/console.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
@@ -107,7 +108,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
                 totalShares: 0,
                 uniswapLiquidity: 0,
                 feeGrowthInside0LastX128: 0,
-                feeGrowthInside1LastX128: 0
+                feeGrowthInside1LastX128: 0,
+                feeGrowthOutside0LastX128: 0,
+                feeGrowthOutside1LastX128: 0
             })
         });
 

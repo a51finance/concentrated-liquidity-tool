@@ -115,8 +115,8 @@ library Position {
         }
 
         // assigning again feeGrowth here because if position ticks are changed then calculations will be messed
-        self.account.feeGrowthInside0LastX128 = globalAccount.feeGrowthInside0LastX128;
-        self.account.feeGrowthInside1LastX128 = globalAccount.feeGrowthInside1LastX128;
+        self.account.feeGrowthOutside0LastX128 = globalAccount.feeGrowthInside0LastX128;
+        self.account.feeGrowthOutside1LastX128 = globalAccount.feeGrowthInside1LastX128;
     }
 
     /// @notice updates the info of strategy
