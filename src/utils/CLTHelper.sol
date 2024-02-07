@@ -12,6 +12,10 @@ contract CLTHelper {
         return modules;
     }
 
+    function decodeActionStatus(bytes memory actionStatus)external pure returns (bool isExit) {
+        (, isExit) = abi.decode(actionStatus, (uint256, bool));
+    }
+
     function getStrategyReserves(
         address poolAddress,
         int24 tickLower,

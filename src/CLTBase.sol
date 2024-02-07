@@ -152,6 +152,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @inheritdoc ICLTBase
     function updatePositionLiquidity(UpdatePositionParams calldata params)
         external
+        payable
         override
         nonReentrancy
         whenNotPaused

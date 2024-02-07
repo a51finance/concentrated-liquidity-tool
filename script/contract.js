@@ -6,10 +6,10 @@ const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
 
 require("dotenv").config();
 
-const web3 = new Web3("https://virtual.mainnet.rpc.tenderly.co/d1adf8c2-1e1c-4193-9a78-dc9df644db3e");
-const contractAddressBase = "0x23733faF3aed2c71F2430D638069BD17381294dF";
-const contractAddressCLTModules = "0xf506458ebdeb67d946cb8817005457db0d993212";
-const contractAddressRebaseModule = "0xe5b89c31a367afcda71e233b1371e54d5b78d24e";
+const web3 = new Web3("https://virtual.mainnet.rpc.tenderly.co/84eed73f-e924-4edc-bb68-380540ac0d97");
+const contractAddressBase = "0x64d418A00C260E493E9141c967D98956B9C935a3";
+const contractAddressCLTModules = "0x6C1644f43733FF86Cd0FD6fFBfc92Beb34993164";
+const contractAddressRebaseModule = "0xea417362AA8AdD9A38BE9B3933F47CF48d45a93e";
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 const token0 = "0x6b175474e89094c44da98b954eedeac495271d0f";
@@ -28,9 +28,9 @@ const ERC20ABI = ECR20ABI.abi;
 const ercContractToken0 = new web3.eth.Contract(ERC20ABI, token0);
 const ercContractToken1 = new web3.eth.Contract(ERC20ABI, token1);
 
-const fromAddress = "0x97fF40b5678D2234B1E5C894b5F39b8BA8535431";
+const fromAddress = "0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3";
 const fromAddressA89 = "0xa0e9E6B79a3e1AB87FeB209567eF3E0373210a89";
-const privateKey = process.env.PRIVATE_KEY;
+const privateKey = process.env.PRIVATE_KEY_2;
 const privateKeyA89 = process.env.PRIVATE_KEY_A89;
 
 const rebaseStrategy = "0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204";
@@ -239,8 +239,8 @@ async function withdrawPosition() {
 
 async function addModulesTxn() {
   try {
-    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
-    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
+    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
+    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 
@@ -330,9 +330,10 @@ async function getBlockDetails() {
 // addModulesVaultTxn();
 // checkModule();
 // checkOwner();
-// deposit("0x353fd513ce55139191f81b229e521f66addb59b7f3501b73a107801c611309e1");
 // updatePositon();
 // approveTokens();
+// deposit("0x32780138893c7172671d8b917625fffceea4f07751578c715531bdb53f2991b4");
 // getStrategyDetails();
-withdrawPosition();
+// withdrawPosition();
+// withdrawPosition();
 // getPositionData();
