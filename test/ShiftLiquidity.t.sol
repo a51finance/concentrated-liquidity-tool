@@ -628,8 +628,9 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         (,,,,,,,, ICLTBase.Account memory accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
 
-        assertEq(accountStrategy1.feeGrowthInside0LastX128, 0);
-        assertEq(accountStrategy1.feeGrowthInside1LastX128, 0);
+        // fee growth of new ticks will be zero
+        assertEq(accountStrategy1.feeGrowthOutside0LastX128, 0);
+        assertEq(accountStrategy1.feeGrowthOutside1LastX128, 0);
 
         (, uint256 fee0Strategy2Before, uint256 fee1Strategy2Before) =
             base.getStrategyReserves(getStrategyID(address(this), 2));
@@ -713,7 +714,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         (,,,,,,,, accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
 
-        assertEq(accountStrategy1.feeGrowthInside0LastX128, accountStrategy2.feeGrowthInside0LastX128);
-        assertEq(accountStrategy1.feeGrowthInside1LastX128, accountStrategy2.feeGrowthInside1LastX128);
+        assertEq(accountStrategy1.feeGrowthOutside0LastX128, accountStrategy2.feeGrowthOutside0LastX128);
+        assertEq(accountStrategy1.feeGrowthOutside1LastX128, accountStrategy2.feeGrowthOutside1LastX128);
     }
 }

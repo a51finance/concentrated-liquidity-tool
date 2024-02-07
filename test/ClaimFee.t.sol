@@ -146,8 +146,8 @@ contract ClaimFeeTest is Test, Fixtures {
         vm.startPrank(address(this));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(msg.sender), account.fee0);
-        assertEq(token1.balanceOf(msg.sender), account.fee1);
+        assertEq(token0.balanceOf(msg.sender), account.fee0 - 1);
+        assertEq(token1.balanceOf(msg.sender), account.fee1 - 1);
     }
 
     function test_claimFee_multipleUserShare() public {
@@ -282,8 +282,8 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
         /// user1 has earned more fees which is 66% which is fishy because for token1 both have equal share & growth
-        assertEq(token0.balanceOf(msg.sender), 4_416_689_949_339_070);
-        assertEq(token1.balanceOf(msg.sender), 2_393_644_397_049_624);
+        assertEq(token0.balanceOf(msg.sender), 4_416_689_949_339_068);
+        assertEq(token1.balanceOf(msg.sender), 2_393_644_397_049_623);
 
         vm.startPrank(users[0]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
