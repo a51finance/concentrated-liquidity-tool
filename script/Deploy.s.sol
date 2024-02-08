@@ -25,24 +25,24 @@ contract DeployALP is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        // CLTModules cltModules = new CLTModules(_owner);
+        CLTModules cltModules = new CLTModules(_owner);
 
-        // IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
-        //     lpAutomationFee: 0,
-        //     strategyCreationFee: 0,
-        //     protcolFeeOnManagement: 0,
-        //     protcolFeeOnPerformance: 0
-        // });
+        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+            lpAutomationFee: 0,
+            strategyCreationFee: 0,
+            protcolFeeOnManagement: 0,
+            protcolFeeOnPerformance: 0
+        });
 
-        // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
         
 
-        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(0xf2bBec7C8A7eb3D703f38618e16c6E0369010b97),
-        address(0xC88476C909EFa1853a44Ca12f0370929c7812dd8),
+        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler),
+        address(cltModules),
         _factoryAddress);
 
-        // new CLTHelper();
+        new CLTHelper();
 
         new Modes(address(baseContract),_owner);
 
