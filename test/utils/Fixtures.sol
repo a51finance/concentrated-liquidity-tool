@@ -135,6 +135,25 @@ contract Fixtures is UniswapDeployer {
         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModule));
     }
 
+    function getPoolPositionFee(ICLTBase.StrategyKey memory key)
+        public
+        view
+        returns (uint128 totalFee0, uint128 totalFee1)
+    {
+        bytes32 positionKey;
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        address vault = address(base);
+
+        assembly {
+            positionKey := or(shl(24, or(shl(24, vault), and(tickLower, 0xFFFFFF))), and(tickUpper, 0xFFFFFF))
+        }
+
+        (,,,, totalFee0, totalFee1) = key.pool.positions(positionKey);
+    }
+
     function deployFreshState() internal {
         ERC20Mock[] memory tokens = deployTokens(2, 1000e50);
 

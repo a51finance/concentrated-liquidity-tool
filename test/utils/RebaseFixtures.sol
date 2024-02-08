@@ -174,16 +174,16 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
-        base = new CLTBase("ALP Base", "ALP", recepient, address(feeHandler), address(cltModules), factory);
+        base = new CLTBase("ALP Base", "ALP", address(weth), address(feeHandler), address(cltModules), factory);
 
         _hevm.prank(recepient);
         token0.approve(address(base), type(uint256).max);
         _hevm.prank(recepient);
         token1.approve(address(base), type(uint256).max);
 
-        rebaseModule = new RebaseModule(recepient);
+        rebaseModule = new RebaseModule(address(base));
 
-        modes = new Modes(recepient);
+        modes = new Modes(address(base));
 
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);

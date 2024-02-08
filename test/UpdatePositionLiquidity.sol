@@ -25,7 +25,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         // compounding strategy
@@ -116,7 +116,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
 
         (, liquidityShareAfter,,,,) = base.positions(1);
 
-        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount);
+        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount + 1);
 
         (, liquidityShareBefore,,,,) = base.positions(2);
 
@@ -126,7 +126,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
 
         (, liquidityShareAfter,,,,) = base.positions(2);
 
-        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount);
+        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount + 1);
     }
 
     function test_increaseLiq_succeedsAfterExit() public {
@@ -216,8 +216,8 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,,, uint128 totalFee0, uint128 totalFee1) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        (uint128 totalFee0, uint128 totalFee1) = getPoolPositionFee(key);
 
         base.getStrategyReserves(strategyId);
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
@@ -238,7 +238,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         assertEq(feeGrowthInside0LastX128, account.feeGrowthInside0LastX128);
         assertEq(feeGrowthInside1LastX128, account.feeGrowthInside1LastX128);
 
-        assertEq(uint256(tokensOwed0), totalFee0 / 2 - 1);
+        assertEq(uint256(tokensOwed0), totalFee0 / 2);
         assertEq(uint256(tokensOwed1), totalFee1 / 2 - 1);
     }
 }

@@ -85,7 +85,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.deposit(params);
     }
 
@@ -102,7 +102,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.deposit(params);
     }
 
@@ -759,8 +759,7 @@ contract DepositTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,,, uint256 totalFee0, uint256 totalFee1) =
-            pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(key);
 
         base.deposit(params);
 

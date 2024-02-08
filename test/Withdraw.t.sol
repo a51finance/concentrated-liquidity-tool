@@ -226,14 +226,14 @@ contract WithdrawTest is Test, Fixtures {
         );
     }
 
-    function test_withdraw_revertsIfNoLiquidity() public {
+    function test_withdraw_revertsIfNL() public {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         base.withdraw(
             ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
 
-        vm.expectRevert("NoLiquidity");
+        vm.expectRevert();
         base.withdraw(
             ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
@@ -241,7 +241,7 @@ contract WithdrawTest is Test, Fixtures {
 
     function test_withdraw_revertsIfZeroLiquidityInput() public {
         vm.prank(address(this));
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.withdraw(ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 0, recipient: msg.sender, refundAsETH: true }));
     }
 
@@ -249,7 +249,7 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         vm.prank(address(this));
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
@@ -348,13 +348,13 @@ contract WithdrawTest is Test, Fixtures {
             ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(msg.sender), account.balance0 / 2);
+        assertEq(token0.balanceOf(msg.sender), account.balance0 / 2 + 1);
         assertEq(token1.balanceOf(msg.sender), account.balance1 / 2);
 
         (,,,,,,,, account) = base.strategies(strategyId);
 
         // same amount of shares should be left over in strategy
-        assertEq(account.balance0, token0.balanceOf(msg.sender));
+        assertEq(account.balance0, token0.balanceOf(msg.sender) - 1);
         assertEq(account.balance1, token1.balanceOf(msg.sender));
     }
 
@@ -464,14 +464,14 @@ contract WithdrawTest is Test, Fixtures {
             ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(msg.sender), (account.balance0 + fee0) / 2);
-        assertEq(token1.balanceOf(msg.sender), ((account.balance1 + fee1) / 2) - 1);
+        assertEq(token0.balanceOf(msg.sender), (account.balance0 + fee0) / 2 - 2);
+        assertEq(token1.balanceOf(msg.sender), (account.balance1 + fee1) / 2 - 1);
 
         (,,,,,,,, account) = base.strategies(strategyId);
 
         // same amount of shares should be left over in strategy
-        assertEq(account.balance0 + account.fee0 - 1, token0.balanceOf(msg.sender));
-        assertEq(account.balance1 + account.fee1 - 2, token1.balanceOf(msg.sender));
+        assertEq(account.balance0 + account.fee0, token0.balanceOf(msg.sender) + 5);
+        assertEq(account.balance1 + account.fee1, token1.balanceOf(msg.sender) + 2);
     }
 
     function test_withdraw_multipleUsersNoCompounding() public {

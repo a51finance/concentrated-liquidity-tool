@@ -77,16 +77,16 @@ contract ClaimFeeTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert("onlyNonCompounders");
+        vm.expectRevert(bytes("ONC"));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 2, refundAsETH: true }));
     }
 
-    function test_claimFee_revertsIfNoLiquidity() public {
+    function test_claimFee_revertsIfNL() public {
         base.withdraw(
             ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 4 ether, recipient: msg.sender, refundAsETH: true })
         );
 
-        vm.expectRevert("NoLiquidity");
+        vm.expectRevert(bytes("NL"));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
     }
 

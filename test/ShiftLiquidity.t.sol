@@ -29,7 +29,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -120, tickUpper: 120 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         // compounding strategy
@@ -600,7 +600,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         tick = utils.floorTicks(tick, tickSpacing);
 
         ICLTBase.StrategyKey memory newKey =
-            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 200, tickUpper: tick - tickSpacing });
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 240, tickUpper: tick - tickSpacing });
 
         vm.prank(msg.sender);
         base.shiftLiquidity(
@@ -648,8 +648,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(newKey.tickLower, newKey.tickUpper, 0);
-        (,,,, uint256 totalFee0, uint256 totalFee1) =
-            pool.positions(keccak256(abi.encodePacked(address(base), newKey.tickLower, newKey.tickUpper)));
+
+        (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(newKey);
 
         (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
 
@@ -658,8 +658,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,,, totalFee0, totalFee1) =
-            pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        (totalFee0, totalFee1) = getPoolPositionFee(newKey);
 
         (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
         (,,,,,,,, ICLTBase.Account memory accountStrategy2) = base.strategies(getStrategyID(address(this), 2));
