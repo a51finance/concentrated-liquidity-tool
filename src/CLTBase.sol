@@ -191,9 +191,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, position.strategyId);
 
-        require(params.liquidity > 0, "InvalidShare");
-        require(position.liquidityShare > 0, "NoLiquidity");
-        require(position.liquidityShare >= params.liquidity, "InvalidShare");
+        require(params.liquidity > 0);
+        require(position.liquidityShare > 0);
+        require(position.liquidityShare >= params.liquidity);
 
         // these vars used for multipurpose || strategist fee & contract balance
         Account memory vars;
@@ -293,8 +293,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         _updateGlobals(strategy, position.strategyId);
 
-        require(!strategy.isCompound, "onlyNonCompounders");
-        require(position.liquidityShare > 0, "NoLiquidity");
+        require(!strategy.isCompound, "ONC");
+        require(position.liquidityShare > 0, "NL");
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
@@ -416,7 +416,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         _validateModes(actions, managementFee, performanceFee);
 
         StrategyData storage strategy = strategies[strategyId];
-        require(strategy.owner == _msgSender(), "InvalidCaller");
+        require(strategy.owner == _msgSender());
 
         strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
 
@@ -465,10 +465,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(strategy, amount0Desired, amount1Desired);
 
         // liquidity frontrun checks here
-        require(share > 0, "InvalidShare");
+        require(share > 0);
 
         if (strategy.account.totalShares == 0) {
-            require(share > Constants.MIN_INITIAL_SHARES, "InvalidShare");
+            require(share > Constants.MIN_INITIAL_SHARES);
         }
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
