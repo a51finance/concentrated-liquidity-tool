@@ -22,7 +22,7 @@ contract DeployALP is Script {
     IUniswapV3Factory _factoryAddress = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         CLTModules cltModules = new CLTModules(_owner);
@@ -36,38 +36,13 @@ contract DeployALP is Script {
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
-        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(feeHandler),
-        address(cltModules),
-        _factoryAddress);
+        CLTBase baseContract =
+            new CLTBase("ALP_TOKEN", "ALPT", _owner, _weth9, address(feeHandler), address(cltModules), _factoryAddress);
 
         new CLTHelper();
-
-        new Modes(address(baseContract),_owner);
-
-        new RebaseModule(_owner,address(baseContract));
+        new Modes(address(baseContract), _owner);
+        new RebaseModule(_owner, address(baseContract));
 
         vm.stopBroadcast();
     }
 }
-
-// contract SetUpContract is Script {
-//     address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-//     address _baseContract = 0x30eD7AFE5083B170884eC959cb4d7CE1b757aD59;
-//     address _modulesContract = 0x8402Aebbc0b1b62c8c9F7AFafE95467394414711;
-//     address _rebaseModule = 0x8b23A5008303D31f709009FF99794389ed04A8b9;
-
-//     function run() external {
-//         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
-//         vm.startBroadcast(deployerPrivateKey);
-
-//         CLTModules cltModules = CLTModules(_modulesContract);
-//         RebaseModule rebaseModules = RebaseModule(_rebaseModule);
-//         CLTBase baseContract = CLTBase(_baseContract);
-
-//         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), rebaseModules.PRICE_PREFERENCE());
-//         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), rebaseModules.REBASE_INACTIVITY());
-//         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModules));
-
-//         vm.stopBroadcast();
-//     }
-// }
