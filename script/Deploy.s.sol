@@ -12,17 +12,17 @@ import "../src/modules/rebasing/RebaseModule.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 contract DeployALP is Script {
-    // address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    // address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+    address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
+    address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
 
     // mainnet
-    address _owner = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
-    address _weth9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    // address _owner = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
+    // address _weth9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     IUniswapV3Factory _factoryAddress = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         // CLTModules cltModules = new CLTModules(_owner);
@@ -36,15 +36,17 @@ contract DeployALP is Script {
 
         // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
-        // CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(0x74226579ED541adA94582DC4cD6DDd21f6526863),
-        // address(0x6C1644f43733FF86Cd0FD6fFBfc92Beb34993164),
-        // _factoryAddress);
+        
 
-        new CLTHelper();
+        CLTBase baseContract = new CLTBase("ALP_TOKEN", "ALPT", _owner,_weth9, address(0xf2bBec7C8A7eb3D703f38618e16c6E0369010b97),
+        address(0xC88476C909EFa1853a44Ca12f0370929c7812dd8),
+        _factoryAddress);
 
-        // new Modes(address(baseContract),_owner);
+        // new CLTHelper();
 
-        // new RebaseModule(_owner,address(0x64d418A00C260E493E9141c967D98956B9C935a3));
+        new Modes(address(baseContract),_owner);
+
+        new RebaseModule(_owner,address(baseContract));
 
         vm.stopBroadcast();
     }
