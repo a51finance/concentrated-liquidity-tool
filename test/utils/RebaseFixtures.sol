@@ -21,10 +21,12 @@ import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
 import { SwapRouter } from "@cryptoalgebra/periphery/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
-import { Quoter } from "@cryptoalgebra/periphery/contracts/lens/Quoter.sol";
+import { AlgebraPoolDeployer } from "@cryptoalgebra/core/contracts/AlgebraPoolDeployer.sol";
 import { NonfungiblePositionManager } from "@cryptoalgebra/periphery/contracts/NonfungiblePositionManager.sol";
 import { INonfungiblePositionManager } from
     "@cryptoalgebra/periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { AlgebraFactory } from "@cryptoalgebra/core/contracts/AlgebraFactory.sol";
+import { AlgebraPool } from "@cryptoalgebra/core/contracts/AlgebraPool.sol";
 
 import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
 import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
@@ -33,9 +35,9 @@ import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgeb
 
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
+    AlgebraPoolDeployer deployer;
     IAlgebraPool pool;
     SwapRouter router;
-    Quoter quote;
 
     ICLTBase.StrategyKey strategyKey;
     RebaseModule rebaseModule;
@@ -74,14 +76,19 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             (token0, token1) = (token1, token0);
         }
 
-        // intialize uniswap contracts
-        factory = IAlgebraFactory(deployUniswapV3Factory());
-        pool = IAlgebraPool(factory.createPool(address(token0), address(token1)));
+        // intialize algebra contracts
+        deployer = new AlgebraPoolDeployer();
+        factory = new AlgebraFactory(address(deployer), address(0));
+
+        deployer.setFactory(address(factory));
+
+        factory.createPool(address(token0), address(token1));
+        pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
-        router = new SwapRouter(address(factory), address(weth), address(this));
-        positionManager = new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(0));
-        // pool.increaseObservationCardinalityNext(80);
-        quote = new Quoter(address(factory), address(weth), address(0));
+
+        router = new SwapRouter(address(factory), address(weth), address(deployer));
+        positionManager =
+            new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(deployer));
 
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);
