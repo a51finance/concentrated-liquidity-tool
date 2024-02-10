@@ -75,8 +75,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             _cltBase.strategies(executeParams.strategyID);
 
-        require(strategyOwner == _msgSender(), "InvalidCaller");
         require(strategyOwner != address(0), "StrategyIdDonotExist");
+        require(strategyOwner == _msgSender(), "InvalidCaller");
 
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
@@ -273,7 +273,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         // need to check here whether the preference ticks are outside of range
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
-            require(lowerPreferenceDiff > 0 || upperPreferenceDiff > 0, "InvalidPricePreferenceDifference");
+            require(lowerPreferenceDiff > 0 && upperPreferenceDiff > 0, "InvalidPricePreferenceDifference");
             return true;
         }
 
@@ -310,7 +310,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         uint256 dataLength = data.length;
         for (uint256 i = 0; i < dataLength; i++) {
             (, address strategyOwner,,,,,,,) = _cltBase.strategies(data[i]);
-            require(data[i] != bytes32(0) || strategyOwner != address(0), "InvalidStrategyId");
+            require(data[i] != bytes32(0) && strategyOwner != address(0), "InvalidStrategyId");
 
             // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {

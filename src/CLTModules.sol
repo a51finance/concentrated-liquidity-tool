@@ -73,7 +73,7 @@ contract CLTModules is ICLTModules, Ownable {
         external
         override
     {
-        require(actions.mode > 0 || actions.mode < 4, "InvalidMode");
+        require(actions.mode > 0 && actions.mode < 5, "InvalidMode");
         require(managementFee < Constants.MAX_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
         require(performanceFee < Constants.MAX_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
 
