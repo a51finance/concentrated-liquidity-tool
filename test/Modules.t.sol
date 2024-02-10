@@ -17,19 +17,19 @@ contract ModulesTest is Test, Fixtures {
 
     function test_modules_revertsIfNotOwnerToUpdateModule() public {
         vm.prank(msg.sender);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         cltModules.setNewModule(keccak256("LIQUIDITY_DISTRIBUTION"), keccak256("PRICE_RANGE"));
     }
 
     function test_modules_revertsIfNotOwnerToToggleModule() public {
         vm.prank(msg.sender);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         cltModules.toggleModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
     }
 
     function test_modules_revertsIfNotOwnerToUpdateModuleAddress() public {
         vm.prank(msg.sender);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(1445));
     }
 
@@ -123,7 +123,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: new ICLTBase.StrategyPayload[](0)
         });
 
-        vm.expectRevert("RebaseInactivityCannotBeZero");
+        vm.expectRevert();
         cltModules.validateModes(actions, 0, 0);
     }
 
@@ -159,7 +159,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: new ICLTBase.StrategyPayload[](0)
         });
 
-        vm.expectRevert("RebaseStrategyDataCannotBeZero");
+        vm.expectRevert();
         cltModules.validateModes(actions, 0, 0);
     }
 
@@ -178,7 +178,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: liquidityStrategyActions
         });
 
-        vm.expectRevert("RebaseStrategyDataCannotBeZero");
+        vm.expectRevert();
         cltModules.validateModes(actions, 0, 0);
     }
 

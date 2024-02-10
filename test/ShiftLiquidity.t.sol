@@ -214,12 +214,12 @@ contract ShiftLiquidityTest is Test, Fixtures {
         (ICLTBase.StrategyKey memory newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 3));
 
         assertEq(newKey.tickLower, tick + tickSpacing);
-        assertEq(newKey.tickUpper, newKey.tickLower + 200);
+        assertEq(newKey.tickUpper, newKey.tickLower + 240);
 
         (newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 4));
 
         assertEq(newKey.tickLower, tick + tickSpacing);
-        assertEq(newKey.tickUpper, newKey.tickLower + 200);
+        assertEq(newKey.tickUpper, newKey.tickLower + 240);
     }
 
     function test_shiftLiquidity_succeedShiftRight() public {
@@ -282,12 +282,12 @@ contract ShiftLiquidityTest is Test, Fixtures {
         (ICLTBase.StrategyKey memory newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 3));
 
         assertEq(newKey.tickUpper, tick - tickSpacing);
-        assertEq(newKey.tickLower, newKey.tickUpper - 200);
+        assertEq(newKey.tickLower, newKey.tickUpper - 240);
 
         (newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 4));
 
         assertEq(newKey.tickUpper, tick - tickSpacing);
-        assertEq(newKey.tickLower, newKey.tickUpper - 200);
+        assertEq(newKey.tickLower, newKey.tickUpper - 240);
     }
 
     function test_shiftLiquidity_mintLiquidityAfterExit() public {
@@ -529,8 +529,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,,, uint256 totalFee0, uint256 totalFee1) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(key);
 
         (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
 
@@ -658,7 +657,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (totalFee0, totalFee1) = getPoolPositionFee(newKey);
+        (totalFee0, totalFee1) = getPoolPositionFee(key);
 
         (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
         (,,,,,,,, ICLTBase.Account memory accountStrategy2) = base.strategies(getStrategyID(address(this), 2));

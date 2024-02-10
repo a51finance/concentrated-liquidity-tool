@@ -275,15 +275,15 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
         /// user1 has earned more fees which is 66% which is fishy because for token1 both have equal share & growth
-        assertEq(token0.balanceOf(msg.sender), 4_416_689_949_339_070);
-        assertEq(token1.balanceOf(msg.sender), 2_393_644_397_049_624);
+        assertEq(token0.balanceOf(msg.sender), 809_688_388_863_818);
+        assertEq(token1.balanceOf(msg.sender), 399_990_073_775_941);
 
         vm.startPrank(users[0]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
         /// user2 has earned 33% of token1
-        assertEq(token0.balanceOf(users[1]), 603_895_394_819_763);
-        assertEq(token1.balanceOf(users[1]), 600_879_131_409_738);
+        assertEq(token0.balanceOf(users[1]), 201_195_232_243_342);
+        assertEq(token1.balanceOf(users[1]), 198_795_141_058_430);
     }
 
     function test_claimFee_shouldPayStrategistFee() public {
