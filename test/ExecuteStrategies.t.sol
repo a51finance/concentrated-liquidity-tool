@@ -317,7 +317,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         data[0] = identicalId;
         data[1] = identicalId;
         data[2] = identicalId;
-        // bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", identicalId);
         vm.expectRevert();
         rebaseModule.checkStrategiesArray(data);
     }
@@ -342,8 +341,8 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         bytes32 strategyID = getStrategyID(owner, 1);
 
         depositParams.strategyId = strategyID;
-        depositParams.amount0Desired = 1000;
-        depositParams.amount1Desired = 1000;
+        depositParams.amount0Desired = 2000;
+        depositParams.amount1Desired = 2000;
         depositParams.amount0Min = 0;
         depositParams.amount1Min = 0;
         depositParams.recipient = owner;
@@ -865,6 +864,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
 
         (, uint256 shares2,,,,) = base.positions(2);
+
         _hevm.prank(users[1]);
         base.withdraw(
             ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
@@ -967,8 +967,8 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         bytes32 strategyID = getStrategyID(owner, 1);
 
         depositParams.strategyId = strategyID;
-        depositParams.amount0Desired = 1000;
-        depositParams.amount1Desired = 1000;
+        depositParams.amount0Desired = 2000;
+        depositParams.amount1Desired = 2000;
         depositParams.amount0Min = 0;
         depositParams.amount1Min = 0;
         depositParams.recipient = owner;
