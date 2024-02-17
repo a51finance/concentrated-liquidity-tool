@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
+import { SafeCastExtended } from "./SafeCastExtended.sol";
 import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -10,6 +11,8 @@ import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 /// @title  UserPositions
 /// @notice UserPositions store additional state for tracking fees owed to the user compound or no compound strategy
 library UserPositions {
+    using SafeCastExtended for uint256;
+
     struct Data {
         bytes32 strategyId;
         uint256 liquidityShare;
@@ -30,17 +33,13 @@ library UserPositions {
     )
         public
     {
-        self.tokensOwed0 += uint128(
-            FullMath.mulDiv(
-                feeGrowthInside0LastX128 - self.feeGrowthInside0LastX128, self.liquidityShare, FixedPoint128.Q128
-            )
-        );
+        self.tokensOwed0 += FullMath.mulDiv(
+            feeGrowthInside0LastX128 - self.feeGrowthInside0LastX128, self.liquidityShare, FixedPoint128.Q128
+        ).toUint128();
 
-        self.tokensOwed1 += uint128(
-            FullMath.mulDiv(
-                feeGrowthInside1LastX128 - self.feeGrowthInside1LastX128, self.liquidityShare, FixedPoint128.Q128
-            )
-        );
+        self.tokensOwed1 += FullMath.mulDiv(
+            feeGrowthInside1LastX128 - self.feeGrowthInside1LastX128, self.liquidityShare, FixedPoint128.Q128
+        ).toUint128();
 
         self.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
         self.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
