@@ -90,6 +90,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         params.shouldMint = executeParams.shouldMint;
         params.zeroForOne = executeParams.zeroForOne;
         params.swapAmount = executeParams.swapAmount;
+        params.sqrtPriceLimitX96 = executeParams.sqrtPriceLimitX96;
 
         isExited = !executeParams.shouldMint;
 
