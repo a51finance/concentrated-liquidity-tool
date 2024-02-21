@@ -784,8 +784,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
         executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
         executeParams.shouldMint = true;
-        executeParams.zeroForOne = false;
-        executeParams.swapAmount = 0;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1_000_000;
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -794,10 +794,6 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(key.tickLower > tick, true);
         assertEq(key.tickUpper > tick, true);
-
-        console.logInt(key.tickLower);
-        console.logInt(key.tickUpper);
-        console.logInt(tick);
 
         assertEq(reserve1, 0);
         assertEq(reserve0 > 0, true);
@@ -813,13 +809,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(key.tickLower < tick, true);
         assertEq(key.tickUpper < tick, true);
 
-        console.logInt(key.tickLower);
-        console.logInt(key.tickUpper);
-        console.logInt(tick);
-
-        console.log("res", reserve1, account.balance0, account.balance1);
         assertEq(reserve0, 0);
-        // assertEq(reserve1 > 0, true);
+        assertEq(reserve1 > 0, true);
     }
 
     function testExecuteStrategyWithMintTrueInValidSideMode2Uncomp() public {
@@ -864,19 +855,13 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (key,,,,,,,, account) = base.strategies(strategyID);
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        console.log(reserve0);
-        console.log(reserve1);
-
-        console.log(account.balance0);
-        console.log(account.balance1);
-
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
         executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
         executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
         executeParams.shouldMint = true;
-        executeParams.zeroForOne = false;
-        executeParams.swapAmount = 0;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000_000;
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1603,8 +1588,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
         executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
         executeParams.shouldMint = true;
-        executeParams.zeroForOne = false;
-        executeParams.swapAmount = 0;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 100_000;
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1676,8 +1661,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
         executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
         executeParams.shouldMint = true;
-        executeParams.zeroForOne = false;
-        executeParams.swapAmount = 0;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 100_000;
 
         rebaseModule.executeStrategy(executeParams);
 

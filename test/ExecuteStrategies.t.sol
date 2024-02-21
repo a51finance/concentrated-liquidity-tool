@@ -832,6 +832,12 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         depoit(strategyID, users[0], 10 ether, 10 ether);
 
+        ICLTBase.Account memory accounts;
+        ICLTBase.StrategyKey memory key;
+
+        (key,,,,,,,, accounts) = base.strategies(strategyID);
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, accounts.uniswapLiquidity);
+
         executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
@@ -852,10 +858,12 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         depoit(strategyID, users[1], 10 ether, 10 ether);
 
-        ICLTBase.Account memory accounts;
-        ICLTBase.StrategyKey memory key;
+        uint256 previousBalance0 = accounts.balance0;
+
         (key,,,,,,,, accounts) = base.strategies(strategyID);
-        assertEq(token0.balanceOf(users[1]), 10 ether - accounts.balance0);
+        (reserve0, reserve1) = getStrategyReserves(key, accounts.uniswapLiquidity);
+
+        assertEq(token0.balanceOf(users[1]), 10 ether - (accounts.balance0 - previousBalance0));
         assertEq(token1.balanceOf(users[1]), 0);
 
         executeSwap(token0, token1, owner, 50e18, 0, 0);

@@ -14,33 +14,33 @@ import "../src/modules/rebasing/RebaseModule.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 contract DeployALP is Script {
-    address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+    address _weth9 = 0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889;
 
-    IAlgebraFactory _factoryAddress = IAlgebraFactory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+    IAlgebraFactory _factoryAddress = IAlgebraFactory(0x9cE372C452d8621fB891EA65456A51e5e4863F4C);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        CLTModules cltModules = new CLTModules();
+        // CLTModules cltModules = new CLTModules();
 
-        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
-            lpAutomationFee: 0,
-            strategyCreationFee: 0,
-            protcolFeeOnManagement: 0,
-            protcolFeeOnPerformance: 0
-        });
+        // IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+        //     lpAutomationFee: 0,
+        //     strategyCreationFee: 0,
+        //     protcolFeeOnManagement: 0,
+        //     protcolFeeOnPerformance: 0
+        // });
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
+        // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
-        CLTBase baseContract =
-            new CLTBase("ALP_TOKEN", "ALPT", _weth9, address(feeHandler), address(cltModules), _factoryAddress);
+        // CLTBase baseContract =
+        //     new CLTBase("ALP_TOKEN", "ALPT", _weth9, address(feeHandler), address(cltModules), _factoryAddress);
 
         new CLTHelper();
 
-        new Modes(address(baseContract));
+        // new Modes(address(baseContract));
 
-        new RebaseModule(address(baseContract));
+        // new RebaseModule(address(baseContract));
 
         vm.stopBroadcast();
     }
