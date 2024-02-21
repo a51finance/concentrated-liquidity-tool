@@ -64,6 +64,59 @@ contract ShiftLiquidityTest is Test, Fixtures {
         base.toggleOperator(msg.sender);
     }
 
+    function test_shiftLiquidity_shouldRevertInvalidState() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing * 10, tickUpper: tick + tickSpacing * 10 });
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(getStrategyID(address(this), 1));
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // invalid ticks stored here because we are trying to add in range liquidity with only 1 asset
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 1));
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+    }
+
     function test_shiftLiquidity_revertsIfNotWhitelistAccount() public {
         assert(base.isOperator(msg.sender));
 
