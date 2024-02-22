@@ -476,7 +476,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 

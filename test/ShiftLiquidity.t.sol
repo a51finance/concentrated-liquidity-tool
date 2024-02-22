@@ -89,8 +89,9 @@ contract ShiftLiquidityTest is Test, Fixtures {
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(getStrategyID(address(this), 1));
         (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        // invalid ticks stored here because we are trying to add in range liquidity with only 1 asset
+        // invalid state will be stored here because we are trying to add in range liquidity with only 1 asset
         vm.prank(msg.sender);
+        vm.expectRevert();
         base.shiftLiquidity(
             ICLTBase.ShiftLiquidityParams({
                 key: newKey,
@@ -100,19 +101,6 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 swapAmount: 0,
                 moduleStatus: "",
                 sqrtPriceLimitX96: 0
-            })
-        );
-
-        (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 1));
-
-        base.deposit(
-            ICLTBase.DepositParams({
-                strategyId: getStrategyID(address(this), 1),
-                amount0Desired: 4 ether,
-                amount1Desired: 4 ether,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this)
             })
         );
     }
