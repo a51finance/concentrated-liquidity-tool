@@ -56,16 +56,14 @@ library Position {
     )
         public
     {
-        if (liquidityAdded > 0) {
-            // fees amounts that are not added on AMM will be in held in contract balance
-            self.account.balance0 = amount0Added;
-            self.account.balance1 = amount1Added;
+        // fees amounts that are not added on AMM will be in held in contract balance
+        self.account.balance0 = amount0Added;
+        self.account.balance1 = amount1Added;
 
-            self.account.fee0 = 0;
-            self.account.fee1 = 0;
+        self.account.fee0 = 0;
+        self.account.fee1 = 0;
 
-            self.account.uniswapLiquidity += liquidityAdded;
-        }
+        self.account.uniswapLiquidity += liquidityAdded;
     }
 
     /// @notice updates the strategy and mint new position on AMM

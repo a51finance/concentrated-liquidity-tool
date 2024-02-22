@@ -105,22 +105,20 @@ library PoolActions {
     {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
 
-        if (liquidity > 0) {
-            (amount0, amount1) = key.pool.mint(
-                address(this),
-                key.tickLower,
-                key.tickUpper,
-                liquidity,
-                abi.encode(
-                    ICLTPayments.MintCallbackData({
-                        token0: key.pool.token0(),
-                        token1: key.pool.token1(),
-                        fee: key.pool.fee(),
-                        payer: address(this)
-                    })
-                )
-            );
-        }
+        (amount0, amount1) = key.pool.mint(
+            address(this),
+            key.tickLower,
+            key.tickUpper,
+            liquidity,
+            abi.encode(
+                ICLTPayments.MintCallbackData({
+                    token0: key.pool.token0(),
+                    token1: key.pool.token1(),
+                    fee: key.pool.fee(),
+                    payer: address(this)
+                })
+            )
+        );
     }
 
     /// @notice Swap token0 for token1, or token1 for token0
@@ -186,9 +184,10 @@ library PoolActions {
 
         (uint256 total0, uint256 total1) = (collect0 + balance0, collect1 + balance1);
 
-        (liquidity, collect0, collect1) = mintLiquidity(key, total0, total1);
-
-        (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
+        if (getLiquidityForAmounts(key, total0, total1) > 0) {
+            (liquidity, collect0, collect1) = mintLiquidity(key, total0, total1);
+            (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
+        }
     }
 
     /// @notice Get the info of the given strategy position
