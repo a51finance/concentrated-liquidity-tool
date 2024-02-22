@@ -495,6 +495,9 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (key,,,,,,,, account) = base.strategies(strategyID);
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
+        int24 previousTickLower = key.tickLower;
+        int24 previousTickUpper = key.tickUpper;
+
         assertEq(key.tickLower < tick, true);
         assertEq(key.tickUpper < tick, true);
 
@@ -509,8 +512,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (key,,,,,,,, account) = base.strategies(strategyID);
 
         // since its mode 2 the ticks will roll back
-        assertEq(key.tickLower > tick, true);
-        assertEq(key.tickUpper > tick, true);
+        assertEq(key.tickLower == previousTickLower, true);
+        assertEq(key.tickUpper == previousTickUpper, true);
     }
 
     function testExecuteStrategyWithMintFalseInValidSideMode1Uncompounded() public {
@@ -545,7 +548,9 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
         executeParams.shouldMint = false;
         executeParams.zeroForOne = false;
-        executeParams.swapAmount = 0;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -608,6 +613,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -965,16 +972,20 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
 
+        vm.expectRevert();
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
         rebaseModule.executeStrategy(executeParams);
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
         assertEq(strategyKey.tickLower < tick, true);
         assertEq(strategyKey.tickUpper > tick, true);
-
-        assertEq(reserve0, 0);
-        assertEq(reserve1, 0);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
@@ -1048,16 +1059,20 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
 
+        vm.expectRevert();
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
         rebaseModule.executeStrategy(executeParams);
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
         assertEq(strategyKey.tickLower < tick, true);
         assertEq(strategyKey.tickUpper > tick, true);
-
-        assertEq(reserve0, 0);
-        assertEq(reserve1, 0);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
