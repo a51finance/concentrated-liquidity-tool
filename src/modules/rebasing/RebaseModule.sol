@@ -141,8 +141,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @dev This function is used to limit the number of manual swaps within a 24-hour period.
     /// @param lastUpdateTimeStamp The last time the swap count was updated.
     /// @param manualSwapsCount The current count of manual swaps.
-    /// @return updatedTime The updated time stamp.
-    /// @return swapCount The updated swap count.
+    /// @return uint256 The updated time stamp.
+    /// @return uint256 The updated swap count.
     /// @custom:errors SwapsThresholdExceeded if the number of swaps exceeds the set threshold within a day.
     function checkSwapsInADay(
         uint256 lastUpdateTimeStamp,
@@ -150,14 +150,12 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     )
         internal
         view
-        returns (uint256 updatedTime, uint256 swapCount)
+        returns (uint256, uint256)
     {
         if (block.timestamp <= lastUpdateTimeStamp + ONE_DAY) {
             if (manualSwapsCount >= swapsThreshold) revert SwapsThresholdExceeded();
             return (lastUpdateTimeStamp, manualSwapsCount += 1);
-        }
-
-        if (block.timestamp > lastUpdateTimeStamp + ONE_DAY) {
+        } else {
             return (block.timestamp, manualSwapsCount = 1);
         }
     }
@@ -435,7 +433,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice Updates the swaps threshold.
     /// @dev Reverts if the new threshold is less than zero.
     /// @param _newThreshold The new liquidity threshold value.
-
     function updateSwapsThreshold(uint256 _newThreshold) external onlyOperator {
         if (_newThreshold < 0) {
             revert InvalidThreshold();
