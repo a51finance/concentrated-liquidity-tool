@@ -1903,4 +1903,276 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (, exit) = abi.decode(actionStatus, (uint256, bool));
         assertEq(exit, false);
     }
+
+    function testSwapThresholdFunctionalitySwapThresholdZero() public {
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, false, 1, 1);
+
+        // set swap threshold to zero
+        rebaseModule.updateSwapsThreshold(0);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 1200, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1800, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 100;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+    }
+
+    function testSwapThresholdFunctionalitySwapThresholdValue() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        bytes memory actionStatus;
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (uint256 rebaseCount, bool isExited, uint256 lastUpdateTime, uint256 swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 1);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, 0);
+        assertEq(swapsCount, 0);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 1);
+        assertEq(isExited, true);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
+
+        _hevm.warp(block.timestamp + 300);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 1);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp - 300);
+        assertEq(swapsCount, 2);
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 2);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp - 300 - 3600);
+        assertEq(swapsCount, 2);
+    }
+
+    function testSwapThresholdWithActionStatusLengthZero() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        bytes memory actionStatus;
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (uint256 rebaseCount, bool isExited, uint256 lastUpdateTime, uint256 swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 0);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
+    }
+
+    function testSwapThresholdWithExceedingLimit() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
+
+        rebaseModule.updateSwapsThreshold(1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        bytes memory actionStatus;
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (uint256 rebaseCount, bool isExited, uint256 lastUpdateTime, uint256 swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 0);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        bytes memory encodedError = abi.encodeWithSignature("SwapsThresholdExceeded()");
+        vm.expectRevert(encodedError);
+        rebaseModule.executeStrategy(executeParams);
+
+        _hevm.warp(block.timestamp + 1 days + 3600);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 0);
+        assertEq(isExited, true);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
+    }
 }
