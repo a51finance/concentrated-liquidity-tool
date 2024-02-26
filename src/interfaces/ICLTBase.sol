@@ -51,6 +51,8 @@ interface ICLTBase {
         uint128 uniswapLiquidity;
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
+        uint256 feeGrowthOutside0LastX128;
+        uint256 feeGrowthOutside1LastX128;
     }
 
     /// @param key A51 position's key details

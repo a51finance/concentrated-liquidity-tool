@@ -108,7 +108,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
                 totalShares: 0,
                 uniswapLiquidity: 0,
                 feeGrowthInside0LastX128: 0,
-                feeGrowthInside1LastX128: 0
+                feeGrowthInside1LastX128: 0,
+                feeGrowthOutside0LastX128: 0,
+                feeGrowthOutside1LastX128: 0
             })
         });
 
