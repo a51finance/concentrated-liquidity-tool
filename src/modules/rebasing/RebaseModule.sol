@@ -107,7 +107,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
                 (,, uint256 _lastUpdateTimeStamp, uint256 _manualSwapsCount) =
                     abi.decode(actionStatus, (uint256, bool, uint256, uint256));
 
-                (lastUpdateTimeStamp, manualSwapsCount) = checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
+                (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
             } else {
                 lastUpdateTimeStamp = block.timestamp;
                 manualSwapsCount = 1;
