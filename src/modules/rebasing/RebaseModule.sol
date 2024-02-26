@@ -19,8 +19,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice Threshold for liquidity consideration
     uint256 public liquidityThreshold = 1e3;
 
-    uint256 private constant ONE_DAY = 1 days;
-
     /// @notice Threshold for swaps in manual override
     uint256 public swapsThreshold = 5;
 
@@ -144,7 +142,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @return uint256 The updated time stamp.
     /// @return uint256 The updated swap count.
     /// @custom:errors SwapsThresholdExceeded if the number of swaps exceeds the set threshold within a day.
-    function checkSwapsInADay(
+    function _checkSwapsInADay(
         uint256 lastUpdateTimeStamp,
         uint256 manualSwapsCount
     )
@@ -152,7 +150,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         view
         returns (uint256, uint256)
     {
-        if (block.timestamp <= lastUpdateTimeStamp + ONE_DAY) {
+        if (block.timestamp <= lastUpdateTimeStamp + 1 days) {
             if (manualSwapsCount >= swapsThreshold) revert SwapsThresholdExceeded();
             return (lastUpdateTimeStamp, manualSwapsCount += 1);
         } else {
