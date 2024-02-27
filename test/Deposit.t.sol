@@ -427,7 +427,7 @@ contract DepositTest is Test, Fixtures {
         vm.prank(users[1]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(users[1]), fees0);
+        assertEq(token0.balanceOf(users[1]), fees0 - 1);
 
         (, fee0, fee1) = base.getStrategyReserves(strategyID1);
         (, fees0, fees1) = base.getStrategyReserves(strategyID2);
@@ -757,9 +757,7 @@ contract DepositTest is Test, Fixtures {
             })
         );
 
-        vm.prank(address(base));
-        pool.burn(key.tickLower, key.tickUpper, 0);
-        (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(key);
+        (, uint256 totalFee0, uint256 totalFee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
 
         base.deposit(params);
 

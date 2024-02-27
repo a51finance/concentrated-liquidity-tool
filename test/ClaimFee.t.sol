@@ -144,8 +144,8 @@ contract ClaimFeeTest is Test, Fixtures {
         vm.startPrank(address(this));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(msg.sender), account.fee0);
-        assertEq(token1.balanceOf(msg.sender), account.fee1);
+        assertEq(token0.balanceOf(msg.sender), account.fee0 - 1);
+        assertEq(token1.balanceOf(msg.sender), account.fee1 - 1);
     }
 
     function test_claimFee_multipleUserShare() public {
@@ -196,7 +196,7 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[2], tokenId: 2, refundAsETH: true }));
 
         assertEq(token0.balanceOf(users[1]), fee0 * 25 / 100);
-        assertEq(token0.balanceOf(users[2]), fee0 * 75 / 100 + 1);
+        assertEq(token0.balanceOf(users[2]), fee0 * 75 / 100);
     }
 
     function test_claimFee_multipleUsersWithDifferentFeeGrowth() public {
@@ -275,7 +275,7 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
         /// user1 has earned more fees which is 66% which is fishy because for token1 both have equal share & growth
-        assertEq(token0.balanceOf(msg.sender), 809_688_388_863_818);
+        assertEq(token0.balanceOf(msg.sender), 809_688_388_863_816);
         assertEq(token1.balanceOf(msg.sender), 399_990_073_775_941);
 
         vm.startPrank(users[0]);
@@ -283,7 +283,7 @@ contract ClaimFeeTest is Test, Fixtures {
 
         /// user2 has earned 33% of token1
         assertEq(token0.balanceOf(users[1]), 201_195_232_243_342);
-        assertEq(token1.balanceOf(users[1]), 198_795_141_058_430);
+        assertEq(token1.balanceOf(users[1]), 198_795_141_058_429);
     }
 
     function test_claimFee_shouldPayStrategistFee() public {

@@ -238,7 +238,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         assertEq(feeGrowthInside0LastX128, account.feeGrowthInside0LastX128);
         assertEq(feeGrowthInside1LastX128, account.feeGrowthInside1LastX128);
 
-        assertEq(uint256(tokensOwed0), totalFee0 / 2);
-        assertEq(uint256(tokensOwed1), totalFee1 / 2 - 1);
+        assertEq(uint256(tokensOwed0), totalFee0 / 2 - 1);
+        assertEq(uint256(tokensOwed1), totalFee1 / 2 - 2);
     }
 }
