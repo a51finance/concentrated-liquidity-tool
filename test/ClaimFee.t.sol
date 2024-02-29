@@ -286,6 +286,67 @@ contract ClaimFeeTest is Test, Fixtures {
         assertEq(token1.balanceOf(users[1]), 198_795_141_058_429);
     }
 
+    function test_claimFee_poc() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                limitSqrtPrice: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                limitSqrtPrice: 0
+            })
+        );
+
+        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        console.log("total fee of user -> ", fee0, fee1);
+
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: 4 ether, amount1Desired: 4 ether })
+        );
+
+        // after changing ticks user fee growth will be invalid because strategy has been assigned new fee growth for
+        // new ticks
+        (, int24 tick,,,,,) = pool.globalState();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 240, tickUpper: tick - tickSpacing });
+
+        base.toggleOperator(address(this));
+
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: ""
+            })
+        );
+
+        // user can't claim fee because strategy fee grwoth is 0 hence fee stuck in contract
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
+
+        console.log("fee claimed -> ", token0.balanceOf(msg.sender), token1.balanceOf(msg.sender));
+    }
+
     function test_claimFee_shouldPayStrategistFee() public {
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -180, tickUpper: 180 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
