@@ -252,6 +252,7 @@ interface ICLTBase {
     /// @return amount1 The amount of token1 to acheive resulting liquidity
     function updatePositionLiquidity(UpdatePositionParams calldata params)
         external
+        payable
         returns (uint256 share, uint256 amount0, uint256 amount1);
 
     /// @param params tokenId The ID of the token for which liquidity is being decreased
