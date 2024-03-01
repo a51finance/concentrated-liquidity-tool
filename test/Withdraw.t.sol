@@ -327,7 +327,8 @@ contract WithdrawTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: abi.encode(1, true)
+                moduleStatus: abi.encode(1, true),
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -441,7 +442,8 @@ contract WithdrawTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: abi.encode(1, true)
+                moduleStatus: abi.encode(1, true),
+                sqrtPriceLimitX96: 0
             })
         );
 

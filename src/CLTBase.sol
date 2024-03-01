@@ -118,6 +118,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner(), strategyCreationFeeAmount);
 
+        refundETH();
+
         emit StrategyCreated(strategyID);
     }
 
@@ -184,7 +186,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         external
         override
         nonReentrancy
-        whenNotPaused
         isAuthorizedForToken(params.tokenId)
         returns (uint256 amount0, uint256 amount1)
     {
@@ -371,7 +372,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         if (params.swapAmount != 0) {
             (int256 amount0Swapped, int256 amount1Swapped) =
-                PoolActions.swapToken(params.key.pool, params.zeroForOne, params.swapAmount);
+                PoolActions.swapToken(params.key.pool, params.zeroForOne, params.swapAmount, params.sqrtPriceLimitX96);
 
             (vars.balance0, vars.balance1) = PoolActions.amountsDirection(
                 params.zeroForOne,
@@ -484,9 +485,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         strategy.update(global, vars.uniswapLiquidity, share, amount0, amount1, vars.balance0, vars.balance1);
 
-        if (address(this).balance > 0) {
-            TransferHelper.safeTransferETH(_msgSender(), address(this).balance);
-        }
+        refundETH();
 
         feeGrowthInside0LastX128 = strategy.account.feeGrowthInside0LastX128;
         feeGrowthInside1LastX128 = strategy.account.feeGrowthInside1LastX128;

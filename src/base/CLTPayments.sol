@@ -93,6 +93,15 @@ abstract contract CLTPayments is ICLTPayments {
         }
     }
 
+    /// @notice Refunds any ETH balance held by this contract to the `msg.sender`
+    /// @dev Useful for bundling with mint or increase liquidity that uses ether, or exact output swaps
+    /// that use ether for the input amount
+    function refundETH() internal {
+        if (address(this).balance > 0) {
+            TransferHelper.safeTransferETH(msg.sender, address(this).balance);
+        }
+    }
+
     /// @param key A51 strategy key details
     /// @param protcolPercentage The value of percentage to deduct from strategist earned fee
     /// @param percentage The value of percentage to deduct from liquidity or eanrned fee & transfer it to strategist

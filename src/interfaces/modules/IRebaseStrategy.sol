@@ -26,6 +26,7 @@ interface IRebaseStrategy {
         bool shouldMint;
         bool zeroForOne;
         int256 swapAmount;
+        uint160 sqrtPriceLimitX96;
     }
 
     event Executed(ExecutableStrategiesData[] strategyIds);

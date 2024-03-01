@@ -300,6 +300,7 @@ interface ICLTBase {
         bool zeroForOne;
         int256 swapAmount;
         bytes moduleStatus;
+        uint160 sqrtPriceLimitX96;
     }
 
     /// @notice Updates the strategy's liquidity accordingly w.r.t basic or advance module when it is activated

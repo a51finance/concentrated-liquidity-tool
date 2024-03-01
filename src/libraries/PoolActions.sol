@@ -133,18 +133,12 @@ library PoolActions {
     function swapToken(
         IAlgebraPool pool,
         bool zeroForOne,
-        int256 amountSpecified
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96
     )
         external
         returns (int256 amount0, int256 amount1)
     {
-        (uint160 sqrtPriceX96,,) = getSqrtRatioX96AndTick(pool);
-
-        uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (1e5 / 2)) / 1e6;
-
-        uint160 sqrtPriceLimitX96 =
-            zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact;
-
         (amount0, amount1) = pool.swap(
             address(this),
             zeroForOne,
