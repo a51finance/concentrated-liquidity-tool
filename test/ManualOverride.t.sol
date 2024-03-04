@@ -8,6 +8,7 @@ import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { Test } from "forge-std/Test.sol";
 import { IQuoter } from "@cryptoalgebra/periphery/contracts/interfaces/IQuoter.sol";
 import { console } from "forge-std/console.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
 
 contract ManualOverrideTest is Test, RebaseFixtures {
     address payable[] users;
@@ -273,6 +274,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = false;
         executeParams.zeroForOne = false;
         executeParams.swapAmount = int256(reserve1 / 2);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -786,6 +789,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = 1_000_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -849,6 +854,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = false;
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -862,6 +869,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = 10_000_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1125,6 +1134,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1202,6 +1213,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1279,6 +1292,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 2);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1360,6 +1375,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 2);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1590,6 +1607,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = 100_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1663,6 +1682,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = 100_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1768,6 +1789,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = false;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
         bytes memory actionStatus;
@@ -1857,6 +1880,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = false;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
         bytes memory actionStatus;
