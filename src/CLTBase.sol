@@ -163,16 +163,17 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         returns (uint256 share, uint256 amount0, uint256 amount1)
     {
         UserPositions.Data storage position = positions[params.tokenId];
+        bytes32 strategyId = position.strategyId;
 
-        _authorizationOfStrategy(position.strategyId);
+        _authorizationOfStrategy(strategyId);
 
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
 
         (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
-            _deposit(position.strategyId, params.amount0Desired, params.amount1Desired);
+            _deposit(strategyId, params.amount0Desired, params.amount1Desired);
 
-        if (!strategies[position.strategyId].isCompound) {
+        if (!strategies[strategyId].isCompound) {
             position.updateUserPosition(feeGrowthInside0LastX128, feeGrowthInside1LastX128);
         }
 
