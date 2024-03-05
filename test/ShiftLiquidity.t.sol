@@ -83,6 +83,43 @@ contract ShiftLiquidityTest is Test, Fixtures {
         );
     }
 
+    function test_shiftLiquidity_revertsInvalidState() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                limitSqrtPrice: 0
+            })
+        );
+
+        (, int24 tick,,,,,) = pool.globalState();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing * 10, tickUpper: tick + tickSpacing * 10 });
+
+        // invalid state will be stored here because we are trying to add in range liquidity with only 1 asset
+        vm.prank(msg.sender);
+        vm.expectRevert();
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
+    }
+
     function test_shiftLiquidity_succeedCorrectEventParams() public {
         vm.expectEmit(true, true, false, true);
         emit LiquidityShifted(getStrategyID(address(this), 1), true, false, 0);
