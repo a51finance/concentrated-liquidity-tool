@@ -460,9 +460,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
                 strategy.account.balance1 + strategy.account.fee1
             );
 
-            strategy.updateForCompound(vars.uniswapLiquidity, vars.balance0, vars.balance1);
-
-            emit FeeCompounded(strategyId, vars.balance0, vars.balance1);
+            if (vars.uniswapLiquidity > 0) {
+                strategy.updateForCompound(vars.uniswapLiquidity, vars.balance0, vars.balance1);
+                emit FeeCompounded(strategyId, vars.balance0, vars.balance1);
+            }
         }
 
         // shares should not include fee for non-compounders
