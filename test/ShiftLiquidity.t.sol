@@ -222,8 +222,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 tickUpper: key.tickUpper,
                 shouldMint: true,
                 zeroForOne: false,
-                swapAmount: 0,
-                sqrtPriceLimitX96: 0
+                swapAmount: 100,
+                sqrtPriceLimitX96: TickMath.MAX_SQRT_RATIO - 1
             })
         );
     }
