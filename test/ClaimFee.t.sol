@@ -83,7 +83,14 @@ contract ClaimFeeTest is Test, Fixtures {
 
     function test_claimFee_revertsIfNoLiquidity() public {
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 4 ether, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: 4 ether,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         vm.expectRevert(ICLTBase.NoLiquidity.selector);
@@ -391,7 +398,13 @@ contract ClaimFeeTest is Test, Fixtures {
         console.log("total fee of user -> ", fee0, fee1);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: 4 ether, amount1Desired: 4 ether })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 1,
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         // after changing ticks user fee growth will be invalid because strategy has been assigned new fee growth for

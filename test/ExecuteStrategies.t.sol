@@ -829,7 +829,14 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         (, uint256 shares2,,,,) = base.positions(2);
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: shares2,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -907,7 +914,14 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: shares2,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 

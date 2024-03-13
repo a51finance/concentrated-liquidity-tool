@@ -66,6 +66,18 @@ contract StrategyTest is Test, Fixtures {
         base.updateStrategyBase(getStrategyID(address(this), 1), address(1445), 0.2 ether, 0.3 ether, actions);
     }
 
+    function test_strategy_revertsIfNewOwnerIsZero() public {
+        ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyId = getStrategyID(address(this), 1);
+
+        actions = createStrategyActions(3, 1, 0, 0, 100, 200);
+
+        vm.expectRevert(ICLTBase.OwnerCannotBeZeroAddress.selector);
+        base.updateStrategyBase(strategyId, address(0), 0, 0, actions);
+    }
+
     function test_strategy_shouldPayProtocolFee() public {
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
