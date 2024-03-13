@@ -253,15 +253,28 @@ library PoolActions {
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
+        (uint160 sqrtRatioX96, int24 tick,,,,,) = key.pool.slot0();
 
-        int256 amount0Delta = SqrtPriceMath.getAmount0Delta(
-            sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
-        );
+        int256 amount0Delta;
+        int256 amount1Delta;
 
-        int256 amount1Delta = SqrtPriceMath.getAmount1Delta(
-            TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
-        );
+        if (tick < key.tickLower) {
+            amount0Delta = SqrtPriceMath.getAmount0Delta(
+                sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
+            );
+        } else if (tick < key.tickUpper) {
+            amount0Delta = SqrtPriceMath.getAmount0Delta(
+                sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
+            );
+
+            amount1Delta = SqrtPriceMath.getAmount1Delta(
+                TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
+            );
+        } else {
+            amount1Delta = SqrtPriceMath.getAmount1Delta(
+                TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
+            );
+        }
 
         (amount0, amount1) = (uint256(amount0Delta), uint256(amount1Delta));
     }

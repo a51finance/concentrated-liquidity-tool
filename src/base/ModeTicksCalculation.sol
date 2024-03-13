@@ -8,6 +8,8 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 /// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
 abstract contract ModeTicksCalculation {
+    error LiquidityShiftNotNeeded();
+
     uint32 internal _twapDuration = 300;
 
     /// @notice Computes new tick lower and upper for the individual strategy downside
@@ -29,6 +31,8 @@ abstract contract ModeTicksCalculation {
 
             tickLower = currentTick + tickSpacing;
             tickUpper = floorTick(tickLower + positionWidth, tickSpacing);
+        } else {
+            revert LiquidityShiftNotNeeded();
         }
     }
 
@@ -51,6 +55,8 @@ abstract contract ModeTicksCalculation {
 
             tickUpper = currentTick - tickSpacing;
             tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
+        } else {
+            revert LiquidityShiftNotNeeded();
         }
     }
 
@@ -63,6 +69,8 @@ abstract contract ModeTicksCalculation {
         int24 currentTick = getTwap(key.pool);
         if (currentTick < key.tickLower) return shiftLeft(key);
         if (currentTick > key.tickUpper) return shiftRight(key);
+
+        revert LiquidityShiftNotNeeded();
     }
 
     /// @notice Calculates time-weighted means of tick and liquidity for a given pool
