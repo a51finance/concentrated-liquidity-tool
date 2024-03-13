@@ -15,7 +15,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     ICLTBase _cltBase;
 
     /// @notice Threshold for swaps in manual override
-    uint256 public swapsThreshold = 5;
+    uint256 public swapsThreshold = 2;
 
     // 0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b
     bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
@@ -96,14 +96,17 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         uint256 manualSwapsCount;
 
         if (swapsThreshold != 0 && executeParams.swapAmount > 0) {
-            if (actionStatus.length > 0) {
-                (,, uint256 _lastUpdateTimeStamp, uint256 _manualSwapsCount) =
-                    abi.decode(actionStatus, (uint256, bool, uint256, uint256));
-
-                (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
-            } else {
+            if (actionStatus.length == 0) {
                 lastUpdateTimeStamp = block.timestamp;
                 manualSwapsCount = 1;
+            } else {
+                if (actionStatus.length == 64) {
+                    (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(0, 0);
+                } else {
+                    (,, uint256 _lastUpdateTimeStamp, uint256 _manualSwapsCount) =
+                        abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+                    (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
+                }
             }
         }
 
