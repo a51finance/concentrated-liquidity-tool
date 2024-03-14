@@ -4,6 +4,7 @@ pragma solidity =0.8.15;
 import "forge-std/Script.sol";
 import "../src/CLTBase.sol";
 import "../src/CLTModules.sol";
+import "../src/CLTTwapQuoter.sol";
 import "../src/utils/CLTHelper.sol";
 import "../src/GovernanceFeeHandler.sol";
 import "../src/interfaces/IGovernanceFeeHandler.sol";
@@ -26,6 +27,7 @@ contract DeployALP is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         CLTModules cltModules = new CLTModules(_owner);
+        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
@@ -40,8 +42,8 @@ contract DeployALP is Script {
             new CLTBase("ALP_TOKEN", "ALPT", _owner, _weth9, address(feeHandler), address(cltModules), _factoryAddress);
 
         new CLTHelper();
-        new Modes(address(baseContract), _owner);
-        new RebaseModule(_owner, address(baseContract));
+        new Modes(address(baseContract), address(twapQuoter), _owner);
+        new RebaseModule(_owner, address(baseContract), address(twapQuoter));
 
         vm.stopBroadcast();
     }

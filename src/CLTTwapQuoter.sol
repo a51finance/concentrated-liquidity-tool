@@ -3,8 +3,7 @@ pragma solidity =0.8.15;
 
 import { ICLTTwapQuoter } from "./interfaces/ICLTTwapQuoter.sol";
 
-import { Owned } from "../lib/solmate/src/auth/Owned.sol";
-
+import { Owned } from "@solmate/auth/Owned.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
@@ -64,7 +63,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Owned {
 
     /// @notice This function fetches the current tick of the pool
     /// @param pool The pool address
-    function getCurrentTick(IUniswapV3Pool pool) internal view returns (int24 tick, uint160 sqrtPriceX96) {
+    function getCurrentTick(IUniswapV3Pool pool) public view returns (int24 tick, uint160 sqrtPriceX96) {
         (sqrtPriceX96, tick,,,,,) = pool.slot0();
     }
 

@@ -5,6 +5,7 @@ import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
+import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
 import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
@@ -12,7 +13,11 @@ import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 /// @notice Explain to an end user what this does
 /// @dev Explain to a developer any extra details
 contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
-    ICLTBase _cltBase;
+    /// @notice The address of base contract
+    ICLTBase public immutable cltBase;
+
+    /// @notice The address of twap qupter
+    ICLTTwapQuoter public twapQuoter;
 
     /// @notice Threshold for swaps in manual override
     uint256 public swapsThreshold = 2;
@@ -25,8 +30,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice Constructs the RebaseModule with the provided parameters.
     /// @param _governance Address of the owner.
     /// @param _baseContractAddress Address of the base contract.
-    constructor(address _governance, address _baseContractAddress) AccessControl(_governance) {
-        _cltBase = ICLTBase(payable(_baseContractAddress));
+    constructor(address _governance, address _baseContractAddress, address _twapQuoter) AccessControl(_governance) {
+        twapQuoter = ICLTTwapQuoter(_twapQuoter);
+        cltBase = ICLTBase(payable(_baseContractAddress));
     }
 
     /// @notice Executes given strategies via bot.
@@ -34,17 +40,20 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @param strategyIDs Array of strategy IDs to be executed.
     function executeStrategies(bytes32[] calldata strategyIDs) external nonReentrancy {
         checkStrategiesArray(strategyIDs);
+
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
+
         uint256 queueLength = _queue.length;
         for (uint256 i = 0; i < queueLength; i++) {
             uint256 rebaseCount;
-            uint256 lastUpdateTimeStamp;
             uint256 manualSwapsCount;
-
+            uint256 lastUpdateTimeStamp;
             bool hasRebaseInactivity = false;
+
             ICLTBase.ShiftLiquidityParams memory params;
+
             (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) =
-                _cltBase.strategies(_queue[i].strategyID);
+                cltBase.strategies(_queue[i].strategyID);
 
             if (_queue[i].actionNames[0] == REBASE_INACTIVITY || _queue[i].actionNames[1] == REBASE_INACTIVITY) {
                 hasRebaseInactivity = true;
@@ -65,14 +74,16 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
                 }
 
                 (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].mode);
+
                 key.tickLower = tickLower;
                 key.tickUpper = tickUpper;
+
                 params.key = key;
                 params.moduleStatus = hasRebaseInactivity
                     ? abi.encode(uint256(++rebaseCount), false, lastUpdateTimeStamp, manualSwapsCount)
                     : actionStatus;
 
-                _cltBase.shiftLiquidity(params);
+                cltBase.shiftLiquidity(params);
             }
         }
     }
@@ -82,7 +93,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
     function executeStrategy(ExectuteStrategyParams calldata executeParams) external nonReentrancy {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
-            _cltBase.strategies(executeParams.strategyID);
+            cltBase.strategies(executeParams.strategyID);
 
         if (strategyOwner == address(0)) revert StrategyIdDonotExist(executeParams.strategyID);
         if (strategyOwner != msg.sender) revert InvalidCaller();
@@ -90,10 +101,10 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
 
-        uint256 rebaseCount;
         bool isExited;
-        uint256 lastUpdateTimeStamp;
+        uint256 rebaseCount;
         uint256 manualSwapsCount;
+        uint256 lastUpdateTimeStamp;
 
         if (swapsThreshold != 0 && executeParams.swapAmount > 0) {
             if (actionStatus.length == 0) {
@@ -130,7 +141,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
         params.moduleStatus = abi.encode(rebaseCount, isExited, lastUpdateTimeStamp, manualSwapsCount);
 
-        _cltBase.shiftLiquidity(params);
+        cltBase.shiftLiquidity(params);
     }
 
     /// @notice Checks and updates the swap count within a single day threshold.
@@ -169,12 +180,14 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         view
         returns (int24 tickLower, int24 tickUpper)
     {
+        int24 currentTick = twapQuoter.getTwap(key.pool);
+
         if (mode == 1) {
-            (tickLower, tickUpper) = shiftLeft(key);
+            (tickLower, tickUpper) = shiftLeft(key, currentTick);
         } else if (mode == 2) {
-            (tickLower, tickUpper) = shiftRight(key);
+            (tickLower, tickUpper) = shiftRight(key, currentTick);
         } else if (mode == 3) {
-            (tickLower, tickUpper) = shiftBothSide(key);
+            (tickLower, tickUpper) = shiftBothSide(key, currentTick);
         }
     }
 
@@ -214,7 +227,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
             ,
             ,
             ICLTBase.Account memory account
-        ) = _cltBase.strategies(strategyId);
+        ) = cltBase.strategies(strategyId);
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
 
@@ -285,13 +298,15 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
         (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
             _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
-        int24 tick = getTwap(key.pool);
+
+        int24 tick = twapQuoter.getTwap(key.pool);
 
         if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower || mode == 3) {
             if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -308,12 +323,14 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         returns (bool)
     {
         uint256 preferredInActivity = abi.decode(strategyDetail.data, (uint256));
+
         if (actionStatus.length > 0) {
             (uint256 rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
             if (rebaseCount > 0 && preferredInActivity == rebaseCount) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -333,9 +350,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         if (hasInActivity) {
             //   check needs to be added on frontend so that rebase inactivity cannot be seleted independently
             uint256 preferredInActivity = abi.decode(actionsData.data, (uint256));
+
             if (preferredInActivity == 0) {
                 revert RebaseInactivityCannotBeZero();
             }
+
             return true;
         }
         revert RebaseStrategyDataCannotBeZero();
@@ -346,11 +365,13 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @return true if the value is nonzero.
     function isNonZero(bytes memory data) internal pure returns (bool) {
         uint256 dataLength = data.length;
+
         for (uint256 i = 0; i < dataLength; i++) {
             if (data[i] != bytes1(0)) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -364,7 +385,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         // check 0 strategyId
         uint256 dataLength = data.length;
         for (uint256 i = 0; i < dataLength; i++) {
-            (, address strategyOwner,,,,,,,) = _cltBase.strategies(data[i]);
+            (, address strategyOwner,,,,,,,) = cltBase.strategies(data[i]);
             if (data[i] == bytes32(0) || strategyOwner == address(0)) {
                 revert InvalidStrategyId(data[i]);
             }
@@ -405,7 +426,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         external
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,,) = _cltBase.strategies(strategyID);
+        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,,) = cltBase.strategies(strategyID);
 
         (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData, (int24, int24));
 
