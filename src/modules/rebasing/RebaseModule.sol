@@ -433,6 +433,12 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         (lowerPreferenceTick, upperPreferenceTick) = _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
     }
 
+    /// @notice Updates the address twapQuoter.
+    /// @param _twapQuoter The new address of twapQuoter
+    function updateTwapQuoter(address _twapQuoter) external onlyOwner {
+        twapQuoter = ICLTTwapQuoter(_twapQuoter);
+    }
+
     /// @notice Updates the swaps threshold.
     /// @dev Reverts if the new threshold is less than zero.
     /// @param _newThreshold The new liquidity threshold value.

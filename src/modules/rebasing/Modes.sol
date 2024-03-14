@@ -119,6 +119,8 @@ contract Modes is ModeTicksCalculation, Owned {
         _twapDuration = value;
     }
 
+    /// @notice Updates the address twapQuoter.
+    /// @param _twapQuoter The new address of twapQuoter
     function updateTwapQuoter(address _twapQuoter) external onlyOwner {
         twapQuoter = ICLTTwapQuoter(_twapQuoter);
     }
