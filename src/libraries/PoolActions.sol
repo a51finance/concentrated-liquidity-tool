@@ -260,7 +260,9 @@ library PoolActions {
 
         if (tick < key.tickLower) {
             amount0Delta = SqrtPriceMath.getAmount0Delta(
-                sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
+                TickMath.getSqrtRatioAtTick(key.tickLower),
+                TickMath.getSqrtRatioAtTick(key.tickUpper),
+                int256(uint256(liquidity)).toInt128()
             );
         } else if (tick < key.tickUpper) {
             amount0Delta = SqrtPriceMath.getAmount0Delta(
@@ -272,7 +274,9 @@ library PoolActions {
             );
         } else {
             amount1Delta = SqrtPriceMath.getAmount1Delta(
-                TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
+                TickMath.getSqrtRatioAtTick(key.tickLower),
+                TickMath.getSqrtRatioAtTick(key.tickUpper),
+                int256(uint256(liquidity)).toInt128()
             );
         }
 
