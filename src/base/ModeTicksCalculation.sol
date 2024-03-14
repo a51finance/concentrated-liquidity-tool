@@ -2,8 +2,6 @@
 pragma solidity =0.8.15;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
-import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 /// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
@@ -18,8 +16,14 @@ abstract contract ModeTicksCalculation {
     /// @param key A51 strategy key details
     /// @return tickLower The lower tick of the range
     /// @return tickUpper The upper tick of the range
-    function shiftLeft(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
-        int24 currentTick = getTwap(key.pool);
+    function shiftLeft(
+        ICLTBase.StrategyKey memory key,
+        int24 currentTick
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick < key.tickLower) {
@@ -42,8 +46,14 @@ abstract contract ModeTicksCalculation {
     /// @param key A51 strategy key details
     /// @return tickLower The lower tick of the range
     /// @return tickUpper The upper tick of the range
-    function shiftRight(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
-        int24 currentTick = getTwap(key.pool);
+    function shiftRight(
+        ICLTBase.StrategyKey memory key,
+        int24 currentTick
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick > key.tickUpper) {
@@ -65,27 +75,18 @@ abstract contract ModeTicksCalculation {
     /// @param key A51 strategy key details
     /// @return tickLower The lower tick of the range
     /// @return tickUpper The upper tick of the range
-    function shiftBothSide(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
-        int24 currentTick = getTwap(key.pool);
-        if (currentTick < key.tickLower) return shiftLeft(key);
-        if (currentTick > key.tickUpper) return shiftRight(key);
+    function shiftBothSide(
+        ICLTBase.StrategyKey memory key,
+        int24 currentTick
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        if (currentTick < key.tickLower) return shiftLeft(key, currentTick);
+        if (currentTick > key.tickUpper) return shiftRight(key, currentTick);
 
         revert LiquidityShiftNotNeeded();
-    }
-
-    /// @notice Calculates time-weighted means of tick and liquidity for a given pool
-    /// @param pool The address of the Pool
-    /// @dev Check price has not moved a lot recently. This mitigates price
-    /// manipulation during shifting of position
-    /// @return twap The time-weighted average price
-    function getTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
-        (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
-
-        (uint32 lastTimeStamp,,,) = pool.observations((observationIndex + 1) % observationCardinality);
-
-        uint32 timeDiff = uint32(block.timestamp) - lastTimeStamp;
-
-        (twap,) = OracleLibrary.consult(address(pool), timeDiff > _twapDuration ? _twapDuration : timeDiff);
     }
 
     /// @dev Rounds tick down towards negative infinity so that it's a multiple
