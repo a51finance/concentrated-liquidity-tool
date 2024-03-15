@@ -6,14 +6,14 @@ const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
 
 require("dotenv").config();
 
-const web3 = new Web3("https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8");
-const contractAddressBase = "0xa5C841e7B73FC1627Ba348Af07Ba81a1EFdDE947";
-const contractAddressCLTModules = "0xC88476C909EFa1853a44Ca12f0370929c7812dd8";
-const contractAddressRebaseModule = "0x67dFF03BB2a429d577017Fffa8F79fF2DFDA02a6";
+const web3 = new Web3("https://virtual.arbitrum.rpc.tenderly.co/96e7d201-d584-405a-aa93-598693f8d621");
+const contractAddressBase = "0x4dBAcAA91e441598d8AFE4e8672E46E4e65910D0";
+const contractAddressCLTModules = "0x74226579ED541adA94582DC4cD6DDd21f6526863";
+const contractAddressRebaseModule = "0x3186E92a05e47988c759b04132Ee239427FDa4bd";
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
-const token0 = "0x07865c6E87B9F70255377e024ace6630C1Eaa37F";
-const token1 = "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6";
+const token0 = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f";
+const token1 = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1";
 
 const contractABIBase = CLTABI.abi;
 const baseContract = new web3.eth.Contract(contractABIBase, contractAddressBase);
@@ -28,9 +28,9 @@ const ERC20ABI = ECR20ABI.abi;
 const ercContractToken0 = new web3.eth.Contract(ERC20ABI, token0);
 const ercContractToken1 = new web3.eth.Contract(ERC20ABI, token1);
 
-const fromAddress = "0x97fF40b5678D2234B1E5C894b5F39b8BA8535431";
+const fromAddress = "0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3";
 const fromAddressA89 = "0xa0e9E6B79a3e1AB87FeB209567eF3E0373210a89";
-const privateKey = process.env.PRIVATE_KEY;
+const privateKey = process.env.PRIVATE_KEY_2;
 const privateKeyA89 = process.env.PRIVATE_KEY_A89;
 
 const rebaseStrategy = "0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204";
@@ -51,15 +51,15 @@ const rebaseInactivity = "0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050b
 // };
 // 1715
 const strategyKey = {
-  pool: "0xfae941346ac34908b8d7d000f86056a18049146e",
-  tickLower: "94230",
-  tickUpper: "100230",
+  pool: "0x2f5e87C9312fa29aed5c179E456625D79015299c",
+  tickLower: "256310",
+  tickUpper: "262310",
 };
 
 const positionActions = {
   exitStrategy: [],
   liquidityDistribution: [],
-  mode: "2",
+  mode: "3",
   rebaseStrategy: [
     {
       actionName: "0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b",
@@ -144,8 +144,8 @@ async function deposit(strategyId) {
       throw "Insufficient funds";
     }
 
-    const depoitAmount0 = "5000";
-    const depoitAmount1 = "500";
+    const depoitAmount0 = "50000000";
+    const depoitAmount1 = "5000000";
 
     const depositTx = baseContract.methods.deposit({
       strategyId: strategyId,
@@ -156,7 +156,7 @@ async function deposit(strategyId) {
       recipient: fromAddress,
     });
 
-    const gas = await depositTx.estimateGas({ from: fromAddressA89 });
+    const gas = await depositTx.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 
     const txData = {
@@ -166,7 +166,7 @@ async function deposit(strategyId) {
       gasPrice,
     };
 
-    const signedTx = await web3.eth.accounts.signTransaction(txData, privateKeyA89);
+    const signedTx = await web3.eth.accounts.signTransaction(txData, privateKey);
     const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
     console.log("Transaction successful:", receipt);
   } catch (error) {
@@ -178,24 +178,26 @@ async function deposit(strategyId) {
 
 async function updatePositon() {
   try {
-    const balance0 = await ercContractToken0.methods.balanceOf(fromAddressA89).call();
-    const balance1 = await ercContractToken1.methods.balanceOf(fromAddressA89).call();
+    const balance0 = await ercContractToken0.methods.balanceOf(fromAddress).call();
+    const balance1 = await ercContractToken1.methods.balanceOf(fromAddress).call();
 
     if (balance0 == 0 || balance1 == 0) {
       throw "Insufficient funds";
     }
 
-    const depoitAmount0 = "500000000";
-    const depoitAmount1 = "500000000000000000000";
+    const depoitAmount0 = "50000000";
+    const depoitAmount1 = "5000000";
     const tokenId = 1;
 
     const depositTx = baseContract.methods.updatePositionLiquidity({
       tokenId,
       amount0Desired: depoitAmount0,
       amount1Desired: depoitAmount1,
+      amount0Min:0,
+      amount1Min:0,
     });
 
-    const gas = await depositTx.estimateGas({ from: fromAddressA89 });
+    const gas = await depositTx.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 
     const txData = {
@@ -205,7 +207,7 @@ async function updatePositon() {
       gasPrice,
     };
 
-    const signedTx = await web3.eth.accounts.signTransaction(txData, privateKeyA89);
+    const signedTx = await web3.eth.accounts.signTransaction(txData, privateKey);
     const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
     console.log("Transaction successful:", receipt);
   } catch (error) {
@@ -221,6 +223,8 @@ async function withdrawPosition() {
       liquidity: "10",
       recipient: fromAddress,
       refundAsETH: false,
+      amount0Min:0,
+      amount1Min:0,
     };
 
     const depositTx = baseContract.methods.withdraw(withdrawParams);
@@ -245,8 +249,8 @@ async function withdrawPosition() {
 
 async function addModulesTxn() {
   try {
-    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
-    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
+    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
+    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 
@@ -331,15 +335,15 @@ async function getBlockDetails() {
 // init();
 // getBlockDetails();
 // txnData();
-executeCreateStrategy();
+// executeCreateStrategy();
 // addModulesTxn();
 // addModulesVaultTxn();
 // checkModule();
 // checkOwner();
 // updatePositon();
 // approveTokens();
-// deposit("0x353fd513ce55139191f81b229e521f66addb59b7f3501b73a107801c611309e1");
+// deposit("0x32780138893c7172671d8b917625fffceea4f07751578c715531bdb53f2991b4");
 // getStrategyDetails();
-// withdrawPosition();
+withdrawPosition();
 // withdrawPosition();
 // getPositionData();

@@ -16,6 +16,14 @@
   solc = "0.8.15"
   src = "src"
   test = "test"
+  libraries = [
+  "src/libraries/LiquidityShares.sol:LiquidityShares:0x7DBa7A781B2b4B630257B2Afc6C9330DCE7DC7Ef",
+  "src/libraries/PoolActions.sol:PoolActions:0xE2331F5EF9B6D5B1f4921c19ce357105bCaDBe38",
+  "src/libraries/Position.sol:Position:0xBb51f35717096Dd8494Ab551f45D2a396828Ae3e",
+  "src/libraries/StrategyFeeShares.sol:StrategyFeeShares:0x7129714842AFf175dE1286728a58D2534BD36d5b",
+  "src/libraries/TransferHelper.sol:TransferHelper:0x6E78EaD7Afab63F3E33bC389a1E4E6B6D46141Bc",
+  "src/libraries/UserPositions.sol:UserPositions:0xea417362AA8AdD9A38BE9B3933F47CF48d45a93e"
+]
 
 
 [profile.ci]
