@@ -8,10 +8,11 @@ import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
 import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 
-/// @title A51 Finance Autonomus Liquidity Provision Rebase Module Contract
+/// @title A51 Finance Autonomous Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
-/// @notice Explain to an end user what this does
-/// @dev Explain to a developer any extra details
+/// @notice This contract is part of the A51 Finance platform, focusing on automated liquidity provision and rebalancing
+/// strategies. The RebaseModule contract is responsible for validating and verifying the strategies before executing
+/// them through CLTBase.
 contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice The address of base contract
     ICLTBase public immutable cltBase;
@@ -90,7 +91,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
     /// @notice Provides functionality for executing and managing strategies manually with customizations.
     /// @dev This function updates strategy parameters, checks for permissions, and triggers liquidity shifts.
-
     function executeStrategy(ExectuteStrategyParams calldata executeParams) external nonReentrancy {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             cltBase.strategies(executeParams.strategyID);
@@ -325,11 +325,13 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         return true;
     }
 
+    /// @notice Validates the given strategy payload data for rebase strategies.
+    /// @param actionsData The strategy payload to validate, containing action names and associated data.
+    /// @return True if the strategy payload data is valid, otherwise it reverts.
     function checkInputData(ICLTBase.StrategyPayload memory actionsData) external pure override returns (bool) {
         bool hasDiffPreference = actionsData.actionName == PRICE_PREFERENCE;
         bool hasInActivity = actionsData.actionName == REBASE_INACTIVITY;
 
-        // need to check here whether the preference ticks are outside of range
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
             if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
@@ -339,7 +341,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         }
 
         if (hasInActivity) {
-            //   check needs to be added on frontend so that rebase inactivity cannot be seleted independently
             uint256 preferredInActivity = abi.decode(actionsData.data, (uint256));
 
             if (preferredInActivity == 0) {
