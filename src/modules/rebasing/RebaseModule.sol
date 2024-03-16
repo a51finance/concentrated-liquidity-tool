@@ -21,7 +21,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     ICLTTwapQuoter public twapQuoter;
 
     /// @notice Threshold for swaps in manual override
-    uint256 public swapsThreshold = 2;
+    uint256 public swapsThreshold = 5;
 
     // 0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b
     bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
