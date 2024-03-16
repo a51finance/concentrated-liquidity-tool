@@ -7,6 +7,7 @@ import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { Test } from "forge-std/Test.sol";
 import { IQuoter } from "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
 import { console } from "forge-std/console.sol";
+import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 contract ManualOverrideTest is Test, RebaseFixtures {
     address payable[] users;
@@ -276,6 +277,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = false;
         executeParams.zeroForOne = false;
         executeParams.swapAmount = int256(reserve1 / 2);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -473,7 +476,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
@@ -492,6 +495,9 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (key,,,,,,,, account) = base.strategies(strategyID);
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
+        int24 previousTickLower = key.tickLower;
+        int24 previousTickUpper = key.tickUpper;
+
         assertEq(key.tickLower < tick, true);
         assertEq(key.tickUpper < tick, true);
 
@@ -506,8 +512,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (key,,,,,,,, account) = base.strategies(strategyID);
 
         // since its mode 2 the ticks will roll back
-        assertEq(key.tickLower > tick, true);
-        assertEq(key.tickUpper > tick, true);
+        assertEq(key.tickLower == previousTickLower, true);
+        assertEq(key.tickUpper == previousTickUpper, true);
     }
 
     function testExecuteStrategyWithMintFalseInValidSideMode1Uncompounded() public {
@@ -542,7 +548,9 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
         executeParams.shouldMint = false;
         executeParams.zeroForOne = false;
-        executeParams.swapAmount = 0;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -605,6 +613,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -962,22 +972,33 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
 
+        vm.expectRevert();
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
         rebaseModule.executeStrategy(executeParams);
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
         assertEq(strategyKey.tickLower < tick, true);
         assertEq(strategyKey.tickUpper > tick, true);
-
-        assertEq(reserve0, 0);
-        assertEq(reserve1, 0);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         _hevm.prank(owner);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
@@ -1045,22 +1066,33 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
 
+        vm.expectRevert();
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
         rebaseModule.executeStrategy(executeParams);
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
         assertEq(strategyKey.tickLower < tick, true);
         assertEq(strategyKey.tickUpper > tick, true);
-
-        assertEq(reserve0, 0);
-        assertEq(reserve1, 0);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         _hevm.prank(owner);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
@@ -1134,6 +1166,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1211,6 +1245,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1288,6 +1324,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 2);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1369,6 +1407,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = true;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 2);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -1635,7 +1675,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         _hevm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: users[0], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: users[0],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -1708,7 +1755,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         _hevm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: users[0], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: users[0],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -1761,11 +1815,10 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 200e18, 0, 0);
 
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
-
         (, tick,,,,,) = pool.slot0();
 
         executeParams.pool = strategyKey.pool;
@@ -1777,6 +1830,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = false;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
         bytes memory actionStatus;
@@ -1866,6 +1921,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.shouldMint = false;
         executeParams.zeroForOne = true;
         executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
         bytes memory actionStatus;
@@ -1888,5 +1945,277 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (,,, actionStatus,,,,,) = base.strategies(strategyID);
         (, exit) = abi.decode(actionStatus, (uint256, bool));
         assertEq(exit, false);
+    }
+
+    function testSwapThresholdFunctionalitySwapThresholdZero() public {
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, false, 1, 1);
+
+        // set swap threshold to zero
+        rebaseModule.updateSwapsThreshold(0);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 1200, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1800, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 100;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+    }
+
+    function testSwapThresholdFunctionalitySwapThresholdValue() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        bytes memory actionStatus;
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (uint256 rebaseCount, bool isExited, uint256 lastUpdateTime, uint256 swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 1);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, 0);
+        assertEq(swapsCount, 0);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 1);
+        assertEq(isExited, true);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
+
+        _hevm.warp(block.timestamp + 300);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 1);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp - 300);
+        assertEq(swapsCount, 2);
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+
+        strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID1;
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 2);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp - 300 - 3600);
+        assertEq(swapsCount, 2);
+    }
+
+    function testSwapThresholdWithActionStatusLengthZero() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        bytes memory actionStatus;
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (uint256 rebaseCount, bool isExited, uint256 lastUpdateTime, uint256 swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 0);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
+    }
+
+    function testSwapThresholdWithExceedingLimit() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 56);
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(2);
+
+        bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
+
+        rebaseModule.updateSwapsThreshold(1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        bytes memory actionStatus;
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (uint256 rebaseCount, bool isExited, uint256 lastUpdateTime, uint256 swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 0);
+        assertEq(isExited, false);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        bytes memory encodedError = abi.encodeWithSignature("SwapsThresholdExceeded()");
+        vm.expectRevert(encodedError);
+        rebaseModule.executeStrategy(executeParams);
+
+        _hevm.warp(block.timestamp + 1 days + 3600);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID1;
+        executeParams.tickLower = floorTicks(tick - 1500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 1300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 1000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (,,, actionStatus,,,,,) = base.strategies(strategyID1);
+
+        (rebaseCount, isExited, lastUpdateTime, swapsCount) =
+            abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+
+        assertEq(rebaseCount, 0);
+        assertEq(isExited, true);
+        assertEq(lastUpdateTime, block.timestamp);
+        assertEq(swapsCount, 1);
     }
 }

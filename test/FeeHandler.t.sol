@@ -132,8 +132,8 @@ contract FeeHandlerTest is Test, Fixtures {
     function test_feeHandler_succeedCorrectEventParams() public {
         IGovernanceFeeHandler.ProtocolFeeRegistry memory newRegistry = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0.1 ether,
-            strategyCreationFee: 0.3 ether,
-            protcolFeeOnManagement: 0.24 ether,
+            strategyCreationFee: 0.2 ether,
+            protcolFeeOnManagement: 0.2 ether,
             protcolFeeOnPerformance: 0.16 ether
         });
 
@@ -149,8 +149,8 @@ contract FeeHandlerTest is Test, Fixtures {
     function test_feeHandler_succeedCorrectState() public {
         IGovernanceFeeHandler.ProtocolFeeRegistry memory newRegistry = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0.1 ether,
-            strategyCreationFee: 0.3 ether,
-            protcolFeeOnManagement: 0.24 ether,
+            strategyCreationFee: 0.2 ether,
+            protcolFeeOnManagement: 0.14 ether,
             protcolFeeOnPerformance: 0.16 ether
         });
 

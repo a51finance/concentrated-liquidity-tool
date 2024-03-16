@@ -80,7 +80,7 @@ library StrategyFeeShares {
             // calculate accumulated fees
             total0 = uint128(
                 FullMath.mulDiv(
-                    feeGrowthInside0LastX128 - self.account.feeGrowthInside0LastX128,
+                    feeGrowthInside0LastX128 - self.account.feeGrowthOutside0LastX128,
                     self.account.totalShares,
                     FixedPoint128.Q128
                 )
@@ -88,7 +88,7 @@ library StrategyFeeShares {
 
             total1 = uint128(
                 FullMath.mulDiv(
-                    feeGrowthInside1LastX128 - self.account.feeGrowthInside1LastX128,
+                    feeGrowthInside1LastX128 - self.account.feeGrowthOutside1LastX128,
                     self.account.totalShares,
                     FixedPoint128.Q128
                 )
@@ -103,7 +103,17 @@ library StrategyFeeShares {
         self.account.fee0 += total0;
         self.account.fee1 += total1;
 
-        self.account.feeGrowthInside0LastX128 = feeGrowthInside0LastX128;
-        self.account.feeGrowthInside1LastX128 = feeGrowthInside1LastX128;
+        // assign fee growth from upper global of ticks
+        self.account.feeGrowthOutside0LastX128 = feeGrowthInside0LastX128;
+        self.account.feeGrowthOutside1LastX128 = feeGrowthInside1LastX128;
+
+        // increament fee growth for all the users inside strategy
+        if (self.account.totalShares > 0) {
+            self.account.feeGrowthInside0LastX128 +=
+                FullMath.mulDiv(total0, FixedPoint128.Q128, self.account.totalShares);
+
+            self.account.feeGrowthInside1LastX128 +=
+                FullMath.mulDiv(total1, FixedPoint128.Q128, self.account.totalShares);
+        }
     }
 }

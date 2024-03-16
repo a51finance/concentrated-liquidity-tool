@@ -177,7 +177,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyId = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         strategyIDs[0] = strategyId;
 
@@ -251,7 +251,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
     }
 
     function testExecutingStrategyWithEmptyID() public {
-        bytes32[] memory strategyIDs = new bytes32[]( 10);
+        bytes32[] memory strategyIDs = new bytes32[](10);
         vm.expectRevert();
         rebaseModule.executeStrategies(strategyIDs);
     }
@@ -263,7 +263,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         bytes32 strategyID = keccak256(abi.encode(users[2], 1));
 
@@ -280,7 +280,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         bytes32 strategyID = bytes32(0);
 
@@ -331,54 +331,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseModule.checkStrategiesArray(data);
     }
 
-    function testExecuteStrategiesWithLowLiquidity() public {
-        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
-        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        rebaseActions[0].data = abi.encode(23, 43);
-
-        ICLTBase.PositionActions memory positionActions;
-
-        positionActions.mode = 1;
-        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
-        positionActions.rebaseStrategy = rebaseActions;
-        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
-
-        initStrategy(800);
-        base.createStrategy(strategyKey, positionActions, 0, 0, true, false);
-
-        ICLTBase.DepositParams memory depositParams;
-
-        bytes32 strategyID = getStrategyID(owner, 1);
-
-        depositParams.strategyId = strategyID;
-        depositParams.amount0Desired = 1000;
-        depositParams.amount1Desired = 1000;
-        depositParams.amount0Min = 0;
-        depositParams.amount1Min = 0;
-        depositParams.recipient = owner;
-
-        base.deposit(depositParams);
-
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
-
-        bytes memory encodedError = abi.encodeWithSignature("InvalidThreshold()");
-        vm.expectRevert(encodedError);
-        rebaseModule.updateLiquidityThreshold(0);
-
-        rebaseModule.updateLiquidityThreshold(1000);
-
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
-
-        strategyIDs[0] = strategyID;
-
-        rebaseModule.executeStrategies(strategyIDs);
-        (ICLTBase.StrategyKey memory key,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
-
-        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
-        assertEq(reserve0 > 0, true);
-        assertEq(reserve1 == 0, true);
-    }
-
     // edge
     // 5
     function test_fuzz_ExecuteStrategyAllModesWithOnlyRebaseInactivity(uint256 mode) public {
@@ -390,7 +342,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, mode, true);
 
-        bytes32[] memory strategyIDs = new bytes32[]( 1);
+        bytes32[] memory strategyIDs = new bytes32[](1);
 
         strategyIDs[0] = strategyID;
 
@@ -820,7 +772,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
      * Random scenario 1
      * Rebase inactivity 2 and another user comes after 1 rebase
      */
-
     function testScenario1() public {
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
 
@@ -878,7 +829,14 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         (, uint256 shares2,,,,) = base.positions(2);
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: shares2,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -956,7 +914,14 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: shares2,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -989,8 +954,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         depositParams.recipient = owner;
 
         base.deposit(depositParams);
-
-        rebaseModule.updateLiquidityThreshold(1000);
 
         executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);

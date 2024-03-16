@@ -37,9 +37,11 @@ library Position {
         }
 
         if (share > 0) {
-            global.totalLiquidity += share;
+            bool isExit = getHodlStatus(self);
+
             self.account.totalShares += share;
             self.account.uniswapLiquidity += liquidityAdded;
+            if (isExit == false) global.totalLiquidity += share; //if liquidity HODL it shouldn't added on dex liquidity
         }
     }
 
@@ -56,16 +58,14 @@ library Position {
     )
         public
     {
-        if (liquidityAdded > 0) {
-            // fees amounts that are not added on AMM will be in held in contract balance
-            self.account.balance0 = amount0Added;
-            self.account.balance1 = amount1Added;
+        // fees amounts that are not added on AMM will be in held in contract balance
+        self.account.balance0 = amount0Added;
+        self.account.balance1 = amount1Added;
 
-            self.account.fee0 = 0;
-            self.account.fee1 = 0;
+        self.account.fee0 = 0;
+        self.account.fee1 = 0;
 
-            self.account.uniswapLiquidity += liquidityAdded;
-        }
+        self.account.uniswapLiquidity += liquidityAdded;
     }
 
     /// @notice updates the strategy and mint new position on AMM
@@ -99,11 +99,7 @@ library Position {
         self.actionStatus = status;
         self.account.uniswapLiquidity = liquidity;
 
-        bool isExit;
-
-        if (self.actionStatus.length > 0) {
-            (, isExit) = abi.decode(self.actionStatus, (uint256, bool));
-        }
+        bool isExit = getHodlStatus(self);
 
         // if liquidity is on HODL it shouldn't recieve fee shares but calculations will remain for existing users
         if (isExit == false) globalAccount.totalLiquidity += self.account.totalShares;
@@ -115,8 +111,8 @@ library Position {
         }
 
         // assigning again feeGrowth here because if position ticks are changed then calculations will be messed
-        self.account.feeGrowthInside0LastX128 = globalAccount.feeGrowthInside0LastX128;
-        self.account.feeGrowthInside1LastX128 = globalAccount.feeGrowthInside1LastX128;
+        self.account.feeGrowthOutside0LastX128 = globalAccount.feeGrowthInside0LastX128;
+        self.account.feeGrowthOutside1LastX128 = globalAccount.feeGrowthInside1LastX128;
     }
 
     /// @notice updates the info of strategy
@@ -135,10 +131,24 @@ library Position {
     )
         public
     {
-        self.owner = newOwner;
-        self.managementFee = managementFee;
-        self.performanceFee = performanceFee;
         self.actions = newActions;
-        self.actionStatus = "";
+
+        if (self.owner != newOwner) self.owner = newOwner;
+        if (self.managementFee != managementFee) self.managementFee = managementFee;
+        if (self.performanceFee != performanceFee) self.performanceFee = performanceFee;
+
+        bool isExit = getHodlStatus(self);
+
+        if (isExit) {
+            self.actionStatus = abi.encode(0, isExit);
+        } else {
+            self.actionStatus = "";
+        }
+    }
+
+    function getHodlStatus(ICLTBase.StrategyData storage self) public view returns (bool isExit) {
+        if (self.actionStatus.length > 0) {
+            (, isExit) = abi.decode(self.actionStatus, (uint256, bool));
+        }
     }
 }

@@ -83,7 +83,14 @@ contract ClaimFeeTest is Test, Fixtures {
 
     function test_claimFee_revertsIfNoLiquidity() public {
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 4 ether, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: 4 ether,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         vm.expectRevert(ICLTBase.NoLiquidity.selector);
@@ -146,8 +153,8 @@ contract ClaimFeeTest is Test, Fixtures {
         vm.startPrank(address(this));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(msg.sender), account.fee0);
-        assertEq(token1.balanceOf(msg.sender), account.fee1);
+        assertEq(token0.balanceOf(msg.sender), account.fee0 - 1);
+        assertEq(token1.balanceOf(msg.sender), account.fee1 - 1);
     }
 
     function test_claimFee_multipleUserShare() public {
@@ -282,15 +289,15 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
         /// user1 has earned more fees which is 66% which is fishy because for token1 both have equal share & growth
-        assertEq(token0.balanceOf(msg.sender), 4_416_689_949_339_070);
-        assertEq(token1.balanceOf(msg.sender), 2_393_644_397_049_624);
+        assertEq(token0.balanceOf(msg.sender), 4_019_073_529_944_804);
+        assertEq(token1.balanceOf(msg.sender), 1_998_013_943_879_530);
 
         vm.startPrank(users[0]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
         /// user2 has earned 33% of token1
-        assertEq(token0.balanceOf(users[1]), 603_895_394_819_763);
-        assertEq(token1.balanceOf(users[1]), 600_879_131_409_738);
+        assertEq(token0.balanceOf(users[1]), 1_001_511_814_214_027);
+        assertEq(token1.balanceOf(users[1]), 996_509_584_579_831);
     }
 
     function test_claimFee_shouldPayStrategistFee() public {
@@ -358,6 +365,76 @@ contract ClaimFeeTest is Test, Fixtures {
 
         assertEq(token0.balanceOf(strategyOwner), strategyOwnerShare0);
         assertEq(token1.balanceOf(strategyOwner), strategyOwnerShare1);
+    }
+
+    function test_claimFee_poc() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        console.log("total fee of user -> ", fee0, fee1);
+
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({
+                tokenId: 1,
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        // after changing ticks user fee growth will be invalid because strategy has been assigned new fee growth for
+        // new ticks
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 200, tickUpper: tick - tickSpacing });
+
+        base.toggleOperator(address(this));
+
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        // user can't claim fee because strategy fee grwoth is 0 hence fee stuck in contract
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
+
+        console.log("fee claimed -> ", token0.balanceOf(msg.sender), token1.balanceOf(msg.sender));
     }
 
     function test_claimFee_shouldPayProtocolFee() public { }

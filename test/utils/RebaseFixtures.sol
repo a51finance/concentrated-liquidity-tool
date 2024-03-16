@@ -7,6 +7,7 @@ import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 import { CLTBase } from "../../src/CLTBase.sol";
 import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { CLTModules } from "../../src/CLTModules.sol";
+import { CLTTwapQuoter } from "../../src/CLTTwapQuoter.sol";
 
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
 import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandler.sol";
@@ -40,6 +41,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     CLTModules cltModules;
     CLTBase base;
     Modes modes;
+    CLTTwapQuoter cltTwap;
 
     ERC20Mock token0;
     ERC20Mock token1;
@@ -77,10 +79,9 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         router = new SwapRouter(address(factory), address(weth));
-        positionManager = new
-    NonfungiblePositionManager(address(factory),address(weth),address(factory));
+        positionManager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
         pool.increaseObservationCardinalityNext(80);
-        quote = new Quoter(address(factory),address(weth));
+        quote = new Quoter(address(factory), address(weth));
 
         mintParams.token0 = address(token0);
         mintParams.token1 = address(token1);
@@ -165,6 +166,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             protcolFeeOnPerformance: 0
         });
 
+        cltTwap = new CLTTwapQuoter(address(this));
         cltModules = new CLTModules(address(this));
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
@@ -176,9 +178,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.prank(recepient);
         token1.approve(address(base), type(uint256).max);
 
-        rebaseModule = new RebaseModule(recepient, address(base));
-
-        modes = new Modes(address(base),recepient);
+        modes = new Modes(address(base), address(cltTwap), recepient);
+        rebaseModule = new RebaseModule(recepient, address(base), address(cltTwap));
 
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);

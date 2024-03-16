@@ -53,7 +53,7 @@ library LiquidityShares {
         // check existing liquidity before the add
         (uint256 reserve0, uint256 reserve1) = getReserves(strategy.key, strategy.account.uniswapLiquidity);
 
-        // includes unused balance + fees (if componding strategy otherwise not)
+        // includes unused balance
         reserve0 += strategy.account.balance0;
         reserve1 += strategy.account.balance1;
 

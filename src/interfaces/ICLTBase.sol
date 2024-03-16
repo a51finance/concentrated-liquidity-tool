@@ -10,6 +10,8 @@ interface ICLTBase {
     error InvalidCaller();
     error onlyNonCompounders();
     error TransactionTooAged();
+    error MinimumAmountsExceeded();
+    error OwnerCannotBeZeroAddress();
 
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
@@ -57,6 +59,8 @@ interface ICLTBase {
         uint128 uniswapLiquidity;
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
+        uint256 feeGrowthOutside0LastX128;
+        uint256 feeGrowthOutside1LastX128;
     }
 
     /// @param key A51 position's key details
@@ -246,6 +250,8 @@ interface ICLTBase {
         uint256 tokenId;
         uint256 amount0Desired;
         uint256 amount1Desired;
+        uint256 amount0Min;
+        uint256 amount1Min;
     }
 
     /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
@@ -256,6 +262,7 @@ interface ICLTBase {
     /// @return amount1 The amount of token1 to acheive resulting liquidity
     function updatePositionLiquidity(UpdatePositionParams calldata params)
         external
+        payable
         returns (uint256 share, uint256 amount0, uint256 amount1);
 
     /// @param params tokenId The ID of the token for which liquidity is being decreased
@@ -267,6 +274,8 @@ interface ICLTBase {
         uint256 liquidity;
         address recipient;
         bool refundAsETH;
+        uint256 amount0Min;
+        uint256 amount1Min;
     }
 
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position
@@ -297,6 +306,9 @@ interface ICLTBase {
     /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
     /// exact output (negative)
     /// @param moduleStatus The encoded data for each of the strategy to track any detail for futher actions
+    /// @param sqrtPriceLimitX96 The Q64.96 sqrt price limit. If zero for one, the price cannot be less than this
+    /// value after the swap. If one for zero, the price cannot be greater than this value after the swap
+    /// @param data Any data to be passed through to the callback
     struct ShiftLiquidityParams {
         StrategyKey key;
         bytes32 strategyId;
@@ -304,6 +316,7 @@ interface ICLTBase {
         bool zeroForOne;
         int256 swapAmount;
         bytes moduleStatus;
+        uint160 sqrtPriceLimitX96;
     }
 
     /// @notice Updates the strategy's liquidity accordingly w.r.t basic or advance module when it is activated

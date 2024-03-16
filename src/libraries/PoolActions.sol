@@ -105,22 +105,20 @@ library PoolActions {
     {
         liquidity = getLiquidityForAmounts(key, amount0Desired, amount1Desired);
 
-        if (liquidity > 0) {
-            (amount0, amount1) = key.pool.mint(
-                address(this),
-                key.tickLower,
-                key.tickUpper,
-                liquidity,
-                abi.encode(
-                    ICLTPayments.MintCallbackData({
-                        token0: key.pool.token0(),
-                        token1: key.pool.token1(),
-                        fee: key.pool.fee(),
-                        payer: address(this)
-                    })
-                )
-            );
-        }
+        (amount0, amount1) = key.pool.mint(
+            address(this),
+            key.tickLower,
+            key.tickUpper,
+            liquidity,
+            abi.encode(
+                ICLTPayments.MintCallbackData({
+                    token0: key.pool.token0(),
+                    token1: key.pool.token1(),
+                    fee: key.pool.fee(),
+                    payer: address(this)
+                })
+            )
+        );
     }
 
     /// @notice Swap token0 for token1, or token1 for token0
@@ -132,18 +130,12 @@ library PoolActions {
     function swapToken(
         IUniswapV3Pool pool,
         bool zeroForOne,
-        int256 amountSpecified
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96
     )
         external
         returns (int256 amount0, int256 amount1)
     {
-        (uint160 sqrtPriceX96,,) = getSqrtRatioX96AndTick(pool);
-
-        uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (1e5 / 2)) / 1e6;
-
-        uint160 sqrtPriceLimitX96 =
-            zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact;
-
         (amount0, amount1) = pool.swap(
             address(this),
             zeroForOne,
@@ -192,9 +184,10 @@ library PoolActions {
 
         (uint256 total0, uint256 total1) = (collect0 + balance0, collect1 + balance1);
 
-        (liquidity, collect0, collect1) = mintLiquidity(key, total0, total1);
-
-        (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
+        if (getLiquidityForAmounts(key, total0, total1) > 0) {
+            (liquidity, collect0, collect1) = mintLiquidity(key, total0, total1);
+            (balance0AfterMint, balance1AfterMint) = (total0 - collect0, total1 - collect1);
+        }
     }
 
     /// @notice Get the info of the given strategy position
@@ -260,15 +253,32 @@ library PoolActions {
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint160 sqrtRatioX96,,,,,,) = key.pool.slot0();
+        (uint160 sqrtRatioX96, int24 tick,,,,,) = key.pool.slot0();
 
-        int256 amount0Delta = SqrtPriceMath.getAmount0Delta(
-            sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
-        );
+        int256 amount0Delta;
+        int256 amount1Delta;
 
-        int256 amount1Delta = SqrtPriceMath.getAmount1Delta(
-            TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
-        );
+        if (tick < key.tickLower) {
+            amount0Delta = SqrtPriceMath.getAmount0Delta(
+                TickMath.getSqrtRatioAtTick(key.tickLower),
+                TickMath.getSqrtRatioAtTick(key.tickUpper),
+                int256(uint256(liquidity)).toInt128()
+            );
+        } else if (tick < key.tickUpper) {
+            amount0Delta = SqrtPriceMath.getAmount0Delta(
+                sqrtRatioX96, TickMath.getSqrtRatioAtTick(key.tickUpper), int256(uint256(liquidity)).toInt128()
+            );
+
+            amount1Delta = SqrtPriceMath.getAmount1Delta(
+                TickMath.getSqrtRatioAtTick(key.tickLower), sqrtRatioX96, int256(uint256(liquidity)).toInt128()
+            );
+        } else {
+            amount1Delta = SqrtPriceMath.getAmount1Delta(
+                TickMath.getSqrtRatioAtTick(key.tickLower),
+                TickMath.getSqrtRatioAtTick(key.tickUpper),
+                int256(uint256(liquidity)).toInt128()
+            );
+        }
 
         (amount0, amount1) = (uint256(amount0Delta), uint256(amount1Delta));
     }

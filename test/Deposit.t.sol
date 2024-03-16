@@ -317,7 +317,118 @@ contract DepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 250_968_146_844_201_956);
+        assertEq(liquidityShareUser2, 498_625_034_701_312_208);
+    }
+
+    function test_deposit_outOfRangePoc() public {
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: 200, tickUpper: 400 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 5 ether;
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: depositAmount,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({
+                tokenId: 1,
+                amount0Desired: depositAmount,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+    }
+
+    function test_deposit_outOfRangePoc2() public {
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: 200, tickUpper: 400 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 5 ether;
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: depositAmount,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+
+        assertEq(liquidityShareUser1, depositAmount);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: depositAmount * 2,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+
+        assertEq(liquidityShareUser2, depositAmount * 2);
+    }
+
+    function test_deposit_outOfRangePoc3() public {
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -400, tickUpper: -200 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 5 ether;
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: 0,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+
+        assertEq(liquidityShareUser1, depositAmount);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: 0,
+                amount1Desired: depositAmount * 2,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+
+        assertEq(liquidityShareUser2, depositAmount * 2);
     }
 
     function test_deposit_shouldReturnExtraETH() public {
@@ -430,7 +541,7 @@ contract DepositTest is Test, Fixtures {
         vm.prank(users[1]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
-        assertEq(token0.balanceOf(users[1]), fees0);
+        assertEq(token0.balanceOf(users[1]), fees0 - 1);
 
         (, fee0, fee1) = base.getStrategyReserves(strategyID1);
         (, fees0, fees1) = base.getStrategyReserves(strategyID2);
@@ -766,10 +877,7 @@ contract DepositTest is Test, Fixtures {
             })
         );
 
-        vm.prank(address(base));
-        pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,, uint256 totalFee0, uint256 totalFee1) =
-            pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        (, uint256 totalFee0, uint256 totalFee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
 
         base.deposit(params);
 

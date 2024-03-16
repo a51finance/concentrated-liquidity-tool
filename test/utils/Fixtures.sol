@@ -11,6 +11,8 @@ import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandle
 
 import { CLTBase } from "../../src/CLTBase.sol";
 import { CLTModules } from "../../src/CLTModules.sol";
+import { CLTTwapQuoter } from "../../src/CLTTwapQuoter.sol";
+
 import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
@@ -37,6 +39,7 @@ contract Fixtures is UniswapDeployer {
 
     Modes modes;
     CLTBase base;
+    CLTTwapQuoter cltTwap;
     RebaseModule rebaseModule;
     CLTModules cltModules;
     GovernanceFeeHandler feeHandler;
@@ -97,8 +100,6 @@ contract Fixtures is UniswapDeployer {
     function initBase() internal {
         weth = new WETH();
 
-        rebaseModule = new RebaseModule(msg.sender, address(base));
-
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
             strategyCreationFee: 0,
@@ -106,14 +107,16 @@ contract Fixtures is UniswapDeployer {
             protcolFeeOnPerformance: 0
         });
 
+        cltTwap = new CLTTwapQuoter(address(this));
         cltModules = new CLTModules(address(this));
-
         feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
-        base =
-        new CLTBase("ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory);
+        base = new CLTBase(
+            "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
+        );
 
-        modes = new Modes(address(base), address(this));
+        modes = new Modes(address(base), address(cltTwap), address(this));
+        rebaseModule = new RebaseModule(msg.sender, address(base), address(cltTwap));
 
         cltModules.setNewModule(keccak256("EXIT_STRATEGY"), keccak256("SMART_EXIT"));
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { Owned } from "../../lib/solmate/src/auth/Owned.sol";
+import { Owned } from "@solmate/auth/Owned.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 /// @title  AccessControl

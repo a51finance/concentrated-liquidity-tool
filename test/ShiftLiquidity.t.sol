@@ -12,6 +12,10 @@ import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
+import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
+
+import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
+
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -64,6 +68,47 @@ contract ShiftLiquidityTest is Test, Fixtures {
         base.toggleOperator(msg.sender);
     }
 
+    function test_shiftLiquidity_shouldRevertInvalidState() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing * 10, tickUpper: tick + tickSpacing * 10 });
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(getStrategyID(address(this), 1));
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
+
+        // invalid state will be stored here because we are trying to add in range liquidity with only 1 asset
+        vm.prank(msg.sender);
+        vm.expectRevert();
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
+    }
+
     function test_shiftLiquidity_revertsIfNotWhitelistAccount() public {
         assert(base.isOperator(msg.sender));
 
@@ -76,9 +121,24 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
+    }
+
+    function test_shiftLiquidity_revertsIfShiftingNotNeeded() public {
+        bytes32[] memory strategyIDs = new bytes32[](2);
+        strategyIDs[0] = getStrategyID(address(this), 1);
+        strategyIDs[1] = getStrategyID(address(this), 2);
+
+        // update pool cardinality
+        pool.increaseObservationCardinalityNext(80);
+        vm.warp(block.timestamp + 1 days);
+
+        base.toggleOperator(address(modes));
+        vm.expectRevert(ModeTicksCalculation.LiquidityShiftNotNeeded.selector);
+        modes.ShiftBase(strategyIDs);
     }
 
     function test_shiftLiquidity_succeedCorrectEventParams() public {
@@ -93,7 +153,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -108,7 +169,61 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
+    }
+
+    function test_shiftLiquidity_poc1() public {
+        base.toggleOperator(address(rebaseModule));
+
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -400, tickUpper: 400 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        // create new strategy
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        // deposit liquidity on new strategy
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 3),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        // HODL liquidity
+        rebaseModule.executeStrategy(
+            IRebaseStrategy.ExectuteStrategyParams({
+                pool: key.pool,
+                strategyID: getStrategyID(address(this), 3),
+                tickLower: key.tickLower,
+                tickUpper: key.tickUpper,
+                shouldMint: false,
+                zeroForOne: false,
+                swapAmount: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        // change anything in strategy
+        base.updateStrategyBase(getStrategyID(address(this), 3), address(this), 0.2 ether, 0.1 ether, actions);
+
+        // re mint liquidity on dex
+        rebaseModule.executeStrategy(
+            IRebaseStrategy.ExectuteStrategyParams({
+                pool: key.pool,
+                strategyID: getStrategyID(address(this), 3),
+                tickLower: key.tickLower,
+                tickUpper: key.tickUpper,
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 100,
+                sqrtPriceLimitX96: TickMath.MAX_SQRT_RATIO - 1
             })
         );
     }
@@ -139,7 +254,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -333,7 +449,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -356,7 +473,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -382,7 +500,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -401,7 +520,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -491,7 +611,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: abi.encode(1, true)
+                moduleStatus: abi.encode(1, true),
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -503,7 +624,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: abi.encode(1, true)
+                moduleStatus: abi.encode(1, true),
+                sqrtPriceLimitX96: 0
             })
         );
 
@@ -622,14 +744,16 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: 0,
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
         (,,,,,,,, ICLTBase.Account memory accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
 
-        assertEq(accountStrategy1.feeGrowthInside0LastX128, 0);
-        assertEq(accountStrategy1.feeGrowthInside1LastX128, 0);
+        // fee growth of new ticks will be zero
+        assertEq(accountStrategy1.feeGrowthOutside0LastX128, 0);
+        assertEq(accountStrategy1.feeGrowthOutside1LastX128, 0);
 
         (, uint256 fee0Strategy2Before, uint256 fee1Strategy2Before) =
             base.getStrategyReserves(getStrategyID(address(this), 2));
@@ -707,13 +831,14 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: int256(accountStrategy1.balance1 / 2),
-                moduleStatus: ""
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
             })
         );
 
         (,,,,,,,, accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
 
-        assertEq(accountStrategy1.feeGrowthInside0LastX128, accountStrategy2.feeGrowthInside0LastX128);
-        assertEq(accountStrategy1.feeGrowthInside1LastX128, accountStrategy2.feeGrowthInside1LastX128);
+        assertEq(accountStrategy1.feeGrowthOutside0LastX128, accountStrategy2.feeGrowthOutside0LastX128);
+        assertEq(accountStrategy1.feeGrowthOutside1LastX128, accountStrategy2.feeGrowthOutside1LastX128);
     }
 }
