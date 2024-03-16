@@ -6,10 +6,10 @@ const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
 
 require("dotenv").config();
 
-const web3 = new Web3("https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8");
-const contractAddressBase = "0xa5C841e7B73FC1627Ba348Af07Ba81a1EFdDE947";
-const contractAddressCLTModules = "0xC88476C909EFa1853a44Ca12f0370929c7812dd8";
-const contractAddressRebaseModule = "0x67dFF03BB2a429d577017Fffa8F79fF2DFDA02a6";
+const web3 = new Web3("https://arb-mainnet.g.alchemy.com/v2/QQ9BC-2o2PL0EWLKhj_sWQ-QmcjRnKMX");
+const contractAddressBase = "0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6";
+const contractAddressCLTModules = "0xC203e40Fb4D742a0559705E33C9C2Af41Af2b4dc";
+const contractAddressRebaseModule = "0x599cBbCE726a2d6a849364aB1A5b7ae1573Af0bC";
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 const token0 = "0x07865c6E87B9F70255377e024ace6630C1Eaa37F";
@@ -28,18 +28,14 @@ const ERC20ABI = ECR20ABI.abi;
 const ercContractToken0 = new web3.eth.Contract(ERC20ABI, token0);
 const ercContractToken1 = new web3.eth.Contract(ERC20ABI, token1);
 
-const fromAddress = "0x97fF40b5678D2234B1E5C894b5F39b8BA8535431";
+const fromAddress = "0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5";
 const fromAddressA89 = "0xa0e9E6B79a3e1AB87FeB209567eF3E0373210a89";
-const privateKey = process.env.PRIVATE_KEY;
+const privateKey = process.env.PRIVATE_KEY_MAIN;
 const privateKeyA89 = process.env.PRIVATE_KEY_A89;
 
 const rebaseStrategy = "0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204";
 const rebasePricePrefernece = "0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b";
 const rebaseInactivity = "0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893";
-
-
-
-
 
 // Define the parameters for createStrategy
 
@@ -245,8 +241,8 @@ async function withdrawPosition() {
 
 async function addModulesTxn() {
   try {
-    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
-    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
+    const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebaseInactivity);
+    // const addModuleTxn = ModulesContract.methods.setNewModule(rebaseStrategy, rebasePricePrefernece);
     const gas = await addModuleTxn.estimateGas({ from: fromAddress });
     const gasPrice = await web3.eth.getGasPrice();
 
@@ -331,7 +327,7 @@ async function getBlockDetails() {
 // init();
 // getBlockDetails();
 // txnData();
-executeCreateStrategy();
+// executeCreateStrategy();
 // addModulesTxn();
 // addModulesVaultTxn();
 // checkModule();
