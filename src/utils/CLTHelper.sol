@@ -12,6 +12,21 @@ contract CLTHelper {
         return modules;
     }
 
+    function decodeActionStatus(bytes memory actionStatus)
+        external
+        pure
+        returns (uint256 rebaseCount, bool isExit, uint256 lastUpdateTimeStamp, uint256 manualSwapsCount)
+    {
+        if (actionStatus.length > 0) {
+            if (actionStatus.length == 64) {
+                (rebaseCount, isExit) = abi.decode(actionStatus, (uint256, bool));
+            } else {
+                (rebaseCount, isExit, lastUpdateTimeStamp, manualSwapsCount) =
+                    abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+            }
+        }
+    }
+
     function getStrategyReserves(
         address poolAddress,
         int24 tickLower,
