@@ -211,7 +211,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         );
 
         // change anything in strategy
-        base.updateStrategyBase(getStrategyID(address(this), 3), address(this), 0.4 ether, 0.1 ether, actions);
+        base.updateStrategyBase(getStrategyID(address(this), 3), address(this), 0.2 ether, 0.1 ether, actions);
 
         // re mint liquidity on dex
         rebaseModule.executeStrategy(
