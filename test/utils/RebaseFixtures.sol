@@ -310,6 +310,35 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         (key,,,,,,,,) = base.strategies(strategyID);
     }
 
+    function createOutOfRangeStrategy(
+        int24 tickLower,
+        int24 tickUpper,
+        address recepient,
+        bool isCompunded,
+        uint256 mode
+    )
+        public
+    {
+        
+
+        strategyKey.pool = pool;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
+
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(10, 30);
+
+        positionActions.mode = mode;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        _hevm.prank(recepient);
+        base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
+    }
+
     function getStrategyReserves(
         ICLTBase.StrategyKey memory keyInput,
         uint128 liquidityDesired

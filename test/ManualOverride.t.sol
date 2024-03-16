@@ -2218,4 +2218,482 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(lastUpdateTime, block.timestamp);
         assertEq(swapsCount, 1);
     }
+
+    function testExecuteStrategyPOC() public {
+        (bytes32 strategyID, ICLTBase.StrategyKey memory key) = createStrategyAndDepositWithActions(owner, true, 3, 1);
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        assertEq(true, checkRange(tickLower, tickUpper));
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+
+        assertEq(false, checkRange(tickLower, tickUpper));
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        console.log("Out of range ticks");
+        console.log("CurrentTick");
+        console.logInt(tick);
+        console.log("UpperTick");
+        console.logInt(tickLower);
+        console.log("LowerTick");
+        console.logInt(tickUpper);
+
+        executeParams.pool = key.pool;
+        executeParams.strategyID = strategyID;
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = false;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+        (key,,,,,,,,) = base.strategies(strategyID);
+        (, tick,,,,,) = pool.slot0();
+
+        assertEq(tickLower != key.tickLower, true);
+        assertEq(tickUpper != key.tickUpper, true);
+
+        console.log("In range ticks after readjust");
+        console.log("CurrentTick");
+        console.logInt(tick);
+        console.log("UpperTick");
+        console.logInt(key.tickLower);
+        console.log("LowerTick");
+        console.logInt(key.tickUpper);
+    }
+
+    function testManualOverrideWithMultipleUsersOnHOLD() public {
+        // creating out of range strategies
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickLower = floorTicks(tick + 200, pool.tickSpacing());
+        int24 tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+
+        createOutOfRangeStrategy(tickLower, tickUpper, address(this), true, 3);
+        (strategyKey,,,,,,,,) = base.strategies(getStrategyID(owner, 1));
+        assertEq(false, checkRange(strategyKey.tickLower, strategyKey.tickUpper));
+
+        allowNewUser(users[0], owner, 4 ether);
+        _hevm.prank(users[0]);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[0]
+            })
+        );
+
+        ICLTBase.Account memory account;
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 1 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        allowNewUser(users[1], owner, 4 ether);
+
+        _hevm.prank(users[1]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[1]
+            })
+        );
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 2 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        allowNewUser(users[2], owner, 4 ether);
+
+        _hevm.prank(users[2]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[2]
+            })
+        );
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 3 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        // swapping and holding
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeParams.pool = strategyKey.pool;
+        executeParams.strategyID = getStrategyID(owner, 1);
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 5 ether;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        console.log("Balances After Swap --> ", account.balance0, account.balance1);
+
+        console.log("users[0] balance0 and balance1 before ", token0.balanceOf(users[0]), token1.balanceOf(users[0]));
+
+        (, uint256 liquidityShare,,,,) = base.positions(1);
+        _hevm.prank(users[0]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: users[0],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[0] balance0 and balance1 After ", token0.balanceOf(users[0]), token1.balanceOf(users[0]));
+
+        console.log("users[1] balance0 and balance1 before ", token0.balanceOf(users[1]), token1.balanceOf(users[1]));
+
+        (, liquidityShare,,,,) = base.positions(2);
+        _hevm.prank(users[1]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[1] balance0 and balance1 After ", token0.balanceOf(users[1]), token1.balanceOf(users[1]));
+
+        console.log("users[2] balance0 and balance1 before ", token0.balanceOf(users[2]), token1.balanceOf(users[2]));
+
+        (, liquidityShare,,,,) = base.positions(3);
+        _hevm.prank(users[2]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 3,
+                liquidity: liquidityShare,
+                recipient: users[2],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[2] balance0 and balance1 After ", token0.balanceOf(users[2]), token1.balanceOf(users[2]));
+    }
+
+    function testManualOverrideWithMultipleUsersOnMINT() public {
+        // creating out of range strategies
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickLower = floorTicks(tick + 200, pool.tickSpacing());
+        int24 tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+
+        createOutOfRangeStrategy(tickLower, tickUpper, address(this), true, 3);
+        (strategyKey,,,,,,,,) = base.strategies(getStrategyID(owner, 1));
+        assertEq(false, checkRange(strategyKey.tickLower, strategyKey.tickUpper));
+
+        allowNewUser(users[0], owner, 4 ether);
+        _hevm.prank(users[0]);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[0]
+            })
+        );
+
+        ICLTBase.Account memory account;
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 1 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        allowNewUser(users[1], owner, 4 ether);
+
+        _hevm.prank(users[1]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[1]
+            })
+        );
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 2 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        allowNewUser(users[2], owner, 4 ether);
+
+        _hevm.prank(users[2]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[2]
+            })
+        );
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 3 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        // swapping and holding
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeParams.pool = strategyKey.pool;
+        executeParams.strategyID = getStrategyID(owner, 1);
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 5 ether;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        console.log("Balances After Swap --> ", account.balance0, account.balance1);
+
+        console.log("users[0] balance0 and balance1 before ", token0.balanceOf(users[0]), token1.balanceOf(users[0]));
+
+        (, uint256 liquidityShare,,,,) = base.positions(1);
+        _hevm.prank(users[0]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: users[0],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[0] balance0 and balance1 After ", token0.balanceOf(users[0]), token1.balanceOf(users[0]));
+
+        console.log("users[1] balance0 and balance1 before ", token0.balanceOf(users[1]), token1.balanceOf(users[1]));
+
+        (, liquidityShare,,,,) = base.positions(2);
+        _hevm.prank(users[1]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[1] balance0 and balance1 After ", token0.balanceOf(users[1]), token1.balanceOf(users[1]));
+
+        console.log("users[2] balance0 and balance1 before ", token0.balanceOf(users[2]), token1.balanceOf(users[2]));
+
+        (, liquidityShare,,,,) = base.positions(3);
+        _hevm.prank(users[2]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 3,
+                liquidity: liquidityShare,
+                recipient: users[2],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[2] balance0 and balance1 After ", token0.balanceOf(users[2]), token1.balanceOf(users[2]));
+    }
+
+    function testManualOverrideWithMultipleUsersOnMINTWithFees() public {
+        // creating out of range strategies
+        (, int24 tick,,,,,) = pool.slot0();
+        int24 tickLower = floorTicks(tick + 200, pool.tickSpacing());
+        int24 tickUpper = floorTicks(tick + 500, pool.tickSpacing());
+
+        createOutOfRangeStrategy(tickLower, tickUpper, address(this), true, 3);
+        (strategyKey,,,,,,,,) = base.strategies(getStrategyID(owner, 1));
+        assertEq(false, checkRange(strategyKey.tickLower, strategyKey.tickUpper));
+
+        allowNewUser(users[0], owner, 4 ether);
+        _hevm.prank(users[0]);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[0]
+            })
+        );
+
+        ICLTBase.Account memory account;
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 1 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        allowNewUser(users[1], owner, 4 ether);
+
+        _hevm.prank(users[1]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[1]
+            })
+        );
+
+        executeSwap(token1, token0, pool.fee(), owner, 1e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 1e18, 0, 0);
+
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 2 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        allowNewUser(users[2], owner, 4 ether);
+
+        _hevm.prank(users[2]);
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(owner, 1),
+                amount0Desired: 4 ether,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: users[2]
+            })
+        );
+
+        executeSwap(token1, token0, pool.fee(), owner, 2e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 2e18, 0, 0);
+
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        console.log("User 3 Deposit", 4 ether);
+        console.log("Reserves --> ", reserve0, reserve1);
+
+        // swapping and holding
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+
+        executeParams.pool = strategyKey.pool;
+        executeParams.strategyID = getStrategyID(owner, 1);
+        executeParams.tickLower = floorTicks(tick - 500, pool.tickSpacing());
+        executeParams.tickUpper = floorTicks(tick - 300, pool.tickSpacing());
+        executeParams.shouldMint = true;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 5 ether;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(owner, 1));
+        console.log("Balances After Swap --> ", account.balance0, account.balance1);
+
+        console.log("users[0] balance0 and balance1 before ", token0.balanceOf(users[0]), token1.balanceOf(users[0]));
+
+        (, uint256 liquidityShare,,,,) = base.positions(1);
+        _hevm.prank(users[0]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: users[0],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[0] balance0 and balance1 After ", token0.balanceOf(users[0]), token1.balanceOf(users[0]));
+
+        console.log("users[1] balance0 and balance1 before ", token0.balanceOf(users[1]), token1.balanceOf(users[1]));
+
+        (, liquidityShare,,,,) = base.positions(2);
+        _hevm.prank(users[1]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[1] balance0 and balance1 After ", token0.balanceOf(users[1]), token1.balanceOf(users[1]));
+
+        console.log("users[2] balance0 and balance1 before ", token0.balanceOf(users[2]), token1.balanceOf(users[2]));
+
+        (, liquidityShare,,,,) = base.positions(3);
+        _hevm.prank(users[2]);
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 3,
+                liquidity: liquidityShare,
+                recipient: users[2],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+
+        console.log("users[2] balance0 and balance1 After ", token0.balanceOf(users[2]), token1.balanceOf(users[2]));
+    }
 }
