@@ -9,7 +9,6 @@ import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import "forge-std/console.sol";
 
 /// @title  StrategyFeeShares
 /// @notice StrategyFeeShares contains methods for tracking fees owed to the strategy w.r.t global fees

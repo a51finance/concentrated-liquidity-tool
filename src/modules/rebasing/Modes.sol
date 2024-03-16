@@ -115,10 +115,6 @@ contract Modes is ModeTicksCalculation, Owned {
         baseVault.shiftLiquidity(params);
     }
 
-    function updateTwapDuration(uint32 value) external onlyOwner {
-        _twapDuration = value;
-    }
-
     /// @notice Updates the address twapQuoter.
     /// @param _twapQuoter The new address of twapQuoter
     function updateTwapQuoter(address _twapQuoter) external onlyOwner {

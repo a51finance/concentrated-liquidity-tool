@@ -8,8 +8,6 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 abstract contract ModeTicksCalculation {
     error LiquidityShiftNotNeeded();
 
-    uint32 internal _twapDuration = 300;
-
     /// @notice Computes new tick lower and upper for the individual strategy downside
     /// @dev shift left will trail the strategy position closer to the cuurent tick, current tick will be one tick left
     /// from position
