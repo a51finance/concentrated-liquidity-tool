@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -8,17 +9,13 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { Fixtures } from "./utils/Fixtures.sol";
 import { Utilities } from "./utils/Utilities.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
-import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
-
-import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
-
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -32,7 +29,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -120, tickUpper: 120 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         // compounding strategy
@@ -68,47 +65,6 @@ contract ShiftLiquidityTest is Test, Fixtures {
         base.toggleOperator(msg.sender);
     }
 
-    function test_shiftLiquidity_shouldRevertInvalidState() public {
-        router.exactInputSingle(
-            ISwapRouter.ExactInputSingleParams({
-                tokenIn: address(token0),
-                tokenOut: address(token1),
-                fee: 500,
-                recipient: address(this),
-                deadline: block.timestamp + 1 days,
-                amountIn: 1e30,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            })
-        );
-
-        (, int24 tick,,,,,) = pool.slot0();
-        int24 tickSpacing = key.pool.tickSpacing();
-
-        tick = utils.floorTicks(tick, tickSpacing);
-
-        ICLTBase.StrategyKey memory newKey =
-            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing * 10, tickUpper: tick + tickSpacing * 10 });
-
-        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(getStrategyID(address(this), 1));
-        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
-
-        // invalid state will be stored here because we are trying to add in range liquidity with only 1 asset
-        vm.prank(msg.sender);
-        vm.expectRevert();
-        base.shiftLiquidity(
-            ICLTBase.ShiftLiquidityParams({
-                key: newKey,
-                strategyId: getStrategyID(address(this), 1),
-                shouldMint: true,
-                zeroForOne: false,
-                swapAmount: 0,
-                moduleStatus: "",
-                sqrtPriceLimitX96: 0
-            })
-        );
-    }
-
     function test_shiftLiquidity_revertsIfNotWhitelistAccount() public {
         assert(base.isOperator(msg.sender));
 
@@ -127,18 +83,41 @@ contract ShiftLiquidityTest is Test, Fixtures {
         );
     }
 
-    function test_shiftLiquidity_revertsIfShiftingNotNeeded() public {
-        bytes32[] memory strategyIDs = new bytes32[](2);
-        strategyIDs[0] = getStrategyID(address(this), 1);
-        strategyIDs[1] = getStrategyID(address(this), 2);
+    function test_shiftLiquidity_revertsInvalidState() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                limitSqrtPrice: 0
+            })
+        );
 
-        // update pool cardinality
-        pool.increaseObservationCardinalityNext(80);
-        vm.warp(block.timestamp + 1 days);
+        (, int24 tick,,,,,) = pool.globalState();
+        int24 tickSpacing = key.pool.tickSpacing();
 
-        base.toggleOperator(address(modes));
-        vm.expectRevert(ModeTicksCalculation.LiquidityShiftNotNeeded.selector);
-        modes.ShiftBase(strategyIDs);
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing * 10, tickUpper: tick + tickSpacing * 10 });
+
+        // invalid state will be stored here because we are trying to add in range liquidity with only 1 asset
+        vm.prank(msg.sender);
+        vm.expectRevert();
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
     }
 
     function test_shiftLiquidity_succeedCorrectEventParams() public {
@@ -171,59 +150,6 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 swapAmount: 0,
                 moduleStatus: "",
                 sqrtPriceLimitX96: 0
-            })
-        );
-    }
-
-    function test_shiftLiquidity_poc1() public {
-        base.toggleOperator(address(rebaseModule));
-
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -400, tickUpper: 400 });
-        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-
-        // create new strategy
-        base.createStrategy(key, actions, 0, 0, true, false);
-
-        // deposit liquidity on new strategy
-        base.deposit(
-            ICLTBase.DepositParams({
-                strategyId: getStrategyID(address(this), 3),
-                amount0Desired: 4 ether,
-                amount1Desired: 4 ether,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this)
-            })
-        );
-
-        // HODL liquidity
-        rebaseModule.executeStrategy(
-            IRebaseStrategy.ExectuteStrategyParams({
-                pool: key.pool,
-                strategyID: getStrategyID(address(this), 3),
-                tickLower: key.tickLower,
-                tickUpper: key.tickUpper,
-                shouldMint: false,
-                zeroForOne: false,
-                swapAmount: 0,
-                sqrtPriceLimitX96: 0
-            })
-        );
-
-        // change anything in strategy
-        base.updateStrategyBase(getStrategyID(address(this), 3), address(this), 0.2 ether, 0.1 ether, actions);
-
-        // re mint liquidity on dex
-        rebaseModule.executeStrategy(
-            IRebaseStrategy.ExectuteStrategyParams({
-                pool: key.pool,
-                strategyID: getStrategyID(address(this), 3),
-                tickLower: key.tickLower,
-                tickUpper: key.tickUpper,
-                shouldMint: true,
-                zeroForOne: false,
-                swapAmount: 100,
-                sqrtPriceLimitX96: TickMath.MAX_SQRT_RATIO - 1
             })
         );
     }
@@ -303,16 +229,15 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);
@@ -322,7 +247,6 @@ contract ShiftLiquidityTest is Test, Fixtures {
         strategyIDs[1] = getStrategyID(address(this), 4);
 
         // update pool cardinality
-        pool.increaseObservationCardinalityNext(80);
         vm.warp(block.timestamp + 1 days);
 
         base.toggleOperator(address(modes));
@@ -331,12 +255,12 @@ contract ShiftLiquidityTest is Test, Fixtures {
         (ICLTBase.StrategyKey memory newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 3));
 
         assertEq(newKey.tickLower, tick + tickSpacing);
-        assertEq(newKey.tickUpper, newKey.tickLower + 200);
+        assertEq(newKey.tickUpper, newKey.tickLower + 240);
 
         (newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 4));
 
         assertEq(newKey.tickLower, tick + tickSpacing);
-        assertEq(newKey.tickUpper, newKey.tickLower + 200);
+        assertEq(newKey.tickUpper, newKey.tickLower + 240);
     }
 
     function test_shiftLiquidity_succeedShiftRight() public {
@@ -373,16 +297,15 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);
@@ -392,7 +315,6 @@ contract ShiftLiquidityTest is Test, Fixtures {
         strategyIDs[1] = getStrategyID(address(this), 4);
 
         // update pool cardinality
-        pool.increaseObservationCardinalityNext(80);
         vm.warp(block.timestamp + 1 days);
 
         base.toggleOperator(address(modes));
@@ -401,12 +323,12 @@ contract ShiftLiquidityTest is Test, Fixtures {
         (ICLTBase.StrategyKey memory newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 3));
 
         assertEq(newKey.tickUpper, tick - tickSpacing);
-        assertEq(newKey.tickLower, newKey.tickUpper - 200);
+        assertEq(newKey.tickLower, newKey.tickUpper - 240);
 
         (newKey,,,,,,,,) = base.strategies(getStrategyID(address(this), 4));
 
         assertEq(newKey.tickUpper, tick - tickSpacing);
-        assertEq(newKey.tickLower, newKey.tickUpper - 200);
+        assertEq(newKey.tickLower, newKey.tickUpper - 240);
     }
 
     function test_shiftLiquidity_mintLiquidityAfterExit() public {
@@ -414,12 +336,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -427,12 +348,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -459,7 +379,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         assertEq(account.balance0, reserves0 + fee0);
         assertEq(account.balance1, reserves1 + fee1);
 
-        assertEq(account.uniswapLiquidity, 0);
+        assertEq(uint256(account.uniswapLiquidity), 0);
 
         uint256 hodlBalance0Strategy1 = account.balance0;
         uint256 hodlBalance1Strategy1 = account.balance1;
@@ -486,7 +406,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         assertEq(account.fee0, fee0);
         assertEq(account.fee1, fee1);
 
-        assertEq(account.uniswapLiquidity, 0);
+        assertEq(uint256(account.uniswapLiquidity), 0);
 
         uint256 hodlBalance0Strategy2 = account.balance0;
         uint256 hodlBalance1Strategy2 = account.balance1;
@@ -572,12 +492,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 20e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -585,12 +504,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 20e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -633,12 +551,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 20e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -646,12 +563,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 20e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -660,8 +576,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,, uint256 totalFee0, uint256 totalFee1) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(key);
 
         (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
 
@@ -693,12 +608,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -706,12 +620,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -719,22 +632,21 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
-        (, int24 tick,,,,,) = pool.slot0();
+        (, int24 tick,,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);
 
         ICLTBase.StrategyKey memory newKey =
-            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 200, tickUpper: tick - tickSpacing });
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 240, tickUpper: tick - tickSpacing });
 
         vm.prank(msg.sender);
         base.shiftLiquidity(
@@ -762,12 +674,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -775,19 +686,18 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
         vm.prank(address(base));
         pool.burn(newKey.tickLower, newKey.tickUpper, 0);
-        (,,, uint256 totalFee0, uint256 totalFee1) =
-            pool.positions(keccak256(abi.encodePacked(address(base), newKey.tickLower, newKey.tickUpper)));
+
+        (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(newKey);
 
         (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
 
@@ -796,8 +706,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,, totalFee0, totalFee1) =
-            pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+        (totalFee0, totalFee1) = getPoolPositionFee(key);
 
         (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));
         (,,,,,,,, ICLTBase.Account memory accountStrategy2) = base.strategies(getStrategyID(address(this), 2));
@@ -809,12 +718,11 @@ contract ShiftLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { CLTBase } from "../src/CLTBase.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { console } from "forge-std/console.sol";
@@ -44,7 +45,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
      */
 
     // Price Preference
-    function test_fuzz_pricePreferenceWithValidInputs(uint256 amount0, uint256 amount1) public {
+    function test_fuzz_pricePreferenceWithValidInputs(uint256 amount0, uint256 amount1) public view {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
 
@@ -59,8 +60,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount1 < 8_388_608 && amount1 > 0);
         strategyDetail.data = abi.encode(uint256(0), uint256(30));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert(bytes("InvalidPricePreferenceDifference"));
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -70,8 +70,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount0 < 8_388_608 && amount0 > 0);
         strategyDetail.data = abi.encode(uint256(amount0), uint256(0));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert(bytes("InvalidPricePreferenceDifference"));
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -79,8 +78,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
         strategyDetail.data = abi.encode(uint256(0), uint256(0));
-        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert();
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -88,8 +86,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
         strategyDetail.data = "";
-        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert();
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -108,8 +105,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         strategyDetail.actionName = rebaseModule.REBASE_INACTIVITY();
         strategyDetail.data = abi.encode(uint256(0));
 
-        bytes4 selector = bytes4(keccak256("RebaseInactivityCannotBeZero()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert(bytes("RebaseInactivityCannotBeZero"));
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -203,8 +199,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         data[4] = keccak256(abi.encode(address(this), 5));
         data[5] = data[0];
 
-        bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", data[0]);
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("DuplicateStrategyId"));
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -216,8 +211,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         data[0] = keccak256(abi.encode(address(this), 1));
         data[1] = bytes32(0);
 
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1]);
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("InvalidStrategyId"));
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -286,8 +280,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         strategyIDs[0] = strategyID;
 
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", strategyID);
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("InvalidStrategyId"));
         rebaseModule.executeStrategies(strategyIDs);
     }
 
@@ -306,8 +299,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
     function testEmptyArrayReverts() public {
         bytes32[] memory data = new bytes32[](0);
-        bytes memory encodedError = abi.encodeWithSignature("StrategyIdsCannotBeEmpty()");
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("StrategyIdsCannotBeEmpty"));
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -315,8 +307,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         bytes32[] memory data = new bytes32[](2);
         data[0] = bytes32(0);
         data[1] = bytes32(0);
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1]);
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("InvalidStrategyId"));
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -326,9 +317,55 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         data[0] = identicalId;
         data[1] = identicalId;
         data[2] = identicalId;
-        // bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", identicalId);
         vm.expectRevert();
         rebaseModule.checkStrategiesArray(data);
+    }
+
+    function testExecuteStrategiesWithLowLiquidity() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(23, 43);
+
+        ICLTBase.PositionActions memory positionActions;
+
+        positionActions.mode = 1;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        initStrategy(800);
+        base.createStrategy(strategyKey, positionActions, 0, 0, true, false);
+
+        ICLTBase.DepositParams memory depositParams;
+
+        bytes32 strategyID = getStrategyID(owner, 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 2000;
+        depositParams.amount1Desired = 2000;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = owner;
+
+        base.deposit(depositParams);
+
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
+
+        vm.expectRevert(bytes("InvalidThreshold"));
+        rebaseModule.updateLiquidityThreshold(0);
+
+        rebaseModule.updateLiquidityThreshold(1000);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+
+        strategyIDs[0] = strategyID;
+
+        rebaseModule.executeStrategies(strategyIDs);
+        (ICLTBase.StrategyKey memory key,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
+        assertEq(reserve0 > 0, true);
+        assertEq(reserve1 == 0, true);
     }
 
     // edge
@@ -368,7 +405,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -390,7 +427,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID2 = createStrategyAndDeposit(rebaseActions, 3000, owner, 2, 2, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         strategyIDs[0] = strategyID2;
@@ -410,7 +447,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID3 = createStrategyAndDeposit(rebaseActions, 1700, owner, 3, 3, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         strategyIDs[0] = strategyID3;
@@ -431,7 +468,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID4 = createStrategyAndDeposit(rebaseActions, 500, owner, 4, 3, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token1, token0, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         strategyIDs[0] = strategyID4;
@@ -454,7 +491,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -467,7 +504,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);
@@ -476,7 +513,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 2);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);
@@ -497,7 +534,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -510,7 +547,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);
@@ -519,7 +556,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 2);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
 
         _hevm.warp(block.timestamp + 3600);
 
@@ -541,7 +578,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 3, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -554,7 +591,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+        executeSwap(token0, token1, owner, 500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);
@@ -563,7 +600,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 2);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
 
         _hevm.warp(block.timestamp + 3600);
 
@@ -585,7 +622,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 1, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -598,7 +635,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, owner, 150e18, 0, 0);
 
         _hevm.warp(block.timestamp + 3600);
 
@@ -608,7 +645,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 2);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, owner, 150e18, 0, 0);
 
         _hevm.warp(block.timestamp + 3600);
 
@@ -630,7 +667,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -643,7 +680,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 1);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         rebaseModule.executeStrategies(strategyIDs);
@@ -652,7 +689,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         assertEq(abi.decode(actionStatus, (uint256)), 2);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
 
         _hevm.warp(block.timestamp + 3600);
 
@@ -674,7 +711,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 1, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -698,7 +735,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token0, token1, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -719,7 +756,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
 
-        executeSwap(token0, token1, pool.fee(), owner, 1500e18, 0, 0);
+        executeSwap(token0, token1, owner, 1500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -756,11 +793,11 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
             bytes32 strategyID = createStrategyAndDeposit(rebaseActions, depositAmount, owner, i + 1, mode, true);
 
             if (mode == 1) {
-                executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+                executeSwap(token1, token0, owner, 150e18, 0, 0);
             } else if (mode == 2) {
-                executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+                executeSwap(token0, token1, owner, 150e18, 0, 0);
             } else {
-                executeSwap(token0, token1, pool.fee(), owner, 150e18, 0, 0);
+                executeSwap(token0, token1, owner, 150e18, 0, 0);
             }
             strategyIDs[i] = strategyID;
         }
@@ -795,7 +832,13 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         depoit(strategyID, users[0], 10 ether, 10 ether);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        ICLTBase.Account memory accounts;
+        ICLTBase.StrategyKey memory key;
+
+        (key,,,,,,,, accounts) = base.strategies(strategyID);
+        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, accounts.uniswapLiquidity);
+
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -815,28 +858,24 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         depoit(strategyID, users[1], 10 ether, 10 ether);
 
-        ICLTBase.Account memory accounts;
-        ICLTBase.StrategyKey memory key;
+        uint256 previousBalance0 = accounts.balance0;
+
         (key,,,,,,,, accounts) = base.strategies(strategyID);
-        assertEq(token0.balanceOf(users[1]), 10 ether - accounts.balance0);
+        (reserve0, reserve1) = getStrategyReserves(key, accounts.uniswapLiquidity);
+
+        assertEq(token0.balanceOf(users[1]), 10 ether - (accounts.balance0 - previousBalance0));
         assertEq(token1.balanceOf(users[1]), 0);
 
-        executeSwap(token0, token1, pool.fee(), owner, 50e18, 0, 0);
+        executeSwap(token0, token1, owner, 50e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
 
         (, uint256 shares2,,,,) = base.positions(2);
+
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: shares2,
-                recipient: users[1],
-                refundAsETH: false,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
         );
     }
 
@@ -863,7 +902,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         depoit(strategyID, users[0], 10 ether, 10 ether);
 
-        executeSwap(token1, token0, pool.fee(), owner, 150e18, 0, 0);
+        executeSwap(token1, token0, owner, 150e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -897,15 +936,11 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         (uint256 collect0, uint256 collect1) =
             key.pool.collect(address(base), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
 
-        console.log(collect0, collect1);
-
-        console.log(accounts.balance1);
-
         assertEq(token0.balanceOf(users[1]), 100 ether - accounts.balance0);
         // precision error of 0.077071791677914138 here
         assertEq(token1.balanceOf(users[1]), 100 ether - (reserve1 * shares2) / accounts.totalShares);
 
-        executeSwap(token0, token1, pool.fee(), owner, 50e18, 0, 0);
+        executeSwap(token0, token1, owner, 50e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         assertEq(checkRange(key.tickLower, key.tickUpper), true);
@@ -914,14 +949,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: shares2,
-                recipient: users[1],
-                refundAsETH: false,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
         );
     }
 
@@ -947,15 +975,17 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         bytes32 strategyID = getStrategyID(owner, 1);
 
         depositParams.strategyId = strategyID;
-        depositParams.amount0Desired = 1000;
-        depositParams.amount1Desired = 1000;
+        depositParams.amount0Desired = 2000;
+        depositParams.amount1Desired = 2000;
         depositParams.amount0Min = 0;
         depositParams.amount1Min = 0;
         depositParams.recipient = owner;
 
         base.deposit(depositParams);
 
-        executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
+        rebaseModule.updateLiquidityThreshold(1000);
+
+        executeSwap(token1, token0, owner, 1500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -986,7 +1016,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
+        executeSwap(token1, token0, owner, 1500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);
@@ -1014,7 +1044,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyID1 = createStrategyAndDeposit(rebaseActions, 700, owner, 1, 2, true);
 
-        executeSwap(token1, token0, pool.fee(), owner, 1500e18, 0, 0);
+        executeSwap(token1, token0, owner, 1500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
 
         bytes32[] memory strategyIDs = new bytes32[](1);

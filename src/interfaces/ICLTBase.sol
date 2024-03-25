@@ -1,23 +1,15 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 interface ICLTBase {
-    error NoLiquidity();
-    error InvalidInput();
-    error InvalidShare();
-    error InvalidCaller();
-    error onlyNonCompounders();
-    error TransactionTooAged();
-    error MinimumAmountsExceeded();
-    error OwnerCannotBeZeroAddress();
-
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
     /// @param tickUpper The upper tick of the A51's LP position
     struct StrategyKey {
-        IUniswapV3Pool pool;
+        IAlgebraPool pool;
         int24 tickLower;
         int24 tickUpper;
     }
@@ -176,14 +168,14 @@ interface ICLTBase {
     /// @notice Returns the information about a strategy by the strategy's key
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @return key A51 position's key details associated with this strategy
-    /// @return owner The address of the strategy owner
-    /// @return actions It is a hash of a preimage composed by all modes IDs selected by the strategist
-    /// @return actionStatus It is a hash of a additional data of strategy for further required actions
-    /// @return isCompound Bool weather the strategy has compunding activated or not
-    /// @return isPrivate Bool weather strategy is open for all users or not
-    /// @return managementFee The value of fee in percentage applied on strategy users liquidity by strategy owner
-    /// @return performanceFee The value of fee in percentage applied on strategy users earned fee by strategy owner
-    /// @return account Strategy values of balances and fee accounting details
+    /// owner The address of the strategy owner
+    /// actions It is a hash of a preimage composed by all modes IDs selected by the strategist
+    /// actionStatus It is a hash of a additional data of strategy for further required actions
+    /// isCompound Bool weather the strategy has compunding activated or not
+    /// isPrivate Bool weather strategy is open for all users or not
+    /// managementFee The value of fee in percentage applied on strategy users liquidity by strategy owner
+    /// performanceFee The value of fee in percentage applied on strategy users earned fee by strategy owner
+    /// account Strategy values of balances and fee accounting details
     function strategies(bytes32 strategyId)
         external
         returns (
@@ -202,11 +194,11 @@ interface ICLTBase {
     /// @dev Throws if the token ID is not valid.
     /// @param positionId The ID of the token that represents the position
     /// @return strategyId strategy ID assigned to this token ID
-    /// @return liquidityShare Shares assigned to this token ID
-    /// @return feeGrowthInside0LastX128 The fee growth of token0 as of the last action on the individual position
-    /// @return feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
-    /// @return tokensOwed0 The uncollected amount of token0 owed to the position as of the last computation
-    /// @return tokensOwed1 The uncollected amount of token1 owed to the position as of the last computation
+    /// liquidityShare Shares assigned to this token ID
+    /// feeGrowthInside0LastX128 The fee growth of token0 as of the last action on the individual position
+    /// feeGrowthInside1LastX128 The fee growth of token1 as of the last action on the individual position
+    /// tokensOwed0 The uncollected amount of token0 owed to the position as of the last computation
+    /// tokensOwed1 The uncollected amount of token1 owed to the position as of the last computation
     function positions(uint256 positionId)
         external
         returns (
@@ -250,8 +242,6 @@ interface ICLTBase {
         uint256 tokenId;
         uint256 amount0Desired;
         uint256 amount1Desired;
-        uint256 amount0Min;
-        uint256 amount1Min;
     }
 
     /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
@@ -274,8 +264,6 @@ interface ICLTBase {
         uint256 liquidity;
         address recipient;
         bool refundAsETH;
-        uint256 amount0Min;
-        uint256 amount1Min;
     }
 
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position
@@ -306,9 +294,6 @@ interface ICLTBase {
     /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
     /// exact output (negative)
     /// @param moduleStatus The encoded data for each of the strategy to track any detail for futher actions
-    /// @param sqrtPriceLimitX96 The Q64.96 sqrt price limit. If zero for one, the price cannot be less than this
-    /// value after the swap. If one for zero, the price cannot be greater than this value after the swap
-    /// @param data Any data to be passed through to the callback
     struct ShiftLiquidityParams {
         StrategyKey key;
         bytes32 strategyId;

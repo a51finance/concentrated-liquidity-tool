@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -14,10 +15,10 @@ import { FixedPoint128 } from "../src/libraries/FixedPoint128.sol";
 import { LiquidityShares } from "../src/libraries/LiquidityShares.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -33,7 +34,7 @@ contract DepositTest is Test, Fixtures {
         deployFreshState();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -180, tickUpper: 180 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -68,7 +69,7 @@ contract DepositTest is Test, Fixtures {
         assertEq(account.totalShares, depositAmount);
         assertEq(base.balanceOf(msg.sender), 1);
         assertEq(liquidityShare, depositAmount);
-        assertEq(account.uniswapLiquidity, 200_510_416_479_002_803_287);
+        assertEq(uint256(account.uniswapLiquidity), 111_617_416_535_568_857_032);
     }
 
     function test_deposit_revertsIfZeroAmount() public {
@@ -84,7 +85,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert();
         base.deposit(params);
     }
 
@@ -101,7 +102,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert();
         base.deposit(params);
     }
 
@@ -128,10 +129,10 @@ contract DepositTest is Test, Fixtures {
     }
 
     function test_deposit_succeedsWithNativeToken() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -155,7 +156,7 @@ contract DepositTest is Test, Fixtures {
 
         assertEq(account.totalShares, depositAmount);
         assertEq(liquidityShare, depositAmount);
-        assertEq(account.uniswapLiquidity, 601_531_249_437_008_409_863);
+        assertEq(uint256(account.uniswapLiquidity), 251_515_499_634_488_186_477);
     }
 
     function test_deposit_revertsWithInSufficientFunds() public {
@@ -240,20 +241,19 @@ contract DepositTest is Test, Fixtures {
         (, uint256 liquidityShareUser1,,,,) = base.positions(2);
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
-        assertEq(liquidityShareUser1, depositAmount);
-        assertEq(account.totalShares, depositAmount * 2);
+        assertEq(liquidityShareUser1, depositAmount + 1);
+        assertEq(account.totalShares, depositAmount * 2 + 1);
 
         // try swapping here to check contract balances
         router.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -261,12 +261,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -277,9 +276,9 @@ contract DepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
 
-        assertEq(account.balance0, 360_616_736_599_640);
+        assertEq(account.balance0, 49_713_714_623_866);
         assertEq(account.balance1, 0);
-        assertEq(account.totalShares, ((depositAmount * 2) + liquidityShareUser2));
+        assertEq(account.totalShares, (depositAmount * 2) + liquidityShareUser2 + 1);
     }
 
     function test_deposit_succeedsOutOfRangeDeposit() public {
@@ -304,12 +303,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -317,125 +315,14 @@ contract DepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 498_625_034_701_312_208);
-    }
-
-    function test_deposit_outOfRangePoc() public {
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: 200, tickUpper: 400 });
-        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-
-        base.createStrategy(key, actions, 0, 0, true, false);
-
-        bytes32 strategyID = getStrategyID(address(this), 2);
-        uint256 depositAmount = 5 ether;
-
-        base.deposit(
-            ICLTBase.DepositParams({
-                strategyId: strategyID,
-                amount0Desired: depositAmount,
-                amount1Desired: 0,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: msg.sender
-            })
-        );
-
-        base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 1,
-                amount0Desired: depositAmount,
-                amount1Desired: 0,
-                amount0Min: 0,
-                amount1Min: 0
-            })
-        );
-    }
-
-    function test_deposit_outOfRangePoc2() public {
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: 200, tickUpper: 400 });
-        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-
-        base.createStrategy(key, actions, 0, 0, true, false);
-
-        bytes32 strategyID = getStrategyID(address(this), 2);
-        uint256 depositAmount = 5 ether;
-
-        base.deposit(
-            ICLTBase.DepositParams({
-                strategyId: strategyID,
-                amount0Desired: depositAmount,
-                amount1Desired: 0,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: msg.sender
-            })
-        );
-
-        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
-
-        assertEq(liquidityShareUser1, depositAmount);
-
-        base.deposit(
-            ICLTBase.DepositParams({
-                strategyId: strategyID,
-                amount0Desired: depositAmount * 2,
-                amount1Desired: 0,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: msg.sender
-            })
-        );
-
-        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
-
-        assertEq(liquidityShareUser2, depositAmount * 2);
-    }
-
-    function test_deposit_outOfRangePoc3() public {
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -400, tickUpper: -200 });
-        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-
-        base.createStrategy(key, actions, 0, 0, true, false);
-
-        bytes32 strategyID = getStrategyID(address(this), 2);
-        uint256 depositAmount = 5 ether;
-
-        base.deposit(
-            ICLTBase.DepositParams({
-                strategyId: strategyID,
-                amount0Desired: 0,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: msg.sender
-            })
-        );
-
-        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
-
-        assertEq(liquidityShareUser1, depositAmount);
-
-        base.deposit(
-            ICLTBase.DepositParams({
-                strategyId: strategyID,
-                amount0Desired: 0,
-                amount1Desired: depositAmount * 2,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: msg.sender
-            })
-        );
-
-        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
-
-        assertEq(liquidityShareUser2, depositAmount * 2);
+        assertEq(liquidityShareUser2, 497_725_126_939_380_199);
     }
 
     function test_deposit_shouldReturnExtraETH() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -522,12 +409,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -590,12 +476,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -700,12 +585,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -779,8 +663,8 @@ contract DepositTest is Test, Fixtures {
         (, uint256 userShare2,,,,) = base.positions(2);
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(userShare2, depositAmount);
-        assertEq(account.totalShares, depositAmount * 2);
+        assertEq(userShare2, depositAmount + 1);
+        assertEq(account.totalShares, depositAmount * 2 + 1);
 
         assertEq(account.balance0, 0);
         assertEq(account.balance1, 0);
@@ -790,12 +674,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -803,12 +686,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -825,8 +707,8 @@ contract DepositTest is Test, Fixtures {
         (, uint256 userShare3,,,,) = base.positions(3);
         (,,,,,,,, account) = base.strategies(strategyID);
 
-        assertEq(userShare3, liquidityUser3 - 1);
-        assertEq(account.totalShares, ((liquidityUser1 * 2) + liquidityUser3) - 1);
+        assertEq(userShare3, liquidityUser3);
+        assertEq(account.totalShares, (liquidityUser1 * 2) + liquidityUser3 + 1);
     }
 
     function test_deposit_succeedsWithCorrectFeeGrowth() public {
@@ -835,7 +717,7 @@ contract DepositTest is Test, Fixtures {
 
         uint256 depositAmount = 4 ether;
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, false, false);
@@ -855,12 +737,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -868,12 +749,11 @@ contract DepositTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 

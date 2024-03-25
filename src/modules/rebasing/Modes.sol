@@ -1,27 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
-import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
-
-import { Owned } from "@solmate/auth/Owned.sol";
+import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 /// @title  Modes
 /// @notice Provides functions to update ticks for basic modes of strategy
-contract Modes is ModeTicksCalculation, Owned {
-    error InvalidModeId(uint256 modeId);
-    error InvalidStrategyId(bytes32 strategyID);
-
+contract Modes is ModeTicksCalculation, AccessControl {
     /// @notice The address of base vault
     ICLTBase public baseVault;
 
-    /// @notice The address of twap qupter
-    ICLTTwapQuoter public twapQuoter;
-
-    constructor(address vault, address _twapQuoter, address owner) Owned(owner) {
+    constructor(address vault) AccessControl() {
         baseVault = ICLTBase(vault);
-        twapQuoter = ICLTTwapQuoter(_twapQuoter);
     }
 
     /// @notice Trails the position of strategy according to the current tick i.e. shift left or shift right
@@ -32,7 +24,7 @@ contract Modes is ModeTicksCalculation, Owned {
         for (uint256 i = 0; i < strategyIdsLength; i++) {
             (ICLTBase.StrategyKey memory key, bytes memory actions) = _getStrategy(strategyIDs[i]);
 
-            if (address(key.pool) == address(0)) revert InvalidStrategyId(strategyIDs[i]);
+            require(address(key.pool) != address(0), "InvalidStrategyId");
             ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
             if (modules.mode == 1) {
@@ -41,8 +33,6 @@ contract Modes is ModeTicksCalculation, Owned {
                 _shiftRightBase(strategyIDs[i], key);
             } else if (modules.mode == 3) {
                 _shiftLeftAndRightBase(strategyIDs[i], key);
-            } else {
-                revert InvalidModeId(modules.mode);
             }
         }
     }
@@ -59,7 +49,7 @@ contract Modes is ModeTicksCalculation, Owned {
         internal
         returns (int24 tickLower, int24 tickUpper)
     {
-        (tickLower, tickUpper) = shiftLeft(key, twapQuoter.getTwap(key.pool));
+        (tickLower, tickUpper) = shiftLeft(key);
         key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
         _updateStrategy(strategyID, key);
     }
@@ -76,7 +66,7 @@ contract Modes is ModeTicksCalculation, Owned {
         internal
         returns (int24 tickLower, int24 tickUpper)
     {
-        (tickLower, tickUpper) = shiftRight(key, twapQuoter.getTwap(key.pool));
+        (tickLower, tickUpper) = shiftRight(key);
         key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
         _updateStrategy(strategyID, key);
     }
@@ -93,7 +83,7 @@ contract Modes is ModeTicksCalculation, Owned {
         internal
         returns (int24 tickLower, int24 tickUpper)
     {
-        (tickLower, tickUpper) = shiftBothSide(key, twapQuoter.getTwap(key.pool));
+        (tickLower, tickUpper) = shiftBothSide(key);
         key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
         _updateStrategy(strategyID, key);
     }
@@ -115,10 +105,8 @@ contract Modes is ModeTicksCalculation, Owned {
         baseVault.shiftLiquidity(params);
     }
 
-    /// @notice Updates the address twapQuoter.
-    /// @param _twapQuoter The new address of twapQuoter
-    function updateTwapQuoter(address _twapQuoter) external onlyOwner {
-        twapQuoter = ICLTTwapQuoter(_twapQuoter);
+    function updateTwapDuration(uint32 value) external onlyOwner {
+        _twapDuration = value;
     }
 
     function _getStrategy(bytes32 strategyID)

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -8,12 +9,12 @@ import { Fixtures } from "./utils/Fixtures.sol";
 import { Utilities } from "./utils/Utilities.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -35,7 +36,7 @@ contract WithdrawTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -66,14 +67,7 @@ contract WithdrawTest is Test, Fixtures {
         emit Withdraw(1, recipient, liquidityShare, depositAmount - 1, depositAmount - 1, 0, 0);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 1,
-                liquidity: liquidityShare,
-                recipient: recipient,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: recipient, refundAsETH: true })
         );
 
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
@@ -85,7 +79,7 @@ contract WithdrawTest is Test, Fixtures {
         assertEq(account.balance1, 0);
 
         assertEq(account.totalShares, 0);
-        assertEq(account.uniswapLiquidity, 0);
+        assertEq(uint256(account.uniswapLiquidity), 0);
     }
 
     function test_withdraw_multipleUsers() public {
@@ -126,12 +120,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -139,12 +132,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -169,14 +161,12 @@ contract WithdrawTest is Test, Fixtures {
                 tokenId: 3,
                 liquidity: liquidityShareUser3,
                 recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
+                refundAsETH: true
             })
         );
 
-        assertEq(token0.balanceOf(msg.sender) + 12, amount0);
-        assertEq(token1.balanceOf(msg.sender) + 13, amount1);
+        assertEq(token0.balanceOf(msg.sender) + 4, amount0);
+        assertEq(token1.balanceOf(msg.sender) + 3, amount1);
 
         vm.prank(address(this));
         base.withdraw(
@@ -184,21 +174,19 @@ contract WithdrawTest is Test, Fixtures {
                 tokenId: 1,
                 liquidity: liquidityShareUser1,
                 recipient: users[0],
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
+                refundAsETH: true
             })
         );
 
-        assertEq(token0.balanceOf(users[0]) - 5, userShare0);
-        assertEq(token1.balanceOf(users[0]) - 6, userShare1);
+        assertEq(token0.balanceOf(users[0]) + 8, userShare0);
+        assertEq(token1.balanceOf(users[0]) + 6, userShare1);
     }
 
     function test_withdraw_shouldPayInETH() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -120, tickUpper: 120 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, true, false);
@@ -222,14 +210,7 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(msg.sender);
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: liquidityShare,
-                recipient: randomUser,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: randomUser, refundAsETH: true })
         );
 
         assertEq(randomUser.balance + 1, depositAmount);
@@ -241,72 +222,40 @@ contract WithdrawTest is Test, Fixtures {
         vm.prank(msg.sender);
         vm.expectRevert();
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 1,
-                liquidity: liquidityShare,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
     }
 
-    function test_withdraw_revertsIfNoLiquidity() public {
+    function test_withdraw_revertsIfNL() public {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 1,
-                liquidity: liquidityShare,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
 
-        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        vm.expectRevert();
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 1,
-                liquidity: liquidityShare,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
     }
 
     function test_withdraw_revertsIfZeroLiquidityInput() public {
         vm.prank(address(this));
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
-        base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 1,
-                liquidity: 0,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
-        );
+        vm.expectRevert();
+        base.withdraw(ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 0, recipient: msg.sender, refundAsETH: true }));
     }
 
     function test_withdraw_revertsIfBalanceExceed() public {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         vm.prank(address(this));
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert();
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
                 liquidity: liquidityShare * 10,
                 recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
+                refundAsETH: true
             })
         );
     }
@@ -340,12 +289,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -353,12 +301,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -399,23 +346,16 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: liquidityShare,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(msg.sender), account.balance0 / 2);
+        assertEq(token0.balanceOf(msg.sender), account.balance0 / 2 + 1);
         assertEq(token1.balanceOf(msg.sender), account.balance1 / 2);
 
         (,,,,,,,, account) = base.strategies(strategyId);
 
         // same amount of shares should be left over in strategy
-        assertEq(account.balance0, token0.balanceOf(msg.sender));
+        assertEq(account.balance0, token0.balanceOf(msg.sender) - 1);
         assertEq(account.balance1, token1.balanceOf(msg.sender));
     }
 
@@ -465,12 +405,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -478,12 +417,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -525,24 +463,17 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: depositAmount,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(msg.sender), (account.balance0 + fee0) / 2);
-        assertEq(token1.balanceOf(msg.sender), ((account.balance1 + fee1) / 2) - 1);
+        assertEq(token0.balanceOf(msg.sender), (account.balance0 + fee0) / 2 - 2);
+        assertEq(token1.balanceOf(msg.sender), (account.balance1 + fee1) / 2 - 1);
 
         (,,,,,,,, account) = base.strategies(strategyId);
 
         // same amount of shares should be left over in strategy
-        assertEq(account.balance0 + account.fee0 - 1, token0.balanceOf(msg.sender));
-        assertEq(account.balance1 + account.fee1 - 2, token1.balanceOf(msg.sender));
+        assertEq(account.balance0 + account.fee0, token0.balanceOf(msg.sender) + 5);
+        assertEq(account.balance1 + account.fee1, token1.balanceOf(msg.sender) + 2);
     }
 
     function test_withdraw_multipleUsersNoCompounding() public {
@@ -604,12 +535,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -617,12 +547,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -652,35 +581,21 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(users[2]);
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 4,
-                liquidity: liquidityShare,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 4, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(msg.sender), amount0 - 1);
-        assertEq(token1.balanceOf(msg.sender), amount1 - 2);
+        assertEq(token0.balanceOf(msg.sender) + 11, amount0);
+        assertEq(token1.balanceOf(msg.sender) + 12, amount1);
 
         (, liquidityShare,,,,) = base.positions(3);
 
         vm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 3,
-                liquidity: liquidityShare,
-                recipient: users[1],
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 3, liquidity: liquidityShare, recipient: users[1], refundAsETH: true })
         );
 
-        assertEq(token0.balanceOf(users[1]), userShare0);
-        assertEq(token1.balanceOf(users[1]), userShare1);
+        assertEq(token0.balanceOf(users[1]) - 4, userShare0);
+        assertEq(token1.balanceOf(users[1]) - 6, userShare1);
 
         (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 2));
 
@@ -688,13 +603,13 @@ contract WithdrawTest is Test, Fixtures {
 
         // contract should have same assets left for last user
         assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
-        assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]) + 1);
+        assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]));
     }
 
     function test_withdraw_shouldRecieveSingleAssetToken0() public {
         uint256 depositAmount = 5 ether;
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
 
         base.createStrategy(key, actions, 0, 0, true, false);
 
@@ -702,12 +617,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -715,7 +629,7 @@ contract WithdrawTest is Test, Fixtures {
             ICLTBase.DepositParams({
                 strategyId: getStrategyID(address(this), 2),
                 amount0Desired: depositAmount,
-                amount1Desired: 0,
+                amount1Desired: depositAmount,
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: address(this)
@@ -726,14 +640,7 @@ contract WithdrawTest is Test, Fixtures {
         (uint256 reserves0,) = getStrategyReserves(key, liquidity);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: depositAmount,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: reserves0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
         );
 
         assertEq(token0.balanceOf(msg.sender), reserves0);
@@ -742,7 +649,7 @@ contract WithdrawTest is Test, Fixtures {
     function test_withdraw_shouldRecieveSingleAssetToken1() public {
         uint256 depositAmount = 5 ether;
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -200, tickUpper: 200 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
 
         base.createStrategy(key, actions, 0, 0, true, false);
 
@@ -750,12 +657,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -774,14 +680,7 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 reserves1) = getStrategyReserves(key, liquidity);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: depositAmount,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
         );
 
         assertEq(token1.balanceOf(msg.sender), reserves1);
@@ -810,14 +709,7 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 liquidityShare,,,,) = base.positions(2);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: liquidityShare,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
         vm.stopPrank();
 
@@ -852,12 +744,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -865,12 +756,11 @@ contract WithdrawTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -880,14 +770,7 @@ contract WithdrawTest is Test, Fixtures {
         (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, liquidity);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 2,
-                liquidity: liquidityShare,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
         );
         vm.stopPrank();
 

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 
-import { WETH } from "@solmate/tokens/WETH.sol";
+import { WETH } from "../mocks/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
@@ -11,35 +12,39 @@ import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandle
 
 import { CLTBase } from "../../src/CLTBase.sol";
 import { CLTModules } from "../../src/CLTModules.sol";
-import { CLTTwapQuoter } from "../../src/CLTTwapQuoter.sol";
-
 import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
-import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { SwapRouter } from "@cryptoalgebra/periphery/contracts/SwapRouter.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
+import { AlgebraFactory } from "@cryptoalgebra/core/contracts/AlgebraFactory.sol";
+import { AlgebraPool } from "@cryptoalgebra/core/contracts/AlgebraPool.sol";
+
+import { AlgebraPoolDeployer } from "@cryptoalgebra/core/contracts/AlgebraPoolDeployer.sol";
+
+import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
+import { NonfungiblePositionManager } from "@cryptoalgebra/periphery/contracts/NonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from
+    "@cryptoalgebra/periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import "forge-std/console.sol";
 
 contract Fixtures is UniswapDeployer {
-    IUniswapV3Factory factory;
-    IUniswapV3Pool pool;
+    AlgebraPoolDeployer deployer;
+    IAlgebraFactory factory;
+    IAlgebraPool pool;
     SwapRouter router;
     INonfungiblePositionManager manager;
     WETH weth;
 
     Modes modes;
     CLTBase base;
-    CLTTwapQuoter cltTwap;
     RebaseModule rebaseModule;
     CLTModules cltModules;
     GovernanceFeeHandler feeHandler;
@@ -55,14 +60,20 @@ contract Fixtures is UniswapDeployer {
     }
 
     function initPool() internal {
-        // intialize uniswap contracts
-        factory = IUniswapV3Factory(deployUniswapV3Factory());
-        pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
+        // intialize algebra contracts
+        deployer = new AlgebraPoolDeployer();
+        factory = new AlgebraFactory(address(deployer), address(0));
+
+        deployer.setFactory(address(factory));
+        factory.createPool(address(token0), address(token1));
+
+        pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
+
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
 
     function initPoolAndAddLiquidity() internal {
-        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
+        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(deployer));
 
         token0.approve(address(manager), type(uint256).max);
         token1.approve(address(manager), type(uint256).max);
@@ -71,7 +82,6 @@ contract Fixtures is UniswapDeployer {
             INonfungiblePositionManager.MintParams({
                 token0: address(token0),
                 token1: address(token1),
-                fee: 500,
                 tickLower: -300,
                 tickUpper: 300,
                 amount0Desired: 1e30,
@@ -85,7 +95,7 @@ contract Fixtures is UniswapDeployer {
     }
 
     function initRouter() internal {
-        router = new SwapRouter(address(factory), address(weth));
+        router = new SwapRouter(address(factory), address(weth), address(deployer));
 
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
@@ -100,6 +110,8 @@ contract Fixtures is UniswapDeployer {
     function initBase() internal {
         weth = new WETH();
 
+        rebaseModule = new RebaseModule(address(base));
+
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
             strategyCreationFee: 0,
@@ -107,16 +119,13 @@ contract Fixtures is UniswapDeployer {
             protcolFeeOnPerformance: 0
         });
 
-        cltTwap = new CLTTwapQuoter(address(this));
-        cltModules = new CLTModules(address(this));
-        feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+        cltModules = new CLTModules();
 
-        base = new CLTBase(
-            "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
-        );
+        feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
-        modes = new Modes(address(base), address(cltTwap), address(this));
-        rebaseModule = new RebaseModule(msg.sender, address(base), address(cltTwap));
+        base = new CLTBase("ALP Base", "ALP", address(weth), address(feeHandler), address(cltModules), factory);
+
+        modes = new Modes(address(base));
 
         cltModules.setNewModule(keccak256("EXIT_STRATEGY"), keccak256("SMART_EXIT"));
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
@@ -124,6 +133,25 @@ contract Fixtures is UniswapDeployer {
         cltModules.setNewModule(keccak256("LIQUIDITY_DISTRIBUTION"), keccak256("PRICE_RANGE"));
 
         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModule));
+    }
+
+    function getPoolPositionFee(ICLTBase.StrategyKey memory key)
+        public
+        view
+        returns (uint128 totalFee0, uint128 totalFee1)
+    {
+        bytes32 positionKey;
+
+        int24 tickLower = key.tickLower;
+        int24 tickUpper = key.tickUpper;
+
+        address vault = address(base);
+
+        assembly {
+            positionKey := or(shl(24, or(shl(24, vault), and(tickLower, 0xFFFFFF))), and(tickUpper, 0xFFFFFF))
+        }
+
+        (,,,, totalFee0, totalFee1) = key.pool.positions(positionKey);
     }
 
     function deployFreshState() internal {
@@ -151,7 +179,7 @@ contract Fixtures is UniswapDeployer {
         view
         returns (uint256 reserves0, uint256 reserves1)
     {
-        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.slot0();
+        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.globalState();
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(keyInput.tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(keyInput.tickUpper);
 

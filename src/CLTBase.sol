@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
 import { ICLTModules } from "./interfaces/ICLTModules.sol";
@@ -16,9 +17,10 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
-import { ERC721 } from "@solmate/tokens/ERC721.sol";
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
@@ -45,8 +47,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @inheritdoc ICLTBase
     mapping(uint256 => UserPositions.Data) public override positions;
 
-    /// @notice The global fee growth as of last action on individual liquidity position in pool
-    /// @dev The uncollected fee earned by individual position is first collected by global account and then distributed
+    /// @dev The global fee growth as of last action on individual liquidity position in pool
+    /// The uncollected fee earned by individual position is first collected by global account and then distributed
     /// among the strategies having same ticks as of global account ticks according to the strategy fee growth & share
     mapping(bytes32 => StrategyFeeShares.GlobalAccount) private strategyGlobalFees;
 
@@ -58,13 +60,12 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     constructor(
         string memory _name,
         string memory _symbol,
-        address _owner,
         address _weth9,
         address _feeHandler,
         address _cltModules,
-        IUniswapV3Factory _factory
+        IAlgebraFactory _factory
     )
-        AccessControl(_owner)
+        AccessControl()
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
     {
@@ -115,7 +116,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         (, uint256 strategyCreationFeeAmount,,) = _getGovernanceFee(isPrivate);
 
-        if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
+        if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner(), strategyCreationFeeAmount);
 
         refundETH();
 
@@ -136,9 +137,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
 
-        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) = _deposit(
-            params.strategyId, params.amount0Desired, params.amount1Desired, params.amount0Min, params.amount1Min
-        );
+        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
+            _deposit(params.strategyId, params.amount0Desired, params.amount1Desired);
 
         _mint(params.recipient, (tokenId = _sharesId++));
 
@@ -164,17 +164,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         returns (uint256 share, uint256 amount0, uint256 amount1)
     {
         UserPositions.Data storage position = positions[params.tokenId];
-        bytes32 strategyId = position.strategyId;
 
-        _authorizationOfStrategy(strategyId);
+        _authorizationOfStrategy(position.strategyId);
 
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
 
         (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
-            _deposit(strategyId, params.amount0Desired, params.amount1Desired, params.amount0Min, params.amount1Min);
+            _deposit(position.strategyId, params.amount0Desired, params.amount1Desired);
 
-        if (!strategies[strategyId].isCompound) {
+        if (!strategies[position.strategyId].isCompound) {
             position.updateUserPosition(feeGrowthInside0LastX128, feeGrowthInside1LastX128);
         }
 
@@ -196,9 +195,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, position.strategyId);
 
-        if (params.liquidity == 0) revert InvalidShare();
-        if (position.liquidityShare == 0) revert NoLiquidity();
-        if (position.liquidityShare < params.liquidity) revert InvalidShare();
+        require(params.liquidity > 0);
+        require(position.liquidityShare > 0);
+        require(position.liquidityShare >= params.liquidity);
 
         // these vars used for multipurpose || strategist fee & contract balance
         Account memory vars;
@@ -227,7 +226,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.performanceFee,
             vars.fee0,
             vars.fee1,
-            owner,
+            owner(),
             strategy.owner
         );
 
@@ -240,7 +239,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.managementFee,
             amount0,
             amount1,
-            owner,
+            owner(),
             strategy.owner
         );
 
@@ -262,8 +261,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             position.tokensOwed1 = 0;
         }
 
-        if (amount0 < params.amount0Min || amount1 < params.amount1Min) revert MinimumAmountsExceeded();
-
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
         }
@@ -272,7 +269,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
         }
 
-        if (strategy.getHodlStatus() == false) global.totalLiquidity -= params.liquidity;
+        bool isExit;
+
+        if (strategy.actionStatus.length > 0) {
+            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
+        }
+
+        if (isExit == false) global.totalLiquidity -= params.liquidity;
 
         position.liquidityShare -= params.liquidity;
         strategy.account.totalShares -= params.liquidity;
@@ -294,8 +297,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         _updateGlobals(strategy, position.strategyId);
 
-        if (strategy.isCompound) revert onlyNonCompounders();
-        if (position.liquidityShare == 0) revert NoLiquidity();
+        require(!strategy.isCompound, "ONC");
+        require(position.liquidityShare > 0, "NL");
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
@@ -307,7 +310,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.performanceFee,
             tokensOwed0,
             tokensOwed1,
-            owner,
+            owner(),
             strategy.owner
         );
 
@@ -337,8 +340,14 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         // only burn this strategy liquidity not other strategy with same ticks
         (vars.balance0, vars.balance1,,) = PoolActions.burnLiquidity(strategy.key, vars.uniswapLiquidity);
 
+        bool isExit;
+
+        if (strategy.actionStatus.length > 0) {
+            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
+        }
+
         // global liquidity will be less if strategy has activated exit mode
-        if (strategy.getHodlStatus() == false) {
+        if (isExit == false) {
             global.totalLiquidity -= strategy.account.totalShares;
         }
 
@@ -347,7 +356,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         // deduct any fees if required for protocol
         (vars.fee0, vars.fee1) =
-            transferFee(strategy.key, 0, automationFee, vars.balance0, vars.balance1, address(0), owner);
+            transferFee(strategy.key, 0, automationFee, vars.balance0, vars.balance1, address(0), owner());
 
         vars.balance0 -= vars.fee0;
         vars.balance1 -= vars.fee1;
@@ -411,8 +420,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         _validateModes(actions, managementFee, performanceFee);
 
         StrategyData storage strategy = strategies[strategyId];
-        if (strategy.owner != _msgSender()) revert InvalidCaller();
-        if (owner == address(0)) revert OwnerCannotBeZeroAddress();
+        require(strategy.owner == _msgSender());
 
         strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
 
@@ -422,9 +430,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     function _deposit(
         bytes32 strategyId,
         uint256 amount0Desired,
-        uint256 amount1Desired,
-        uint256 amount0Min,
-        uint256 amount1Min
+        uint256 amount1Desired
     )
         private
         returns (
@@ -440,7 +446,11 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         Account memory vars;
 
-        bool isExit = strategy.getHodlStatus();
+        bool isExit;
+
+        if (strategy.actionStatus.length > 0) {
+            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
+        }
 
         // prevent user drains others
         if (strategy.isCompound && isExit == false) {
@@ -460,13 +470,11 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(strategy, amount0Desired, amount1Desired);
 
         // liquidity frontrun checks here
-        if (share == 0) revert InvalidShare();
+        require(share > 0);
 
         if (strategy.account.totalShares == 0) {
-            if (share < Constants.MIN_INITIAL_SHARES) revert InvalidShare();
+            require(share > Constants.MIN_INITIAL_SHARES);
         }
-
-        if (amount0 < amount0Min || amount1 < amount1Min) revert MinimumAmountsExceeded();
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -8,7 +9,7 @@ import { Fixtures } from "./utils/Fixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 import "forge-std/console.sol";
 
@@ -62,20 +63,8 @@ contract StrategyTest is Test, Fixtures {
         base.createStrategy(key, actions, 0, 0, true, false);
 
         vm.prank(msg.sender);
-        vm.expectRevert(ICLTBase.InvalidCaller.selector);
-        base.updateStrategyBase(getStrategyID(address(this), 1), address(1445), 0.2 ether, 0.13 ether, actions);
-    }
-
-    function test_strategy_revertsIfNewOwnerIsZero() public {
-        ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
-        base.createStrategy(key, actions, 0, 0, true, false);
-
-        bytes32 strategyId = getStrategyID(address(this), 1);
-
-        actions = createStrategyActions(3, 1, 0, 0, 100, 200);
-
-        vm.expectRevert(ICLTBase.OwnerCannotBeZeroAddress.selector);
-        base.updateStrategyBase(strategyId, address(0), 0, 0, actions);
+        vm.expectRevert();
+        base.updateStrategyBase(getStrategyID(address(this), 1), address(1445), 0.2 ether, 0.3 ether, actions);
     }
 
     function test_strategy_shouldPayProtocolFee() public {
@@ -105,7 +94,7 @@ contract StrategyTest is Test, Fixtures {
 
         actions = createStrategyActions(3, 1, 0, 0, 100, 200);
 
-        base.updateStrategyBase(strategyId, address(1445), 0.2 ether, 0.13 ether, actions);
+        base.updateStrategyBase(strategyId, address(1445), 0.2 ether, 0.3 ether, actions);
 
         (, address owner, bytes memory actionsAdded,,,, uint256 managementFee, uint256 performanceFee,) =
             base.strategies(strategyId);
@@ -113,7 +102,7 @@ contract StrategyTest is Test, Fixtures {
         assertEq(owner, address(1445));
         assertEq(actionsAdded, abi.encode(actions));
         assertEq(managementFee, 0.2 ether);
-        assertEq(performanceFee, 0.13 ether);
+        assertEq(performanceFee, 0.3 ether);
     }
 
     function test_strategy_succeedsWithValidInputsForTime() public { }

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
+pragma abicoder v2;
 
 import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
 
 /// @title  LiquidityShares
 /// @notice Provides functions for computing liquidity amounts and shares for individual strategy
@@ -26,7 +27,8 @@ library LiquidityShares {
         // check only for this strategy uniswap liquidity
         // earnable0 & earnable1 will always returns zero becuase fee already claimed in updateGlobal
         if (liquidity > 0) {
-            (,,, uint256 earnable0, uint256 earnable1) = PoolActions.getPositionLiquidity(key);
+            (, uint256 earnable0, uint256 earnable1) =
+                PoolActions.getPositionLiquidity(key.pool, key.tickLower, key.tickUpper);
 
             (uint256 burnable0, uint256 burnable1) = PoolActions.getAmountsForLiquidity(key, liquidity);
 

@@ -10,10 +10,10 @@
   gas_reports = ["*"]
   libs = ["lib"]
   optimizer = true
-  optimizer_runs = 4000
+  optimizer_runs = 10
   out = "out"
   script = "script"
-  solc = "0.8.15"
+  solc = "0.7.6"
   src = "src"
   test = "test"
 
@@ -25,6 +25,7 @@
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
   goerli = { key = "${ETHERSCAN_API_KEY}" }
+  polygon-mumbai = { key = "${POLYGONSCAN_API_KEY}" , url= "https://mumbai.polygonscan.com/"}
 
   
 

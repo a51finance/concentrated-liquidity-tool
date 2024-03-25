@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -14,9 +15,9 @@ import { Constants } from "../src/libraries/Constants.sol";
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
@@ -28,7 +29,7 @@ contract ClaimFeeTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         base.createStrategy(key, actions, 0, 0, false, false);
@@ -68,32 +69,24 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
-        vm.expectRevert(ICLTBase.onlyNonCompounders.selector);
+        vm.expectRevert(bytes("ONC"));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 2, refundAsETH: true }));
     }
 
-    function test_claimFee_revertsIfNoLiquidity() public {
+    function test_claimFee_revertsIfNL() public {
         base.withdraw(
-            ICLTBase.WithdrawParams({
-                tokenId: 1,
-                liquidity: 4 ether,
-                recipient: msg.sender,
-                refundAsETH: true,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 4 ether, recipient: msg.sender, refundAsETH: true })
         );
 
-        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        vm.expectRevert(bytes("NL"));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
     }
 
@@ -102,12 +95,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -115,12 +107,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -186,12 +177,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -214,12 +204,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -250,12 +239,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -263,12 +251,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -276,12 +263,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -289,19 +275,81 @@ contract ClaimFeeTest is Test, Fixtures {
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
 
         /// user1 has earned more fees which is 66% which is fishy because for token1 both have equal share & growth
-        assertEq(token0.balanceOf(msg.sender), 4_019_073_529_944_804);
-        assertEq(token1.balanceOf(msg.sender), 1_998_013_943_879_530);
+        assertEq(token0.balanceOf(msg.sender), 809_688_388_863_816);
+        assertEq(token1.balanceOf(msg.sender), 399_990_073_775_941);
 
         vm.startPrank(users[0]);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: users[1], tokenId: 2, refundAsETH: true }));
 
         /// user2 has earned 33% of token1
-        assertEq(token0.balanceOf(users[1]), 1_001_511_814_214_027);
-        assertEq(token1.balanceOf(users[1]), 996_509_584_579_831);
+        assertEq(token0.balanceOf(users[1]), 201_195_232_243_342);
+        assertEq(token1.balanceOf(users[1]), 198_795_141_058_429);
+    }
+
+    function test_claimFee_poc() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                limitSqrtPrice: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                limitSqrtPrice: 0
+            })
+        );
+
+        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        console.log("total fee of user -> ", fee0, fee1);
+
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: 4 ether, amount1Desired: 4 ether })
+        );
+
+        // after changing ticks user fee growth will be invalid because strategy has been assigned new fee growth for
+        // new ticks
+        (, int24 tick,,,,,) = pool.globalState();
+        int24 tickSpacing = key.pool.tickSpacing();
+
+        tick = utils.floorTicks(tick, tickSpacing);
+
+        ICLTBase.StrategyKey memory newKey =
+            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 240, tickUpper: tick - tickSpacing });
+
+        base.toggleOperator(address(this));
+
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
+                moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        // user can't claim fee because strategy fee grwoth is 0 hence fee stuck in contract
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
+
+        console.log("fee claimed -> ", token0.balanceOf(msg.sender), token1.balanceOf(msg.sender));
     }
 
     function test_claimFee_shouldPayStrategistFee() public {
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -180, tickUpper: 180 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         address payable[] memory users = utils.createUsers(1);
@@ -325,12 +373,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -338,12 +385,11 @@ contract ClaimFeeTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -365,76 +411,6 @@ contract ClaimFeeTest is Test, Fixtures {
 
         assertEq(token0.balanceOf(strategyOwner), strategyOwnerShare0);
         assertEq(token1.balanceOf(strategyOwner), strategyOwnerShare1);
-    }
-
-    function test_claimFee_poc() public {
-        router.exactInputSingle(
-            ISwapRouter.ExactInputSingleParams({
-                tokenIn: address(token0),
-                tokenOut: address(token1),
-                fee: 500,
-                recipient: address(this),
-                deadline: block.timestamp + 1 days,
-                amountIn: 1e30,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            })
-        );
-
-        router.exactInputSingle(
-            ISwapRouter.ExactInputSingleParams({
-                tokenIn: address(token1),
-                tokenOut: address(token0),
-                fee: 500,
-                recipient: address(this),
-                deadline: block.timestamp + 1 days,
-                amountIn: 1e30,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            })
-        );
-
-        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
-        console.log("total fee of user -> ", fee0, fee1);
-
-        base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 1,
-                amount0Desired: 4 ether,
-                amount1Desired: 4 ether,
-                amount0Min: 0,
-                amount1Min: 0
-            })
-        );
-
-        // after changing ticks user fee growth will be invalid because strategy has been assigned new fee growth for
-        // new ticks
-        (, int24 tick,,,,,) = pool.slot0();
-        int24 tickSpacing = key.pool.tickSpacing();
-
-        tick = utils.floorTicks(tick, tickSpacing);
-
-        ICLTBase.StrategyKey memory newKey =
-            ICLTBase.StrategyKey({ pool: pool, tickLower: tick - tickSpacing - 200, tickUpper: tick - tickSpacing });
-
-        base.toggleOperator(address(this));
-
-        base.shiftLiquidity(
-            ICLTBase.ShiftLiquidityParams({
-                key: newKey,
-                strategyId: getStrategyID(address(this), 1),
-                shouldMint: true,
-                zeroForOne: false,
-                swapAmount: 0,
-                moduleStatus: "",
-                sqrtPriceLimitX96: 0
-            })
-        );
-
-        // user can't claim fee because strategy fee grwoth is 0 hence fee stuck in contract
-        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
-
-        console.log("fee claimed -> ", token0.balanceOf(msg.sender), token1.balanceOf(msg.sender));
     }
 
     function test_claimFee_shouldPayProtocolFee() public { }

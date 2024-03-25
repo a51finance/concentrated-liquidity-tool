@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -10,9 +11,9 @@ import { Utilities } from "./utils/Utilities.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract UpdatePositionLiquidityTest is Test, Fixtures {
     Utilities utils;
@@ -24,7 +25,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
 
-        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -240, tickUpper: 240 });
         ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
 
         // compounding strategy
@@ -79,13 +80,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         vm.prank(msg.sender);
         vm.expectRevert();
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 3,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 3, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
     }
 
@@ -96,26 +91,14 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         emit PositionUpdated(1, depositAmount, depositAmount, depositAmount);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 1,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
 
         vm.expectEmit(true, true, false, true);
         emit PositionUpdated(2, depositAmount, depositAmount, depositAmount);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 2,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
     }
 
@@ -128,34 +111,22 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         (, liquidityShareBefore,,,,) = base.positions(1);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 1,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
 
         (, liquidityShareAfter,,,,) = base.positions(1);
 
-        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount);
+        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount + 1);
 
         (, liquidityShareBefore,,,,) = base.positions(2);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 2,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
 
         (, liquidityShareAfter,,,,) = base.positions(2);
 
-        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount);
+        assertEq(liquidityShareAfter, liquidityShareBefore + depositAmount + 1);
     }
 
     function test_increaseLiq_succeedsAfterExit() public {
@@ -194,13 +165,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         uint256 balance1Before = accountStrategy1.balance1;
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 1,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
 
         (,,,,,,,, accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
@@ -214,13 +179,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         balance1Before = accountStrategy2.balance1;
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 2,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
 
         (,,,,,,,, accountStrategy2) = base.strategies(getStrategyID(address(this), 2));
@@ -237,12 +196,11 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token0),
                 tokenOut: address(token1),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
@@ -250,31 +208,24 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
             ISwapRouter.ExactInputSingleParams({
                 tokenIn: address(token1),
                 tokenOut: address(token0),
-                fee: 500,
                 recipient: address(this),
                 deadline: block.timestamp + 1 days,
                 amountIn: 1e30,
                 amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
+                limitSqrtPrice: 0
             })
         );
 
         vm.prank(address(base));
         pool.burn(key.tickLower, key.tickUpper, 0);
-        (,,, uint256 totalFee0, uint256 totalFee1) =
-            key.pool.positions(keccak256(abi.encodePacked(address(base), key.tickLower, key.tickUpper)));
+
+        (uint128 totalFee0, uint128 totalFee1) = getPoolPositionFee(key);
 
         base.getStrategyReserves(strategyId);
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({
-                tokenId: 2,
-                amount0Desired: depositAmount,
-                amount1Desired: depositAmount,
-                amount0Min: 0,
-                amount1Min: 0
-            })
+            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
         );
 
         (
@@ -289,7 +240,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         assertEq(feeGrowthInside0LastX128, account.feeGrowthInside0LastX128);
         assertEq(feeGrowthInside1LastX128, account.feeGrowthInside1LastX128);
 
-        assertEq(tokensOwed0, totalFee0 / 2 - 2);
-        assertEq(tokensOwed1, totalFee1 / 2 - 2);
+        assertEq(uint256(tokensOwed0), totalFee0 / 2 - 1);
+        assertEq(uint256(tokensOwed1), totalFee1 / 2 - 2);
     }
 }

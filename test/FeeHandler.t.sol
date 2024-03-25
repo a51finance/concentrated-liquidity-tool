@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Test } from "forge-std/Test.sol";
 import { Fixtures } from "./utils/Fixtures.sol";
@@ -19,7 +20,7 @@ contract FeeHandlerTest is Test, Fixtures {
 
     function test_feeHandler_revertsIfNotOwner() public {
         vm.startPrank(msg.sender);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert("Ownable: caller is not the owner");
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.4 ether,
@@ -29,7 +30,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert("Ownable: caller is not the owner");
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.4 ether,
@@ -42,7 +43,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolFeeOnManagementFee() public {
-        vm.expectRevert(IGovernanceFeeHandler.ManagementFeeLimitExceed.selector);
+        vm.expectRevert("ManagementFeeLimitExceed");
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -52,7 +53,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(IGovernanceFeeHandler.ManagementFeeLimitExceed.selector);
+        vm.expectRevert("ManagementFeeLimitExceed");
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -64,7 +65,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolFeeOnPerformanceFee() public {
-        vm.expectRevert(IGovernanceFeeHandler.PerformanceFeeLimitExceed.selector);
+        vm.expectRevert("PerformanceFeeLimitExceed");
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -74,7 +75,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(IGovernanceFeeHandler.PerformanceFeeLimitExceed.selector);
+        vm.expectRevert("PerformanceFeeLimitExceed");
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -86,7 +87,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolAutomationFee() public {
-        vm.expectRevert(IGovernanceFeeHandler.LPAutomationFeeLimitExceed.selector);
+        vm.expectRevert("LPAutomationFeeLimitExceed");
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.6 ether,
@@ -96,7 +97,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(IGovernanceFeeHandler.LPAutomationFeeLimitExceed.selector);
+        vm.expectRevert("LPAutomationFeeLimitExceed");
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.6 ether,
@@ -108,7 +109,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolStrategyCreationFee() public {
-        vm.expectRevert(IGovernanceFeeHandler.StrategyFeeLimitExceed.selector);
+        vm.expectRevert("StrategyFeeLimitExceed");
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -118,7 +119,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(IGovernanceFeeHandler.StrategyFeeLimitExceed.selector);
+        vm.expectRevert("StrategyFeeLimitExceed");
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
