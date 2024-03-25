@@ -38,11 +38,9 @@ library Position {
         }
 
         if (share > 0) {
-            bool isExit = getHodlStatus(self);
-
+            global.totalLiquidity += share;
             self.account.totalShares += share;
             self.account.uniswapLiquidity += liquidityAdded;
-            if (isExit == false) global.totalLiquidity += share; //if liquidity HODL it shouldn't added on dex liquidity
         }
     }
 
@@ -100,7 +98,11 @@ library Position {
         self.actionStatus = status;
         self.account.uniswapLiquidity = liquidity;
 
-        bool isExit = getHodlStatus(self);
+        bool isExit;
+
+        if (self.actionStatus.length > 0) {
+            (, isExit) = abi.decode(self.actionStatus, (uint256, bool));
+        }
 
         // if liquidity is on HODL it shouldn't recieve fee shares but calculations will remain for existing users
         if (isExit == false) globalAccount.totalLiquidity += self.account.totalShares;
@@ -132,24 +134,10 @@ library Position {
     )
         public
     {
+        self.owner = newOwner;
+        self.managementFee = managementFee;
+        self.performanceFee = performanceFee;
         self.actions = newActions;
-
-        if (self.owner != newOwner) self.owner = newOwner;
-        if (self.managementFee != managementFee) self.managementFee = managementFee;
-        if (self.performanceFee != performanceFee) self.performanceFee = performanceFee;
-
-        bool isExit = getHodlStatus(self);
-
-        if (isExit) {
-            self.actionStatus = abi.encode(0, isExit);
-        } else {
-            self.actionStatus = "";
-        }
-    }
-
-    function getHodlStatus(ICLTBase.StrategyData storage self) public view returns (bool isExit) {
-        if (self.actionStatus.length > 0) {
-            (, isExit) = abi.decode(self.actionStatus, (uint256, bool));
-        }
+        self.actionStatus = "";
     }
 }

@@ -6,15 +6,15 @@ library Constants {
 
     uint256 public constant MIN_INITIAL_SHARES = 1e3;
 
-    uint256 public constant MAX_MANAGEMENT_FEE = 2e17;
+    uint256 public constant MAX_MANAGEMENT_FEE = 5e17;
 
-    uint256 public constant MAX_PERFORMANCE_FEE = 2e17;
+    uint256 public constant MAX_PERFORMANCE_FEE = 5e17;
 
-    uint256 public constant MAX_PROTCOL_MANAGEMENT_FEE = 2e17;
+    uint256 public constant MAX_PROTCOL_MANAGEMENT_FEE = 5e17;
 
-    uint256 public constant MAX_PROTCOL_PERFORMANCE_FEE = 2e17;
+    uint256 public constant MAX_PROTCOL_PERFORMANCE_FEE = 5e17;
 
-    uint256 public constant MAX_AUTOMATION_FEE = 2e17;
+    uint256 public constant MAX_AUTOMATION_FEE = 5e17;
 
     uint256 public constant MAX_STRATEGY_CREATION_FEE = 5e17;
 
