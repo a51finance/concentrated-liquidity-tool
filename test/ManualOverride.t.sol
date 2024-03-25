@@ -371,8 +371,10 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.tickLower = floorTicks(tick + 300, pool.tickSpacing());
         executeParams.tickUpper = floorTicks(tick + 500, pool.tickSpacing());
         executeParams.shouldMint = false;
-        executeParams.zeroForOne = false;
-        executeParams.swapAmount = 0;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
         rebaseModule.executeStrategy(executeParams);
 
@@ -936,7 +938,6 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -952,7 +953,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -962,16 +963,20 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
 
+        vm.expectRevert();
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
         rebaseModule.executeStrategy(executeParams);
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
         assertEq(strategyKey.tickLower < tick, true);
         assertEq(strategyKey.tickUpper > tick, true);
-
-        assertEq(reserve0, 0);
-        assertEq(reserve1, 0);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
@@ -1045,16 +1050,20 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.zeroForOne = false;
         executeParams.swapAmount = 0;
 
+        vm.expectRevert();
+        rebaseModule.executeStrategy(executeParams);
+
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = 10_000;
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
         rebaseModule.executeStrategy(executeParams);
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
         assertEq(strategyKey.tickLower < tick, true);
         assertEq(strategyKey.tickUpper > tick, true);
-
-        assertEq(reserve0, 0);
-        assertEq(reserve1, 0);
 
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
