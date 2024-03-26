@@ -5,6 +5,9 @@ pragma abicoder v2;
 import "../ICLTBase.sol";
 
 interface IRebaseStrategy {
+    /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
+    /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
+    /// @param actionNames to hold multiple valid modes
     struct ExecutableStrategiesData {
         bytes32 strategyID;
         uint256 mode;
