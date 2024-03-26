@@ -151,7 +151,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         returns (uint256 updatedTime, uint256 swapCount)
     {
         if (block.timestamp <= lastUpdateTimeStamp + ONE_DAY) {
-            require(manualSwapsCount <= swapsThreshold, "SwapsThresholdExceeded");
+            require(manualSwapsCount < swapsThreshold, "SwapsThresholdExceeded");
             return (lastUpdateTimeStamp, manualSwapsCount += 1);
         }
 
@@ -424,7 +424,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @dev Reverts if the new threshold is less than zero.
     /// @param _newThreshold The new liquidity threshold value.
     function updateSwapsThreshold(uint256 _newThreshold) external onlyOperator {
-        require(_newThreshold > 0, "InvalidThreshold");
+        require(_newThreshold >= 0, "InvalidThreshold");
         swapsThreshold = _newThreshold;
     }
 }
