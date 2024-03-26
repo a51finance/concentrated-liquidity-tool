@@ -136,26 +136,24 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     }
 
     /// @notice Checks and updates the swap count within a single day threshold.
-    /// @dev This function is used to limit the number of manual swaps within a 24-hour period. Revert if the number of
+    /// @dev This function is used to limit the number of manual swaps within a 24-hour period. Reverts if the number of
     /// swaps exceeds the set threshold within a day.
     /// @param lastUpdateTimeStamp The last time the swap count was updated.
     /// @param manualSwapsCount The current count of manual swaps.
-    /// @return updatedTime The updated time stamp.
-    /// @return swapCount The updated swap count.
+    /// @return uint256 The updated time stamp.
+    /// @return uint256 The updated swap count.
     function checkSwapsInADay(
         uint256 lastUpdateTimeStamp,
         uint256 manualSwapsCount
     )
         internal
         view
-        returns (uint256 updatedTime, uint256 swapCount)
+        returns (uint256, uint256)
     {
         if (block.timestamp <= lastUpdateTimeStamp + ONE_DAY) {
             require(manualSwapsCount < swapsThreshold, "SwapsThresholdExceeded");
             return (lastUpdateTimeStamp, manualSwapsCount += 1);
-        }
-
-        if (block.timestamp > lastUpdateTimeStamp + ONE_DAY) {
+        } else {
             return (block.timestamp, manualSwapsCount = 1);
         }
     }
