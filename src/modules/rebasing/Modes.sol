@@ -4,12 +4,12 @@ pragma solidity =0.8.15;
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
 
-import { Owned } from "@solmate/auth/Owned.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 /// @title  Modes
 /// @notice Provides functions to update ticks for basic modes of strategy
-contract Modes is ModeTicksCalculation, Owned {
+contract Modes is ModeTicksCalculation, Ownable {
     error InvalidModeId(uint256 modeId);
     error InvalidStrategyId(bytes32 strategyID);
 
@@ -19,7 +19,7 @@ contract Modes is ModeTicksCalculation, Owned {
     /// @notice The address of twap qupter
     ICLTTwapQuoter public twapQuoter;
 
-    constructor(address vault, address _twapQuoter, address owner) Owned(owner) {
+    constructor(address vault, address _twapQuoter) Ownable() {
         baseVault = ICLTBase(vault);
         twapQuoter = ICLTTwapQuoter(_twapQuoter);
     }

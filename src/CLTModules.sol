@@ -8,17 +8,17 @@ import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 import { ILiquidityDistributionStrategy } from "./interfaces/modules/ILiquidityDistributionStrategy.sol";
 
-import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title  CLTModules
 /// @notice CLTModules contains methods for managing modes and it's actions for strategy
-contract CLTModules is ICLTModules, Owned {
+contract CLTModules is ICLTModules, Ownable {
     mapping(bytes32 => address) public modeVaults;
 
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
-    constructor(address owner) Owned(owner) { }
+    constructor() Ownable() { }
 
     /// @notice Whitlist new ids for advance strategy modes
     /// @dev New id can only be added for only rebase, exit & liquidity advance modes

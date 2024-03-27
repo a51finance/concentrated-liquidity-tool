@@ -3,7 +3,7 @@ pragma solidity =0.8.15;
 
 import { Vm } from "forge-std/Vm.sol";
 
-import { WETH } from "@solmate/tokens/WETH.sol";
+import { WETH } from "../mocks/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";

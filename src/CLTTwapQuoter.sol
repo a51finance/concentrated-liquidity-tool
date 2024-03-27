@@ -3,19 +3,19 @@ pragma solidity =0.8.15;
 
 import { ICLTTwapQuoter } from "./interfaces/ICLTTwapQuoter.sol";
 
-import { Owned } from "@solmate/auth/Owned.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
-contract CLTTwapQuoter is ICLTTwapQuoter, Owned {
+contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
     /// @inheritdoc ICLTTwapQuoter
     uint32 public override twapDuration;
 
     /// @inheritdoc ICLTTwapQuoter
     mapping(address => PoolStrategy) public override poolStrategy;
 
-    constructor(address _owner) Owned(_owner) {
+    constructor(address _owner) Ownable() {
         twapDuration = 3600;
     }
 

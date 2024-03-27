@@ -1,24 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 
 /// @title  GovernanceFeeHandler
 /// @notice GovernanceFeeHandler contains methods for managing governance fee parameters in strategies
-contract GovernanceFeeHandler is IGovernanceFeeHandler, Owned {
+contract GovernanceFeeHandler is IGovernanceFeeHandler, Ownable {
     /// @notice The protocol fee value in percentage for public strategy,  decimal value <1
     ProtocolFeeRegistry private _publicStrategyFeeRegistry;
     /// @notice The protocol fee value in percentage for private strategy, decimal value <1
     ProtocolFeeRegistry private _privateStrategyFeeRegistry;
 
     constructor(
-        address _owner,
         ProtocolFeeRegistry memory publicStrategyFeeRegistry_,
         ProtocolFeeRegistry memory privateStrategyFeeRegistry_
     )
-        Owned(_owner)
+        Ownable()
     {
         _publicStrategyFeeRegistry = publicStrategyFeeRegistry_;
         _privateStrategyFeeRegistry = privateStrategyFeeRegistry_;
