@@ -6,8 +6,6 @@
   branch = "release-v0"
   path = "lib/prb-test"
   url = "https://github.com/PaulRBerg/prb-test"
-<<<<<<< HEAD
-=======
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
@@ -17,4 +15,3 @@
 [submodule "lib/v3-periphery"]
 	path = lib/v3-periphery
 	url = https://github.com/uniswap/v3-periphery
->>>>>>> 6428c3988448a8884f9abc495fea98567f344980
