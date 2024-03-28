@@ -15,9 +15,6 @@ import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     ICLTBase _cltBase;
 
-    /// @notice Threshold for liquidity consideration
-    uint256 public liquidityThreshold = 1e3;
-
     /// @notice Threshold for swaps in manual override
     uint256 public swapsThreshold = 5;
 
@@ -55,8 +52,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
                 if (actionStatus.length > 0) {
                     (rebaseCount,, lastUpdateTimeStamp, manualSwapsCount) =
                         abi.decode(actionStatus, (uint256, bool, uint256, uint256));
-                } else {
-                    rebaseCount = 0;
                 }
             }
 
@@ -124,8 +119,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
         if (actionStatus.length > 0) {
             (rebaseCount,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256));
-        } else {
-            rebaseCount = 0;
         }
 
         params.moduleStatus = abi.encode(rebaseCount, isExited, lastUpdateTimeStamp, manualSwapsCount);
@@ -215,10 +208,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
             ,
             ICLTBase.Account memory account
         ) = _cltBase.strategies(strategyId);
-
-        if (account.totalShares <= liquidityThreshold) {
-            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0)]);
-        }
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
 
@@ -406,14 +395,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData, (int24, int24));
 
         (lowerPreferenceTick, upperPreferenceTick) = _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
-    }
-
-    /// @notice Updates the liquidity threshold.
-    /// @dev Reverts if the new threshold is less than or equal to zero.
-    /// @param _newThreshold The new liquidity threshold value.
-    function updateLiquidityThreshold(uint256 _newThreshold) external onlyOperator {
-        require(_newThreshold > 0, "InvalidThreshold");
-        liquidityThreshold = _newThreshold;
     }
 
     /// @notice Updates the swaps threshold.

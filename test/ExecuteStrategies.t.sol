@@ -321,53 +321,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseModule.checkStrategiesArray(data);
     }
 
-    function testExecuteStrategiesWithLowLiquidity() public {
-        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
-        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
-        rebaseActions[0].data = abi.encode(23, 43);
-
-        ICLTBase.PositionActions memory positionActions;
-
-        positionActions.mode = 1;
-        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
-        positionActions.rebaseStrategy = rebaseActions;
-        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
-
-        initStrategy(800);
-        base.createStrategy(strategyKey, positionActions, 0, 0, true, false);
-
-        ICLTBase.DepositParams memory depositParams;
-
-        bytes32 strategyID = getStrategyID(owner, 1);
-
-        depositParams.strategyId = strategyID;
-        depositParams.amount0Desired = 2000;
-        depositParams.amount1Desired = 2000;
-        depositParams.amount0Min = 0;
-        depositParams.amount1Min = 0;
-        depositParams.recipient = owner;
-
-        base.deposit(depositParams);
-
-        executeSwap(token0, token1, owner, 500e18, 0, 0);
-
-        vm.expectRevert(bytes("InvalidThreshold"));
-        rebaseModule.updateLiquidityThreshold(0);
-
-        rebaseModule.updateLiquidityThreshold(1000);
-
-        bytes32[] memory strategyIDs = new bytes32[](1);
-
-        strategyIDs[0] = strategyID;
-
-        rebaseModule.executeStrategies(strategyIDs);
-        (ICLTBase.StrategyKey memory key,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
-
-        (uint256 reserve0, uint256 reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
-        assertEq(reserve0 > 0, true);
-        assertEq(reserve1 == 0, true);
-    }
-
     // edge
     // 5
     function test_fuzz_ExecuteStrategyAllModesWithOnlyRebaseInactivity(uint256 mode) public {
@@ -982,8 +935,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         depositParams.recipient = owner;
 
         base.deposit(depositParams);
-
-        rebaseModule.updateLiquidityThreshold(1000);
 
         executeSwap(token1, token0, owner, 1500e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
