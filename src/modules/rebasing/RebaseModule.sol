@@ -18,8 +18,6 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice Threshold for liquidity consideration
     uint256 public liquidityThreshold = 1e3;
 
-    uint256 private constant ONE_DAY = 1 days;
-
     /// @notice Threshold for swaps in manual override
     uint256 public swapsThreshold = 5;
 
@@ -107,7 +105,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
                 (,, uint256 _lastUpdateTimeStamp, uint256 _manualSwapsCount) =
                     abi.decode(actionStatus, (uint256, bool, uint256, uint256));
 
-                (lastUpdateTimeStamp, manualSwapsCount) = checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
+                (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
             } else {
                 lastUpdateTimeStamp = block.timestamp;
                 manualSwapsCount = 1;
@@ -142,7 +140,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @param manualSwapsCount The current count of manual swaps.
     /// @return uint256 The updated time stamp.
     /// @return uint256 The updated swap count.
-    function checkSwapsInADay(
+    function _checkSwapsInADay(
         uint256 lastUpdateTimeStamp,
         uint256 manualSwapsCount
     )
@@ -150,7 +148,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         view
         returns (uint256, uint256)
     {
-        if (block.timestamp <= lastUpdateTimeStamp + ONE_DAY) {
+        if (block.timestamp <= lastUpdateTimeStamp + 1 days) {
             require(manualSwapsCount < swapsThreshold, "SwapsThresholdExceeded");
             return (lastUpdateTimeStamp, manualSwapsCount += 1);
         } else {
