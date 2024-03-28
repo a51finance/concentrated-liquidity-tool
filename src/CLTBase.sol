@@ -137,8 +137,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
 
-        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
-            _deposit(params.strategyId, params.amount0Desired, params.amount1Desired);
+        (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) = _deposit(
+            params.strategyId, params.amount0Desired, params.amount1Desired, params.amount0Min, params.amount1Min
+        );
 
         _mint(params.recipient, (tokenId = _sharesId++));
 
@@ -172,7 +173,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         uint256 feeGrowthInside1LastX128;
 
         (share, amount0, amount1, feeGrowthInside0LastX128, feeGrowthInside1LastX128) =
-            _deposit(strategyId, params.amount0Desired, params.amount1Desired);
+            _deposit(strategyId, params.amount0Desired, params.amount1Desired, params.amount0Min, params.amount1Min);
 
         if (!strategies[strategyId].isCompound) {
             position.updateUserPosition(feeGrowthInside0LastX128, feeGrowthInside1LastX128);
@@ -262,6 +263,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             position.tokensOwed1 = 0;
         }
 
+        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "MinimumAmountsExceeded");
+
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
         }
@@ -270,13 +273,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token1(), amount1);
         }
 
-        bool isExit;
-
-        if (strategy.actionStatus.length > 0) {
-            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
-        }
-
-        if (isExit == false) global.totalLiquidity -= params.liquidity;
+        if (strategy.getHodlStatus() == false) global.totalLiquidity -= params.liquidity;
 
         position.liquidityShare -= params.liquidity;
         strategy.account.totalShares -= params.liquidity;
@@ -341,14 +338,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         // only burn this strategy liquidity not other strategy with same ticks
         (vars.balance0, vars.balance1,,) = PoolActions.burnLiquidity(strategy.key, vars.uniswapLiquidity);
 
-        bool isExit;
-
-        if (strategy.actionStatus.length > 0) {
-            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
-        }
-
         // global liquidity will be less if strategy has activated exit mode
-        if (isExit == false) {
+        if (strategy.getHodlStatus() == false) {
             global.totalLiquidity -= strategy.account.totalShares;
         }
 
@@ -421,7 +412,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         _validateModes(actions, managementFee, performanceFee);
 
         StrategyData storage strategy = strategies[strategyId];
-        require(strategy.owner == _msgSender());
+        require(strategy.owner == _msgSender(), "InvalidCaller");
+        require(owner != address(0), "OwnerCannotBeZeroAddress");
 
         strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
 
@@ -431,7 +423,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     function _deposit(
         bytes32 strategyId,
         uint256 amount0Desired,
-        uint256 amount1Desired
+        uint256 amount1Desired,
+        uint256 amount0Min,
+        uint256 amount1Min
     )
         private
         returns (
@@ -447,11 +441,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         Account memory vars;
 
-        bool isExit;
-
-        if (strategy.actionStatus.length > 0) {
-            (, isExit) = abi.decode(strategy.actionStatus, (uint256, bool));
-        }
+        bool isExit = strategy.getHodlStatus();
 
         // prevent user drains others
         if (strategy.isCompound && isExit == false) {
@@ -476,6 +466,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         if (strategy.account.totalShares == 0) {
             require(share > Constants.MIN_INITIAL_SHARES);
         }
+
+        require(amount0 >= amount0Min && amount1 >= amount1Min, "MinimumAmountsExceeded");
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);

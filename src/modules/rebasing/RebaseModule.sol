@@ -118,7 +118,11 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         isExited = !executeParams.shouldMint;
 
         if (actionStatus.length > 0) {
-            (rebaseCount,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+            if (actionStatus.length == 64) {
+                (rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
+            } else {
+                (rebaseCount,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+            }
         }
 
         params.moduleStatus = abi.encode(rebaseCount, isExited, lastUpdateTimeStamp, manualSwapsCount);

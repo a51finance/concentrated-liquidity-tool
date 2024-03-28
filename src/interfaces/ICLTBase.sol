@@ -242,6 +242,8 @@ interface ICLTBase {
         uint256 tokenId;
         uint256 amount0Desired;
         uint256 amount1Desired;
+        uint256 amount0Min;
+        uint256 amount1Min;
     }
 
     /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
@@ -264,6 +266,8 @@ interface ICLTBase {
         uint256 liquidity;
         address recipient;
         bool refundAsETH;
+        uint256 amount0Min;
+        uint256 amount1Min;
     }
 
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position
@@ -294,6 +298,8 @@ interface ICLTBase {
     /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
     /// exact output (negative)
     /// @param moduleStatus The encoded data for each of the strategy to track any detail for futher actions
+    /// @param sqrtPriceLimitX96 The Q64.96 sqrt price limit. If zero for one, the price cannot be less than this
+    /// value after the swap. If one for zero, the price cannot be greater than this value after the swap
     struct ShiftLiquidityParams {
         StrategyKey key;
         bytes32 strategyId;

@@ -29,6 +29,8 @@ abstract contract ModeTicksCalculation {
 
             tickLower = currentTick + tickSpacing;
             tickUpper = floorTick(tickLower + positionWidth, tickSpacing);
+        } else {
+            revert();
         }
     }
 
@@ -51,6 +53,8 @@ abstract contract ModeTicksCalculation {
 
             tickUpper = currentTick - tickSpacing;
             tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
+        } else {
+            revert();
         }
     }
 
@@ -63,6 +67,8 @@ abstract contract ModeTicksCalculation {
         int24 currentTick = getTwap(key.pool);
         if (currentTick < key.tickLower) return shiftLeft(key);
         if (currentTick > key.tickUpper) return shiftRight(key);
+
+        revert();
     }
 
     /// @notice Calculates time-weighted means of tick and liquidity for a given pool
