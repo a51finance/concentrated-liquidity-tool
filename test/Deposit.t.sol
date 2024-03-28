@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -68,7 +69,7 @@ contract DepositTest is Test, Fixtures {
         assertEq(account.totalShares, depositAmount);
         assertEq(base.balanceOf(msg.sender), 1);
         assertEq(liquidityShare, depositAmount);
-        assertEq(account.uniswapLiquidity, 200_510_416_479_002_803_287);
+        assertEq(uint256(account.uniswapLiquidity), 200_510_416_479_002_803_287);
     }
 
     function test_deposit_revertsIfZeroAmount() public {
@@ -84,7 +85,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.deposit(params);
     }
 
@@ -101,7 +102,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.deposit(params);
     }
 
@@ -155,7 +156,7 @@ contract DepositTest is Test, Fixtures {
 
         assertEq(account.totalShares, depositAmount);
         assertEq(liquidityShare, depositAmount);
-        assertEq(account.uniswapLiquidity, 601_531_249_437_008_409_863);
+        assertEq(uint256(account.uniswapLiquidity), 601_531_249_437_008_409_863);
     }
 
     function test_deposit_revertsWithInSufficientFunds() public {

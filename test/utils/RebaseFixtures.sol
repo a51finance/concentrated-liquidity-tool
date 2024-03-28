@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { WETH } from "../mocks/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
@@ -167,18 +168,18 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         });
 
         cltTwap = new CLTTwapQuoter(address(this));
-        cltModules = new CLTModules(address(this));
+        cltModules = new CLTModules();
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
-        base = new CLTBase("ALP Base", "ALP", recepient, address(0), address(feeHandler), address(cltModules), factory);
+        base = new CLTBase("ALP Base", "ALP", address(0), address(feeHandler), address(cltModules), factory);
 
         _hevm.prank(recepient);
         token0.approve(address(base), type(uint256).max);
         _hevm.prank(recepient);
         token1.approve(address(base), type(uint256).max);
 
-        modes = new Modes(address(base), address(cltTwap), recepient);
+        modes = new Modes(address(base), address(cltTwap));
         rebaseModule = new RebaseModule(recepient, address(base), address(cltTwap));
 
         _hevm.prank(recepient);

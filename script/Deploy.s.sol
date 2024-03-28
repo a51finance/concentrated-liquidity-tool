@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import "forge-std/Script.sol";
 import "../src/CLTBase.sol";
@@ -27,7 +28,7 @@ contract DeployALP is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         new CLTHelper();
-        CLTModules cltModules = new CLTModules(_owner);
+        CLTModules cltModules = new CLTModules();
         CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
@@ -37,19 +38,13 @@ contract DeployALP is Script {
             protcolFeeOnPerformance: 0
         });
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         CLTBase baseContract = new CLTBase(
-            "A51 Liquidity Positions NFT",
-            "ALPhy",
-            _owner,
-            _weth9,
-            address(feeHandler),
-            address(cltModules),
-            _factoryAddress
+            "A51 Liquidity Positions NFT", "ALPhy", _weth9, address(feeHandler), address(cltModules), _factoryAddress
         );
 
-        new Modes(address(baseContract), address(twapQuoter), _owner);
+        new Modes(address(baseContract), address(twapQuoter));
         new RebaseModule(_owner, address(baseContract), address(twapQuoter));
 
         vm.stopBroadcast();

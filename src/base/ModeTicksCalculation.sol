@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 /// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
 abstract contract ModeTicksCalculation {
-    error LiquidityShiftNotNeeded();
-
     /// @notice Computes new tick lower and upper for the individual strategy downside
     /// @dev shift left will trail the strategy position closer to the cuurent tick, current tick will be one tick left
     /// from position
@@ -24,18 +23,16 @@ abstract contract ModeTicksCalculation {
     {
         int24 tickSpacing = key.pool.tickSpacing();
 
-        if (currentTick < key.tickLower) {
-            (, currentTick,,,,,) = key.pool.slot0();
+        require(currentTick < key.tickLower, "LiquidityShiftNotNeeded");
 
-            currentTick = floorTick(currentTick, tickSpacing);
+        (, currentTick,,,,,) = key.pool.slot0();
 
-            int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
+        currentTick = floorTick(currentTick, tickSpacing);
 
-            tickLower = currentTick + tickSpacing;
-            tickUpper = floorTick(tickLower + positionWidth, tickSpacing);
-        } else {
-            revert LiquidityShiftNotNeeded();
-        }
+        int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
+
+        tickLower = currentTick + tickSpacing;
+        tickUpper = floorTick(tickLower + positionWidth, tickSpacing);
     }
 
     /// @notice Computes new tick lower and upper for the individual strategy upside
@@ -54,18 +51,16 @@ abstract contract ModeTicksCalculation {
     {
         int24 tickSpacing = key.pool.tickSpacing();
 
-        if (currentTick > key.tickUpper) {
-            (, currentTick,,,,,) = key.pool.slot0();
+        require(currentTick > key.tickUpper, "LiquidityShiftNotNeeded");
 
-            currentTick = floorTick(currentTick, tickSpacing);
+        (, currentTick,,,,,) = key.pool.slot0();
 
-            int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
+        currentTick = floorTick(currentTick, tickSpacing);
 
-            tickUpper = currentTick - tickSpacing;
-            tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
-        } else {
-            revert LiquidityShiftNotNeeded();
-        }
+        int24 positionWidth = getPositionWidth(currentTick, key.tickLower, key.tickUpper);
+
+        tickUpper = currentTick - tickSpacing;
+        tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
     }
 
     /// @notice Computes new tick lower and upper for the individual strategy downside or upside
@@ -81,10 +76,10 @@ abstract contract ModeTicksCalculation {
         view
         returns (int24 tickLower, int24 tickUpper)
     {
+        require(currentTick < key.tickLower || currentTick > key.tickUpper, "LiquidityShiftNotNeeded");
+
         if (currentTick < key.tickLower) return shiftLeft(key, currentTick);
         if (currentTick > key.tickUpper) return shiftRight(key, currentTick);
-
-        revert LiquidityShiftNotNeeded();
     }
 
     /// @dev Rounds tick down towards negative infinity so that it's a multiple

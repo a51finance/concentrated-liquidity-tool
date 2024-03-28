@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
@@ -10,9 +11,6 @@ import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 /// @title  Modes
 /// @notice Provides functions to update ticks for basic modes of strategy
 contract Modes is ModeTicksCalculation, Ownable {
-    error InvalidModeId(uint256 modeId);
-    error InvalidStrategyId(bytes32 strategyID);
-
     /// @notice The address of base vault
     ICLTBase public baseVault;
 
@@ -32,7 +30,7 @@ contract Modes is ModeTicksCalculation, Ownable {
         for (uint256 i = 0; i < strategyIdsLength; i++) {
             (ICLTBase.StrategyKey memory key, bytes memory actions) = _getStrategy(strategyIDs[i]);
 
-            if (address(key.pool) == address(0)) revert InvalidStrategyId(strategyIDs[i]);
+            require(address(key.pool) != address(0), "InvalidStrategyId");
             ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
 
             if (modules.mode == 1) {
@@ -41,8 +39,6 @@ contract Modes is ModeTicksCalculation, Ownable {
                 _shiftRightBase(strategyIDs[i], key);
             } else if (modules.mode == 3) {
                 _shiftLeftAndRightBase(strategyIDs[i], key);
-            } else {
-                revert InvalidModeId(modules.mode);
             }
         }
     }

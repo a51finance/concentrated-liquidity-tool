@@ -1,12 +1,9 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 interface ICLTTwapQuoter {
-    error InvalidInput();
-    error MaxTwapDeviationExceeded();
-
     /// @param twapDuration Period of time that we observe for price slippage
     /// @param maxTwapDeviation Maximum deviation of time waited avarage price in ticks
     struct PoolStrategy {

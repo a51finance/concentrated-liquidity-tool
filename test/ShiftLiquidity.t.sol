@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -137,7 +138,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         vm.warp(block.timestamp + 1 days);
 
         base.toggleOperator(address(modes));
-        vm.expectRevert(ModeTicksCalculation.LiquidityShiftNotNeeded.selector);
+        vm.expectRevert("LiquidityShiftNotNeeded");
         modes.ShiftBase(strategyIDs);
     }
 
@@ -459,7 +460,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         assertEq(account.balance0, reserves0 + fee0);
         assertEq(account.balance1, reserves1 + fee1);
 
-        assertEq(account.uniswapLiquidity, 0);
+        assertEq(uint256(account.uniswapLiquidity), 0);
 
         uint256 hodlBalance0Strategy1 = account.balance0;
         uint256 hodlBalance1Strategy1 = account.balance1;
@@ -486,7 +487,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         assertEq(account.fee0, fee0);
         assertEq(account.fee1, fee1);
 
-        assertEq(account.uniswapLiquidity, 0);
+        assertEq(uint256(account.uniswapLiquidity), 0);
 
         uint256 hodlBalance0Strategy2 = account.balance0;
         uint256 hodlBalance1Strategy2 = account.balance1;

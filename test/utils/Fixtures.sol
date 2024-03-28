@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 
@@ -108,14 +109,14 @@ contract Fixtures is UniswapDeployer {
         });
 
         cltTwap = new CLTTwapQuoter(address(this));
-        cltModules = new CLTModules(address(this));
-        feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+        cltModules = new CLTModules();
+        feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         base = new CLTBase(
-            "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
+            "ALP Base", "ALP",  address(weth), address(feeHandler), address(cltModules), factory
         );
 
-        modes = new Modes(address(base), address(cltTwap), address(this));
+        modes = new Modes(address(base), address(cltTwap));
         rebaseModule = new RebaseModule(msg.sender, address(base), address(cltTwap));
 
         cltModules.setNewModule(keccak256("EXIT_STRATEGY"), keccak256("SMART_EXIT"));
