@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -77,7 +78,7 @@ contract ClaimFeeTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(ICLTBase.onlyNonCompounders.selector);
+        vm.expectRevert(bytes("ONC"));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 2, refundAsETH: true }));
     }
 
@@ -93,7 +94,7 @@ contract ClaimFeeTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        vm.expectRevert(bytes("NL"));
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
     }
 

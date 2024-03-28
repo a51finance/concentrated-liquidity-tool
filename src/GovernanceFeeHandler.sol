@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Constants } from "./libraries/Constants.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -8,9 +9,7 @@ import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 /// @title  GovernanceFeeHandler
 /// @notice GovernanceFeeHandler contains methods for managing governance fee parameters in strategies
 contract GovernanceFeeHandler is IGovernanceFeeHandler, Ownable {
-    /// @notice The protocol fee value in percentage for public strategy,  decimal value <1
     ProtocolFeeRegistry private _publicStrategyFeeRegistry;
-    /// @notice The protocol fee value in percentage for private strategy, decimal value <1
     ProtocolFeeRegistry private _privateStrategyFeeRegistry;
 
     constructor(
@@ -24,7 +23,11 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Ownable {
     }
 
     /// @inheritdoc IGovernanceFeeHandler
-    function setPublicFeeRegistry(ProtocolFeeRegistry calldata newPublicStrategyFeeRegistry) external onlyOwner {
+    function setPublicFeeRegistry(ProtocolFeeRegistry calldata newPublicStrategyFeeRegistry)
+        external
+        override
+        onlyOwner
+    {
         _checkLimit(newPublicStrategyFeeRegistry);
 
         _publicStrategyFeeRegistry = newPublicStrategyFeeRegistry;
@@ -33,7 +36,11 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Ownable {
     }
 
     /// @inheritdoc IGovernanceFeeHandler
-    function setPrivateFeeRegistry(ProtocolFeeRegistry calldata newPrivateStrategyFeeRegistry) external onlyOwner {
+    function setPrivateFeeRegistry(ProtocolFeeRegistry calldata newPrivateStrategyFeeRegistry)
+        external
+        override
+        onlyOwner
+    {
         _checkLimit(newPrivateStrategyFeeRegistry);
 
         _privateStrategyFeeRegistry = newPrivateStrategyFeeRegistry;
@@ -72,11 +79,9 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Ownable {
 
     /// @dev Common checks for valid fee inputs.
     function _checkLimit(ProtocolFeeRegistry calldata feeParams) private pure {
-        if (feeParams.lpAutomationFee > Constants.MAX_AUTOMATION_FEE) revert LPAutomationFeeLimitExceed();
-        if (feeParams.strategyCreationFee > Constants.MAX_STRATEGY_CREATION_FEE) revert StrategyFeeLimitExceed();
-        if (feeParams.protcolFeeOnManagement > Constants.MAX_PROTCOL_MANAGEMENT_FEE) revert ManagementFeeLimitExceed();
-        if (feeParams.protcolFeeOnPerformance > Constants.MAX_PROTCOL_PERFORMANCE_FEE) {
-            revert PerformanceFeeLimitExceed();
-        }
+        require(feeParams.lpAutomationFee < Constants.MAX_AUTOMATION_FEE, "LPAutomationFeeLimitExceed");
+        require(feeParams.strategyCreationFee < Constants.MAX_STRATEGY_CREATION_FEE, "StrategyFeeLimitExceed");
+        require(feeParams.protcolFeeOnManagement < Constants.MAX_PROTCOL_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
+        require(feeParams.protcolFeeOnPerformance < Constants.MAX_PROTCOL_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
     }
 }

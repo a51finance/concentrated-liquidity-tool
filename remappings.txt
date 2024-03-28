@@ -1,10 +1,7 @@
 ds-test/=lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/
-openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
 prb-test/=lib/prb-test/src/
-solidity-lib/=lib/thruster-blast/thruster-cfmm-0.3/lib/solidity-lib/contracts/
-thruster-blast/=lib/thruster-blast/
-v2-core/=lib/thruster-blast/thruster-cfmm-0.3/lib/v2-core/contracts/
-v3-core/=lib/v3-core/
-v3-periphery/=lib/v3-periphery/contracts/
+@uniswap/v3-core/=lib/v3-core/
+@uniswap/v3-periphery/=lib/v3-periphery/
+@openzeppelin/=lib/openzeppelin-contracts/

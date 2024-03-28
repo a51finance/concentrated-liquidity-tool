@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -62,7 +63,7 @@ contract StrategyTest is Test, Fixtures {
         base.createStrategy(key, actions, 0, 0, true, false);
 
         vm.prank(msg.sender);
-        vm.expectRevert(ICLTBase.InvalidCaller.selector);
+        vm.expectRevert("InvalidCaller");
         base.updateStrategyBase(getStrategyID(address(this), 1), address(1445), 0.2 ether, 0.13 ether, actions);
     }
 
@@ -74,7 +75,7 @@ contract StrategyTest is Test, Fixtures {
 
         actions = createStrategyActions(3, 1, 0, 0, 100, 200);
 
-        vm.expectRevert(ICLTBase.OwnerCannotBeZeroAddress.selector);
+        vm.expectRevert("OwnerCannotBeZeroAddress");
         base.updateStrategyBase(strategyId, address(0), 0, 0, actions);
     }
 

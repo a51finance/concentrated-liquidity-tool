@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
 
 import { ICLTTwapQuoter } from "./interfaces/ICLTTwapQuoter.sol";
 
@@ -23,8 +23,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
         int24 twap = calculateTwap(pool);
         (int24 tick,) = getCurrentTick(pool);
         int24 deviation = tick > twap ? tick - twap : twap - tick;
-
-        if (deviation > poolStrategy[address(pool)].maxTwapDeviation) revert MaxTwapDeviationExceeded();
+        require(poolStrategy[address(pool)].maxTwapDeviation > deviation, "MaxTwapDeviationExceeded");
     }
 
     /// @notice This function calculates the current twap of pool
@@ -68,7 +67,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
     }
 
     function setStandardTwapDuration(uint32 _twapDuration) external onlyOwner {
-        if (_twapDuration == 0) revert InvalidInput();
+        require(_twapDuration != 0, "InvalidInput");
         twapDuration = _twapDuration;
     }
 }

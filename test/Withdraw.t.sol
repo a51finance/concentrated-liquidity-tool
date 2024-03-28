@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.7.6;
+pragma abicoder v2;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -85,7 +86,7 @@ contract WithdrawTest is Test, Fixtures {
         assertEq(account.balance1, 0);
 
         assertEq(account.totalShares, 0);
-        assertEq(account.uniswapLiquidity, 0);
+        assertEq(uint256(account.uniswapLiquidity), 0);
     }
 
     function test_withdraw_multipleUsers() public {
@@ -266,7 +267,7 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(ICLTBase.NoLiquidity.selector);
+        vm.expectRevert(bytes("NL"));
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
@@ -281,7 +282,7 @@ contract WithdrawTest is Test, Fixtures {
 
     function test_withdraw_revertsIfZeroLiquidityInput() public {
         vm.prank(address(this));
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
@@ -298,7 +299,7 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         vm.prank(address(this));
-        vm.expectRevert(ICLTBase.InvalidShare.selector);
+        vm.expectRevert("InvalidShare");
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
