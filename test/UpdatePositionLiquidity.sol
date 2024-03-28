@@ -80,7 +80,13 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         vm.prank(msg.sender);
         vm.expectRevert();
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 3, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 3,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -91,14 +97,26 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         emit PositionUpdated(1, depositAmount, depositAmount, depositAmount);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 1,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         vm.expectEmit(true, true, false, true);
         emit PositionUpdated(2, depositAmount, depositAmount, depositAmount);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 2,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -111,7 +129,13 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         (, liquidityShareBefore,,,,) = base.positions(1);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 1,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (, liquidityShareAfter,,,,) = base.positions(1);
@@ -121,7 +145,13 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         (, liquidityShareBefore,,,,) = base.positions(2);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 2,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (, liquidityShareAfter,,,,) = base.positions(2);
@@ -165,7 +195,13 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         uint256 balance1Before = accountStrategy1.balance1;
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 1, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 1,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (,,,,,,,, accountStrategy1) = base.strategies(getStrategyID(address(this), 1));
@@ -179,7 +215,13 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         balance1Before = accountStrategy2.balance1;
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 2,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (,,,,,,,, accountStrategy2) = base.strategies(getStrategyID(address(this), 2));
@@ -225,7 +267,13 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
 
         base.updatePositionLiquidity(
-            ICLTBase.UpdatePositionParams({ tokenId: 2, amount0Desired: depositAmount, amount1Desired: depositAmount })
+            ICLTBase.UpdatePositionParams({
+                tokenId: 2,
+                amount0Desired: depositAmount,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (

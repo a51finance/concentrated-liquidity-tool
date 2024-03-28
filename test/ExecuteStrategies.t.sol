@@ -828,7 +828,14 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: shares2,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -886,8 +893,6 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         key.pool.burn(key.tickLower, key.tickUpper, 0);
 
         _hevm.prank(address(base));
-        (uint256 collect0, uint256 collect1) =
-            key.pool.collect(address(base), key.tickLower, key.tickUpper, type(uint128).max, type(uint128).max);
 
         assertEq(token0.balanceOf(users[1]), 100 ether - accounts.balance0);
         // precision error of 0.077071791677914138 here
@@ -902,7 +907,14 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         _hevm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: shares2, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: shares2,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 

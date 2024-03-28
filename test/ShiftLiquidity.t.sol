@@ -13,6 +13,7 @@ import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
 import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
+import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
@@ -120,6 +121,16 @@ contract ShiftLiquidityTest is Test, Fixtures {
         );
     }
 
+    function test_shiftLiquidity_revertsIfShiftingNotNeeded() public {
+        bytes32[] memory strategyIDs = new bytes32[](2);
+        strategyIDs[0] = getStrategyID(address(this), 1);
+        strategyIDs[1] = getStrategyID(address(this), 2);
+
+        base.toggleOperator(address(modes));
+        vm.expectRevert();
+        modes.ShiftBase(strategyIDs);
+    }
+
     function test_shiftLiquidity_succeedCorrectEventParams() public {
         vm.expectEmit(true, true, false, true);
         emit LiquidityShifted(getStrategyID(address(this), 1), true, false, 0);
@@ -149,6 +160,59 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
+                sqrtPriceLimitX96: 0
+            })
+        );
+    }
+
+    function test_shiftLiquidity_poc1() public {
+        base.toggleOperator(address(rebaseModule));
+
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -420, tickUpper: 420 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        // create new strategy
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        // deposit liquidity on new strategy
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 3),
+                amount0Desired: 4 ether,
+                amount1Desired: 4 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this)
+            })
+        );
+
+        // HODL liquidity
+        rebaseModule.executeStrategy(
+            IRebaseStrategy.ExectuteStrategyParams({
+                pool: key.pool,
+                strategyID: getStrategyID(address(this), 3),
+                tickLower: key.tickLower,
+                tickUpper: key.tickUpper,
+                shouldMint: false,
+                zeroForOne: false,
+                swapAmount: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        // change anything in strategy
+        base.updateStrategyBase(getStrategyID(address(this), 3), address(this), 0.4 ether, 0.1 ether, actions);
+
+        // re mint liquidity on dex
+        rebaseModule.executeStrategy(
+            IRebaseStrategy.ExectuteStrategyParams({
+                pool: key.pool,
+                strategyID: getStrategyID(address(this), 3),
+                tickLower: key.tickLower,
+                tickUpper: key.tickUpper,
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: 0,
                 sqrtPriceLimitX96: 0
             })
         );

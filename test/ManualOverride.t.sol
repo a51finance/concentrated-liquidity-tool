@@ -982,7 +982,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         _hevm.prank(owner);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
@@ -1069,7 +1076,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         _hevm.prank(owner);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: users[1], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
@@ -1654,7 +1668,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         _hevm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: users[0], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: users[0],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -1729,7 +1750,14 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         _hevm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: users[0], refundAsETH: false })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: users[0],
+                refundAsETH: false,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 

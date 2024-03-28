@@ -318,6 +318,37 @@ contract DepositTest is Test, Fixtures {
         assertEq(liquidityShareUser2, 497_725_126_939_380_199);
     }
 
+    function test_deposit_outOfRangePoc() public {
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: 240, tickUpper: 420 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 5 ether;
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: depositAmount,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        base.updatePositionLiquidity(
+            ICLTBase.UpdatePositionParams({
+                tokenId: 1,
+                amount0Desired: depositAmount,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
+    }
+
     function test_deposit_shouldReturnExtraETH() public {
         pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));

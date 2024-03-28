@@ -67,7 +67,14 @@ contract WithdrawTest is Test, Fixtures {
         emit Withdraw(1, recipient, liquidityShare, depositAmount - 1, depositAmount - 1, 0, 0);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: recipient, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: recipient,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyId);
@@ -161,7 +168,9 @@ contract WithdrawTest is Test, Fixtures {
                 tokenId: 3,
                 liquidity: liquidityShareUser3,
                 recipient: msg.sender,
-                refundAsETH: true
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
             })
         );
 
@@ -174,7 +183,9 @@ contract WithdrawTest is Test, Fixtures {
                 tokenId: 1,
                 liquidity: liquidityShareUser1,
                 recipient: users[0],
-                refundAsETH: true
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
             })
         );
 
@@ -210,7 +221,14 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(msg.sender);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: randomUser, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: randomUser,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         assertEq(randomUser.balance + 1, depositAmount);
@@ -222,7 +240,14 @@ contract WithdrawTest is Test, Fixtures {
         vm.prank(msg.sender);
         vm.expectRevert();
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
@@ -230,19 +255,42 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         vm.expectRevert();
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 1, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: liquidityShare,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
     }
 
     function test_withdraw_revertsIfZeroLiquidityInput() public {
         vm.prank(address(this));
         vm.expectRevert();
-        base.withdraw(ICLTBase.WithdrawParams({ tokenId: 1, liquidity: 0, recipient: msg.sender, refundAsETH: true }));
+        base.withdraw(
+            ICLTBase.WithdrawParams({
+                tokenId: 1,
+                liquidity: 0,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
+        );
     }
 
     function test_withdraw_revertsIfBalanceExceed() public {
@@ -255,7 +303,9 @@ contract WithdrawTest is Test, Fixtures {
                 tokenId: 1,
                 liquidity: liquidityShare * 10,
                 recipient: msg.sender,
-                refundAsETH: true
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
             })
         );
     }
@@ -346,7 +396,14 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         assertEq(token0.balanceOf(msg.sender), account.balance0 / 2 + 1);
@@ -463,7 +520,14 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(users[0]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: depositAmount,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         assertEq(token0.balanceOf(msg.sender), (account.balance0 + fee0) / 2 - 2);
@@ -581,7 +645,14 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(users[2]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 4, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 4,
+                liquidity: liquidityShare,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         assertEq(token0.balanceOf(msg.sender) + 11, amount0);
@@ -591,7 +662,14 @@ contract WithdrawTest is Test, Fixtures {
 
         vm.prank(users[1]);
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 3, liquidity: liquidityShare, recipient: users[1], refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 3,
+                liquidity: liquidityShare,
+                recipient: users[1],
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         assertEq(token0.balanceOf(users[1]) - 4, userShare0);
@@ -640,7 +718,14 @@ contract WithdrawTest is Test, Fixtures {
         (uint256 reserves0,) = getStrategyReserves(key, liquidity);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: depositAmount,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         assertEq(token0.balanceOf(msg.sender), reserves0);
@@ -680,7 +765,14 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 reserves1) = getStrategyReserves(key, liquidity);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: depositAmount, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: depositAmount,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
 
         assertEq(token1.balanceOf(msg.sender), reserves1);
@@ -709,7 +801,14 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 liquidityShare,,,,) = base.positions(2);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
         vm.stopPrank();
 
@@ -770,7 +869,14 @@ contract WithdrawTest is Test, Fixtures {
         (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, liquidity);
 
         base.withdraw(
-            ICLTBase.WithdrawParams({ tokenId: 2, liquidity: liquidityShare, recipient: msg.sender, refundAsETH: true })
+            ICLTBase.WithdrawParams({
+                tokenId: 2,
+                liquidity: liquidityShare,
+                recipient: msg.sender,
+                refundAsETH: true,
+                amount0Min: 0,
+                amount1Min: 0
+            })
         );
         vm.stopPrank();
 

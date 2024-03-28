@@ -12,6 +12,7 @@ import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandle
 
 import { CLTBase } from "../../src/CLTBase.sol";
 import { CLTModules } from "../../src/CLTModules.sol";
+import { CLTTwapQuoter } from "../../src/CLTTwapQuoter.sol";
 import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
@@ -45,6 +46,7 @@ contract Fixtures is UniswapDeployer {
 
     Modes modes;
     CLTBase base;
+    CLTTwapQuoter cltTwap;
     RebaseModule rebaseModule;
     CLTModules cltModules;
     GovernanceFeeHandler feeHandler;
@@ -110,8 +112,6 @@ contract Fixtures is UniswapDeployer {
     function initBase() internal {
         weth = new WETH();
 
-        rebaseModule = new RebaseModule(address(base));
-
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
             strategyCreationFee: 0,
@@ -120,12 +120,14 @@ contract Fixtures is UniswapDeployer {
         });
 
         cltModules = new CLTModules();
+        cltTwap = new CLTTwapQuoter();
 
         feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         base = new CLTBase("ALP Base", "ALP", address(weth), address(feeHandler), address(cltModules), factory);
 
         modes = new Modes(address(base));
+        rebaseModule = new RebaseModule(address(base));
 
         cltModules.setNewModule(keccak256("EXIT_STRATEGY"), keccak256("SMART_EXIT"));
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));

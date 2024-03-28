@@ -6,8 +6,9 @@ import { WETH } from "../mocks/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
 
 import { CLTBase } from "../../src/CLTBase.sol";
-import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { CLTModules } from "../../src/CLTModules.sol";
+import { Modes } from "../../src/modules/rebasing/Modes.sol";
+import { CLTTwapQuoter } from "../../src/CLTTwapQuoter.sol";
 
 import { ICLTBase } from "../../src/interfaces/ICLTBase.sol";
 import { IGovernanceFeeHandler } from "../../src/interfaces/IGovernanceFeeHandler.sol";
@@ -44,6 +45,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     CLTModules cltModules;
     CLTBase base;
     Modes modes;
+    CLTTwapQuoter cltTwap;
 
     ERC20Mock token0;
     ERC20Mock token1;
@@ -170,6 +172,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             protcolFeeOnPerformance: 0
         });
 
+        cltTwap = new CLTTwapQuoter();
         cltModules = new CLTModules();
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
