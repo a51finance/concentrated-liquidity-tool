@@ -41,13 +41,7 @@ contract DeployALP is Script {
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         CLTBase baseContract = new CLTBase(
-            "A51 Liquidity Positions NFT",
-            "ALPhy",
-            _owner,
-            _weth9,
-            address(feeHandler),
-            address(cltModules),
-            _factoryAddress
+            "A51 Liquidity Positions NFT", "ALPhy", _weth9, address(feeHandler), address(cltModules), _factoryAddress
         );
 
         new Modes(address(baseContract), address(twapQuoter));
