@@ -12,3 +12,6 @@
 [submodule "lib/v3-periphery"]
 	path = lib/v3-periphery
 	url = https://github.com/uniswap/v3-periphery
+[submodule "lib/AlgebraV1"]
+	path = lib/AlgebraV1
+	url = https://github.com/cryptoalgebra/AlgebraV1
