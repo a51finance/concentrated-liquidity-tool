@@ -3,17 +3,23 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
-import { AccessControl } from "../../base/AccessControl.sol";
+import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
+
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
 
 /// @title  Modes
 /// @notice Provides functions to update ticks for basic modes of strategy
-contract Modes is ModeTicksCalculation, AccessControl {
+contract Modes is ModeTicksCalculation, Ownable {
     /// @notice The address of base vault
     ICLTBase public baseVault;
 
-    constructor(address vault) AccessControl() {
+    /// @notice The address of twap quoter
+    ICLTTwapQuoter public twapQuoter;
+
+    constructor(address vault, address _twapQuoter) Ownable() {
         baseVault = ICLTBase(vault);
+        twapQuoter = ICLTTwapQuoter(_twapQuoter);
     }
 
     /// @notice Trails the position of strategy according to the current tick i.e. shift left or shift right
@@ -49,7 +55,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         internal
         returns (int24 tickLower, int24 tickUpper)
     {
-        (tickLower, tickUpper) = shiftLeft(key);
+        (tickLower, tickUpper) = shiftLeft(key, twapQuoter.getTwap(key.pool));
         key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
         _updateStrategy(strategyID, key);
     }
@@ -66,7 +72,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         internal
         returns (int24 tickLower, int24 tickUpper)
     {
-        (tickLower, tickUpper) = shiftRight(key);
+        (tickLower, tickUpper) = shiftRight(key, twapQuoter.getTwap(key.pool));
         key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
         _updateStrategy(strategyID, key);
     }
@@ -83,7 +89,7 @@ contract Modes is ModeTicksCalculation, AccessControl {
         internal
         returns (int24 tickLower, int24 tickUpper)
     {
-        (tickLower, tickUpper) = shiftBothSide(key);
+        (tickLower, tickUpper) = shiftBothSide(key, twapQuoter.getTwap(key.pool));
         key = ICLTBase.StrategyKey({ pool: key.pool, tickLower: tickLower, tickUpper: tickUpper });
         _updateStrategy(strategyID, key);
     }
@@ -105,8 +111,8 @@ contract Modes is ModeTicksCalculation, AccessControl {
         baseVault.shiftLiquidity(params);
     }
 
-    function updateTwapDuration(uint32 value) external onlyOwner {
-        _twapDuration = value;
+    function updateTwapQuoter(address _twapQuoter) external onlyOwner {
+        twapQuoter = ICLTTwapQuoter(_twapQuoter);
     }
 
     function _getStrategy(bytes32 strategyID)

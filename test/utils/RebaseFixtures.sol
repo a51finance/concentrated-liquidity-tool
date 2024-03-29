@@ -184,9 +184,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.prank(recepient);
         token1.approve(address(base), type(uint256).max);
 
-        rebaseModule = new RebaseModule(address(base));
-
-        modes = new Modes(address(base));
+        modes = new Modes(address(base), address(cltTwap));
+        rebaseModule = new RebaseModule(address(base), address(cltTwap));
 
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);

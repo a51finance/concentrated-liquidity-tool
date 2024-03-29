@@ -2,8 +2,6 @@
 pragma solidity =0.7.6;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
-import { WeightedDataStorageLibrary } from "@cryptoalgebra/periphery/contracts/libraries/WeightedDataStorageLibrary.sol";
 
 /// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
@@ -16,8 +14,14 @@ abstract contract ModeTicksCalculation {
     /// @param key A51 strategy key details
     /// @return tickLower The lower tick of the range
     /// @return tickUpper The upper tick of the range
-    function shiftLeft(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
-        int24 currentTick = getTwap(key.pool);
+    function shiftLeft(
+        ICLTBase.StrategyKey memory key,
+        int24 currentTick
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick < key.tickLower) {
@@ -40,8 +44,14 @@ abstract contract ModeTicksCalculation {
     /// @param key A51 strategy key details
     /// @return tickLower The lower tick of the range
     /// @return tickUpper The upper tick of the range
-    function shiftRight(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
-        int24 currentTick = getTwap(key.pool);
+    function shiftRight(
+        ICLTBase.StrategyKey memory key,
+        int24 currentTick
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick > key.tickUpper) {
@@ -63,40 +73,18 @@ abstract contract ModeTicksCalculation {
     /// @param key A51 strategy key details
     /// @return tickLower The lower tick of the range
     /// @return tickUpper The upper tick of the range
-    function shiftBothSide(ICLTBase.StrategyKey memory key) internal view returns (int24 tickLower, int24 tickUpper) {
-        int24 currentTick = getTwap(key.pool);
-        if (currentTick < key.tickLower) return shiftLeft(key);
-        if (currentTick > key.tickUpper) return shiftRight(key);
+    function shiftBothSide(
+        ICLTBase.StrategyKey memory key,
+        int24 currentTick
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        if (currentTick < key.tickLower) return shiftLeft(key, currentTick);
+        if (currentTick > key.tickUpper) return shiftRight(key, currentTick);
 
         revert();
-    }
-
-    /// @notice Calculates time-weighted means of tick and liquidity for a given pool
-    /// @param pool The address of the Pool
-    /// @dev Check price has not moved a lot recently. This mitigates price
-    /// manipulation during shifting of position
-    /// @return twap The time-weighted average price
-    function getTwap(IAlgebraPool pool) internal view returns (int24 twap) {
-        (,,, uint16 observationIndex,,,) = pool.globalState();
-
-        uint16 oldestIndex;
-        // check if we have overflow in the past
-        uint16 nextIndex = observationIndex + 1; // considering overflow
-
-        (bool initialized,,,,,,) = pool.timepoints(nextIndex);
-
-        if (initialized) {
-            oldestIndex = nextIndex;
-        }
-
-        (, uint32 lastTimeStamp,,,,,) = pool.timepoints(oldestIndex);
-
-        uint32 timeDiff = uint32(block.timestamp) - lastTimeStamp;
-
-        WeightedDataStorageLibrary.PeriodTimepoint memory twapPayload =
-            WeightedDataStorageLibrary.consult(address(pool), timeDiff > _twapDuration ? _twapDuration : timeDiff);
-
-        twap = twapPayload.arithmeticMeanTick;
     }
 
     /// @dev Rounds tick down towards negative infinity so that it's a multiple

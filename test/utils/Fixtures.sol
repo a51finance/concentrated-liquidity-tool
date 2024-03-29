@@ -126,8 +126,8 @@ contract Fixtures is UniswapDeployer {
 
         base = new CLTBase("ALP Base", "ALP", address(weth), address(feeHandler), address(cltModules), factory);
 
-        modes = new Modes(address(base));
-        rebaseModule = new RebaseModule(address(base));
+        modes = new Modes(address(base), address(cltTwap));
+        rebaseModule = new RebaseModule(address(base), address(cltTwap));
 
         cltModules.setNewModule(keccak256("EXIT_STRATEGY"), keccak256("SMART_EXIT"));
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
