@@ -96,14 +96,17 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         uint256 lastUpdateTimeStamp;
 
         if (swapsThreshold != 0 && executeParams.swapAmount > 0) {
-            if (actionStatus.length > 0) {
-                (,, uint256 _lastUpdateTimeStamp, uint256 _manualSwapsCount) =
-                    abi.decode(actionStatus, (uint256, bool, uint256, uint256));
-
-                (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
-            } else {
+            if (actionStatus.length == 0) {
                 lastUpdateTimeStamp = block.timestamp;
                 manualSwapsCount = 1;
+            } else {
+                if (actionStatus.length == 64) {
+                    (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(0, 0);
+                } else {
+                    (,, uint256 _lastUpdateTimeStamp, uint256 _manualSwapsCount) =
+                        abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+                    (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
+                }
             }
         }
 
