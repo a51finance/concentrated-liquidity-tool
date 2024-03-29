@@ -261,7 +261,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             position.tokensOwed1 = 0;
         }
 
-        require(amount0 > params.amount0Min || amount1 > params.amount1Min, "MAC"); // MinimumAmountsExceeded
+        require(amount0 > params.amount0Min || amount1 > params.amount1Min, "MinimumAmountsExceeded");
 
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
@@ -465,7 +465,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             require(share > Constants.MIN_INITIAL_SHARES);
         }
 
-        require(amount0 > amount0Min || amount1 > amount1Min, "MAC"); // MinimumAmountsExceeded
+        require(amount0 > amount0Min || amount1 > amount1Min, "MinimumAmountsExceeded");
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);

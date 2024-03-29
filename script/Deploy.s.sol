@@ -29,7 +29,7 @@ contract DeployALP is Script {
 
         new CLTHelper();
         CLTModules cltModules = new CLTModules();
-        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
+        CLTTwapQuoter twapQuoter = new CLTTwapQuoter();
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,

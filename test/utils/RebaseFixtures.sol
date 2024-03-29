@@ -167,7 +167,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             protcolFeeOnPerformance: 0
         });
 
-        cltTwap = new CLTTwapQuoter(address(this));
+        cltTwap = new CLTTwapQuoter();
         cltModules = new CLTModules();
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);

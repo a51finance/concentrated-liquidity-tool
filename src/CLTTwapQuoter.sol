@@ -15,7 +15,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
     /// @inheritdoc ICLTTwapQuoter
     mapping(address => PoolStrategy) public override poolStrategy;
 
-    constructor(address _owner) Ownable() {
+    constructor() Ownable() {
         twapDuration = 3600;
     }
 

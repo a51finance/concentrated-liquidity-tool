@@ -108,7 +108,7 @@ contract Fixtures is UniswapDeployer {
             protcolFeeOnPerformance: 0
         });
 
-        cltTwap = new CLTTwapQuoter(address(this));
+        cltTwap = new CLTTwapQuoter();
         cltModules = new CLTModules();
         feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
