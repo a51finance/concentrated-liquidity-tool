@@ -6,9 +6,6 @@
   branch = "release-v0"
   path = "lib/prb-test"
   url = "https://github.com/PaulRBerg/prb-test"
-[submodule "lib/AlgebraV1"]
-	path = lib/AlgebraV1
-	url = https://github.com/cryptoalgebra/AlgebraV1
 [submodule "lib/v3-core"]
 	path = lib/v3-core
 	url = https://github.com/uniswap/v3-core
