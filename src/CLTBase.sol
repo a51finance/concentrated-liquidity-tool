@@ -263,7 +263,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             position.tokensOwed1 = 0;
         }
 
-        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "MinimumAmountsExceeded");
+        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "MAE");
 
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
@@ -412,8 +412,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         _validateModes(actions, managementFee, performanceFee);
 
         StrategyData storage strategy = strategies[strategyId];
-        require(strategy.owner == _msgSender(), "InvalidCaller");
-        require(owner != address(0), "OwnerCannotBeZeroAddress");
+        require(strategy.owner == _msgSender());
+        require(owner != address(0));
 
         strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
 
@@ -467,7 +467,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             require(share > Constants.MIN_INITIAL_SHARES);
         }
 
-        require(amount0 >= amount0Min && amount1 >= amount1Min, "MinimumAmountsExceeded");
+        require(amount0 >= amount0Min && amount1 >= amount1Min, "MAE");
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);

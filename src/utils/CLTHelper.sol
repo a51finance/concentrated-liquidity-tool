@@ -2,10 +2,10 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
-import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
-import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
+import "../interfaces/ICLTBase.sol";
 
 contract CLTHelper {
     function decodePositionActions(bytes memory actions) external pure returns (ICLTBase.PositionActions memory) {
