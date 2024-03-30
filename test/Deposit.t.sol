@@ -349,6 +349,86 @@ contract DepositTest is Test, Fixtures {
         );
     }
 
+    function test_deposit_outOfRangePoc2() public {
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: 240, tickUpper: 420 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 5 ether;
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: depositAmount,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+
+        assertEq(liquidityShareUser1, depositAmount);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: depositAmount * 2,
+                amount1Desired: 0,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+
+        assertEq(liquidityShareUser2, depositAmount * 2 + 2);
+    }
+
+    function test_deposit_outOfRangePoc3() public {
+        key = ICLTBase.StrategyKey({ pool: pool, tickLower: -420, tickUpper: -240 });
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 2);
+        uint256 depositAmount = 5 ether;
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: 0,
+                amount1Desired: depositAmount,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser1,,,,) = base.positions(1);
+
+        assertEq(liquidityShareUser1, depositAmount);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: strategyID,
+                amount0Desired: 0,
+                amount1Desired: depositAmount * 2,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (, uint256 liquidityShareUser2,,,,) = base.positions(2);
+
+        assertEq(liquidityShareUser2, depositAmount * 2 + 2);
+    }
+
     function test_deposit_shouldReturnExtraETH() public {
         pool = IAlgebraPool(factory.createPool(address(weth), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
