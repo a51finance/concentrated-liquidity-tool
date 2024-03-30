@@ -111,6 +111,8 @@ contract Modes is ModeTicksCalculation, Ownable {
         baseVault.shiftLiquidity(params);
     }
 
+    /// @notice Updates the address twapQuoter.
+    /// @param _twapQuoter The new address of twapQuoter
     function updateTwapQuoter(address _twapQuoter) external onlyOwner {
         twapQuoter = ICLTTwapQuoter(_twapQuoter);
     }
