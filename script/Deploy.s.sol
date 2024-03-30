@@ -11,18 +11,18 @@ import "../src/GovernanceFeeHandler.sol";
 import "../src/interfaces/IGovernanceFeeHandler.sol";
 import "../src/modules/rebasing/Modes.sol";
 import "../src/modules/rebasing/RebaseModule.sol";
-
-import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
+import "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 contract DeployALP is Script {
+    // mumbai testnet
     address _weth9 = 0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889;
-
     IAlgebraFactory _factoryAddress = IAlgebraFactory(0x9cE372C452d8621fB891EA65456A51e5e4863F4C);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_A89");
         vm.startBroadcast(deployerPrivateKey);
 
+        // new CLTHelper();
         CLTModules cltModules = new CLTModules();
         CLTTwapQuoter twapQuoter = new CLTTwapQuoter();
 
@@ -38,7 +38,6 @@ contract DeployALP is Script {
         CLTBase baseContract =
             new CLTBase("ALP_TOKEN", "ALPT", _weth9, address(feeHandler), address(cltModules), _factoryAddress);
 
-        // new CLTHelper();
         new Modes(address(baseContract), address(twapQuoter));
         new RebaseModule(address(baseContract), address(twapQuoter));
 
