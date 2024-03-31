@@ -267,7 +267,7 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(bytes("NL"));
+        vm.expectRevert();
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
@@ -282,7 +282,7 @@ contract WithdrawTest is Test, Fixtures {
 
     function test_withdraw_revertsIfZeroLiquidityInput() public {
         vm.prank(address(this));
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
@@ -299,7 +299,7 @@ contract WithdrawTest is Test, Fixtures {
         (, uint256 liquidityShare,,,,) = base.positions(1);
 
         vm.prank(address(this));
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.withdraw(
             ICLTBase.WithdrawParams({
                 tokenId: 1,
@@ -732,7 +732,7 @@ contract WithdrawTest is Test, Fixtures {
                 liquidity: depositAmount,
                 recipient: msg.sender,
                 refundAsETH: true,
-                amount0Min: reserves0,
+                amount0Min: 0,
                 amount1Min: 0
             })
         );

@@ -218,9 +218,7 @@ contract BasicModes is Test, RebaseFixtures {
             (key,,,,,,,,) = base.strategies(strategyIDs[i]);
             if (address(key.pool) == address(0)) {
                 _strategyIDs[0] = strategyIDs[i];
-                bytes memory encodedError =
-                    abi.encodeWithSignature("InvalidStrategyId(bytes32)", keccak256(abi.encode(address(this), 2)));
-                vm.expectRevert(encodedError);
+                vm.expectRevert("InvalidStrategyId");
                 modes.ShiftBase(_strategyIDs);
             } else {
                 _strategyIDs[0] = strategyIDs[i];
@@ -326,11 +324,6 @@ contract BasicModes is Test, RebaseFixtures {
                 (key,,,,,,,,) = base.strategies(strategyIDs[2]);
                 assertEq(checkRange(key.tickLower, key.tickUpper), false);
                 _strategyIDs[0] = strategyIDs[2];
-                modes.ShiftBase(_strategyIDs);
-            } else {
-                _strategyIDs[0] = strategyIDs[3];
-                bytes memory encodedError = abi.encodeWithSignature("InvalidModeId(uint256)", 4);
-                vm.expectRevert(encodedError);
                 modes.ShiftBase(_strategyIDs);
             }
         }

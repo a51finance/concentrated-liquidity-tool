@@ -114,8 +114,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.swapAmount = 0;
 
         _hevm.prank(users[0]);
-        bytes4 selector = bytes4(keccak256("InvalidCaller()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert("InvalidCaller");
+
         rebaseModule.executeStrategy(executeParams);
         (key,,,,,,,,) = base.strategies(strategyID);
     }
@@ -145,9 +145,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.swapAmount = 0;
 
         _hevm.prank(users[0]);
-        bytes memory encodedError =
-            abi.encodeWithSignature("StrategyIdDonotExist(bytes32)", keccak256(abi.encode(users[1], 1)));
-        vm.expectRevert(encodedError);
+        vm.expectRevert("StrategyIdDonotExist");
         rebaseModule.executeStrategy(executeParams);
         (key,,,,,,,,) = base.strategies(strategyID);
     }
@@ -564,6 +562,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(reserve0, 0);
         assertEq(reserve1, 0);
 
+        // executeSwap(token1, token0, pool.fee(), owner, 500e18, 0, 0);
         // now executing executeStrategies()
         bytes32[] memory strategyIds = new bytes32[](1);
         strategyIds[0] = strategyID;
@@ -572,6 +571,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         (key,,,,,,,, account) = base.strategies(strategyID);
 
         // since its mode 2 the ticks will roll back
+
         assertEq(key.tickLower > tick, true);
         assertEq(key.tickUpper > tick, true);
     }
@@ -784,7 +784,12 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
+        // _hevm.warp(block.timestamp + 5 days);
+        // console.log("Twap Before");
+        // console.logInt(getTwap());
+
         executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
+
         base.getStrategyReserves(strategyID);
         (,,,,,,,, account) = base.strategies(strategyID);
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
@@ -1850,6 +1855,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         bytes32[] memory strategies = new bytes32[](1);
         strategies[0] = strategyID;
 
+        executeSwap(token0, token1, pool.fee(), owner, 200e18, 0, 0);
+
         rebaseModule.executeStrategies(strategies);
 
         (,,, actionStatus,,,,,) = base.strategies(strategyID);
@@ -1940,6 +1947,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         bytes32[] memory strategies = new bytes32[](1);
         strategies[0] = strategyID;
+
+        executeSwap(token0, token1, pool.fee(), owner, 500e18, 0, 0);
 
         rebaseModule.executeStrategies(strategies);
 
@@ -2088,7 +2097,6 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         rebaseModule.executeStrategies(strategyIDs);
 
         (,,, actionStatus,,,,,) = base.strategies(strategyID1);
-
         (rebaseCount, isExited, lastUpdateTime, swapsCount) =
             abi.decode(actionStatus, (uint256, bool, uint256, uint256));
 
@@ -2152,6 +2160,8 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         rebaseModule.updateSwapsThreshold(1);
 
+        console.log(rebaseModule.swapsThreshold());
+
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
         (, int24 tick,,,,,) = pool.slot0();
@@ -2191,8 +2201,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.sqrtPriceLimitX96 =
             (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
-        bytes memory encodedError = abi.encodeWithSignature("SwapsThresholdExceeded()");
-        vm.expectRevert(encodedError);
+        vm.expectRevert("SwapsThresholdExceeded");
         rebaseModule.executeStrategy(executeParams);
 
         _hevm.warp(block.timestamp + 1 days + 3600);

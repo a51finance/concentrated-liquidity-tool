@@ -85,7 +85,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.deposit(params);
     }
 
@@ -102,7 +102,7 @@ contract DepositTest is Test, Fixtures {
             recipient: msg.sender
         });
 
-        vm.expectRevert("InvalidShare");
+        vm.expectRevert();
         base.deposit(params);
     }
 

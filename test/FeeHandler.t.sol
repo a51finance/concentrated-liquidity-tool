@@ -20,7 +20,7 @@ contract FeeHandlerTest is Test, Fixtures {
 
     function test_feeHandler_revertsIfNotOwner() public {
         vm.startPrank(msg.sender);
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert("Ownable: caller is not the owner");
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.4 ether,
@@ -30,7 +30,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert("UNAUTHORIZED");
+        vm.expectRevert("Ownable: caller is not the owner");
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.4 ether,

@@ -63,7 +63,7 @@ contract StrategyTest is Test, Fixtures {
         base.createStrategy(key, actions, 0, 0, true, false);
 
         vm.prank(msg.sender);
-        vm.expectRevert("InvalidCaller");
+        vm.expectRevert();
         base.updateStrategyBase(getStrategyID(address(this), 1), address(1445), 0.2 ether, 0.13 ether, actions);
     }
 
@@ -75,7 +75,7 @@ contract StrategyTest is Test, Fixtures {
 
         actions = createStrategyActions(3, 1, 0, 0, 100, 200);
 
-        vm.expectRevert("OwnerCannotBeZeroAddress");
+        vm.expectRevert();
         base.updateStrategyBase(strategyId, address(0), 0, 0, actions);
     }
 

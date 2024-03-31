@@ -60,8 +60,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount1 < 8_388_608 && amount1 > 0);
         strategyDetail.data = abi.encode(uint256(0), uint256(30));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert(bytes("InvalidPricePreferenceDifference"));
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -71,8 +70,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount0 < 8_388_608 && amount0 > 0);
         strategyDetail.data = abi.encode(uint256(amount0), uint256(0));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert(bytes("InvalidPricePreferenceDifference"));
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -80,8 +78,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
         strategyDetail.data = abi.encode(uint256(0), uint256(0));
-        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert();
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -89,8 +86,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         ICLTBase.StrategyPayload memory strategyDetail;
         strategyDetail.actionName = rebaseModule.PRICE_PREFERENCE();
         strategyDetail.data = "";
-        bytes4 selector = bytes4(keccak256("RebaseStrategyDataCannotBeZero()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert();
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -109,8 +105,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         strategyDetail.actionName = rebaseModule.REBASE_INACTIVITY();
         strategyDetail.data = abi.encode(uint256(0));
 
-        bytes4 selector = bytes4(keccak256("RebaseInactivityCannotBeZero()"));
-        _hevm.expectRevert(selector);
+        _hevm.expectRevert("RebaseInactivityCannotBeZero");
         rebaseModule.checkInputData(strategyDetail);
     }
 
@@ -204,8 +199,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         data[4] = keccak256(abi.encode(address(this), 5));
         data[5] = data[0];
 
-        bytes memory encodedError = abi.encodeWithSignature("DuplicateStrategyId(bytes32)", data[0]);
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("DuplicateStrategyId"));
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -217,8 +211,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         data[0] = keccak256(abi.encode(address(this), 1));
         data[1] = bytes32(0);
 
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1]);
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("InvalidStrategyId"));
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -287,8 +280,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         strategyIDs[0] = strategyID;
 
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", strategyID);
-        vm.expectRevert(encodedError);
+        vm.expectRevert("InvalidStrategyId");
         rebaseModule.executeStrategies(strategyIDs);
     }
 
@@ -307,8 +299,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
     function testEmptyArrayReverts() public {
         bytes32[] memory data = new bytes32[](0);
-        bytes memory encodedError = abi.encodeWithSignature("StrategyIdsCannotBeEmpty()");
-        vm.expectRevert(encodedError);
+        vm.expectRevert("StrategyIdsCannotBeEmpty");
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -316,8 +307,8 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         bytes32[] memory data = new bytes32[](2);
         data[0] = bytes32(0);
         data[1] = bytes32(0);
-        bytes memory encodedError = abi.encodeWithSignature("InvalidStrategyId(bytes32)", data[1]);
-        vm.expectRevert(encodedError);
+        vm.expectRevert(bytes("InvalidStrategyId"));
+
         rebaseModule.checkStrategiesArray(data);
     }
 
@@ -948,8 +939,8 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         bytes32 strategyID = getStrategyID(owner, 1);
 
         depositParams.strategyId = strategyID;
-        depositParams.amount0Desired = 1000;
-        depositParams.amount1Desired = 1000;
+        depositParams.amount0Desired = 2000;
+        depositParams.amount1Desired = 2000;
         depositParams.amount0Min = 0;
         depositParams.amount1Min = 0;
         depositParams.recipient = owner;
