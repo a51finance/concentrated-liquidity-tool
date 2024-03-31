@@ -79,9 +79,9 @@ contract GovernanceFeeHandler is IGovernanceFeeHandler, Ownable {
 
     /// @dev Common checks for valid fee inputs.
     function _checkLimit(ProtocolFeeRegistry calldata feeParams) private pure {
-        require(feeParams.lpAutomationFee < Constants.MAX_AUTOMATION_FEE, "LPAutomationFeeLimitExceed");
-        require(feeParams.strategyCreationFee < Constants.MAX_STRATEGY_CREATION_FEE, "StrategyFeeLimitExceed");
-        require(feeParams.protcolFeeOnManagement < Constants.MAX_PROTCOL_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
-        require(feeParams.protcolFeeOnPerformance < Constants.MAX_PROTCOL_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
+        require(feeParams.lpAutomationFee <= Constants.MAX_AUTOMATION_FEE, "LPAutomationFeeLimitExceed");
+        require(feeParams.strategyCreationFee <= Constants.MAX_STRATEGY_CREATION_FEE, "StrategyFeeLimitExceed");
+        require(feeParams.protcolFeeOnManagement <= Constants.MAX_PROTCOL_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
+        require(feeParams.protcolFeeOnPerformance <= Constants.MAX_PROTCOL_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
     }
 }

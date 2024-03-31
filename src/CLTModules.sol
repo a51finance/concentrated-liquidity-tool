@@ -74,8 +74,8 @@ contract CLTModules is ICLTModules, Ownable {
         override
     {
         require(actions.mode > 0 && actions.mode < 5, "InvalidMode");
-        require(managementFee < Constants.MAX_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
-        require(performanceFee < Constants.MAX_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
+        require(managementFee <= Constants.MAX_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
+        require(performanceFee <= Constants.MAX_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
 
         if (actions.exitStrategy.length > 0) {
             _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
