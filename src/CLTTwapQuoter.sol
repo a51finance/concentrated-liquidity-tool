@@ -67,7 +67,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
 
     /// @notice This function fetches the current tick of the pool
     /// @param pool The pool address
-    function getCurrentTick(IUniswapV3Pool pool) public view returns (int24 tick, uint160 sqrtPriceX96) {
+    function getCurrentTick(IThrusterPool pool) public view returns (int24 tick, uint160 sqrtPriceX96) {
         (sqrtPriceX96, tick,,,,,) = pool.slot0();
     }
 

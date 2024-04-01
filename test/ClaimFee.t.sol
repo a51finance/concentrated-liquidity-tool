@@ -15,9 +15,10 @@ import { Constants } from "../src/libraries/Constants.sol";
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
+import { ISwapRouter } from "@thruster-blast/interfaces/ISwapRouter.sol";
+// import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
 
 import "forge-std/console.sol";
 

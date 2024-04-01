@@ -11,9 +11,9 @@ import { Utilities } from "./utils/Utilities.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { FullMath } from "@thruster-blast/contracts/libraries/FullMath.sol";
+import { ISwapRouter } from "@thruster-blast/interfaces/ISwapRouter.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
 
 contract UpdatePositionLiquidityTest is Test, Fixtures {
     Utilities utils;

@@ -20,20 +20,21 @@ import { Utilities } from "./Utilities.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
-import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { Quoter } from "@uniswap/v3-periphery/contracts/lens/Quoter.sol";
-import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
-import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { SwapRouter } from "@thruster-blast/contracts/SwapRouter.sol";
+import { ISwapRouter } from "@thruster-blast/interfaces/ISwapRouter.sol";
+import { Quoter } from "@thruster-blast/contracts/lens/Quoter.sol";
+import { NonfungiblePositionManager } from "@thruster-blast/contracts/NonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from "@thruster-blast/interfaces/INonfungiblePositionManager.sol";
 
-import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { LiquidityAmounts } from "@thruster-blast/contracts/libraries/LiquidityAmounts.sol";
+import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
+import { ThrusterPoolFactory } from "@thruster-blast/contracts/ThrusterPoolFactory.sol";
+import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
 
-contract RebaseFixtures is UniswapDeployer, Utilities {
+contract RebaseFixtures is Utilities {
     NonfungiblePositionManager positionManager;
-    IUniswapV3Pool pool;
+    IThrusterPool pool;
     SwapRouter router;
     Quoter quote;
 
@@ -64,7 +65,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
     }
 
-    function initPool(address recepient) internal returns (IUniswapV3Factory factory) {
+    function initPool(address recepient) internal returns (IThrusterPoolFactory factory) {
         INonfungiblePositionManager.MintParams memory mintParams;
         ERC20Mock[] memory tokens = deployTokens(recepient, 2, 1e50);
 
@@ -76,11 +77,15 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
 
         // intialize uniswap contracts
-        factory = IUniswapV3Factory(deployUniswapV3Factory());
-        pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
+
+        factory = IThrusterPoolFactory(new ThrusterPoolFactory(address(recepient), address(recepient)));
+
+        // factory = IThrusterPoolFactory(deployUniswapV3Factory());
+        pool = IThrusterPool(factory.createPool(address(token0), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
-        router = new SwapRouter(address(factory), address(weth));
-        positionManager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
+        router = new SwapRouter(address(factory), address(weth), address(this));
+        positionManager =
+            new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(this));
         pool.increaseObservationCardinalityNext(80);
         quote = new Quoter(address(factory), address(weth));
 
@@ -156,7 +161,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function initBase(address recepient) internal {
-        IUniswapV3Factory factory;
+        IThrusterPoolFactory factory;
 
         (factory) = initPool(recepient);
 

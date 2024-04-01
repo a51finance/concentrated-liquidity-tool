@@ -15,10 +15,10 @@ import { FixedPoint128 } from "../src/libraries/FixedPoint128.sol";
 import { LiquidityShares } from "../src/libraries/LiquidityShares.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
+import { FullMath } from "@thruster-blast/contracts/libraries/FullMath.sol";
+import { ISwapRouter } from "@thruster-blast/interfaces/ISwapRouter.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
 
 import "forge-std/console.sol";
 
@@ -129,7 +129,7 @@ contract DepositTest is Test, Fixtures {
     }
 
     function test_deposit_succeedsWithNativeToken() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IThrusterPool(factory.createPool(address(weth), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
@@ -433,7 +433,7 @@ contract DepositTest is Test, Fixtures {
     }
 
     function test_deposit_shouldReturnExtraETH() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IThrusterPool(factory.createPool(address(weth), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });

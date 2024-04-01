@@ -20,20 +20,21 @@ import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { SwapRouter } from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import { NonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/NonfungiblePositionManager.sol";
-import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
+import { SwapRouter } from "@thruster-blast/contracts/SwapRouter.sol";
+import { ISwapRouter } from "@thruster-blast/interfaces/ISwapRouter.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
+import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
+import { LiquidityAmounts } from "@thruster-blast/contracts/libraries/LiquidityAmounts.sol";
+import { NonfungiblePositionManager } from "@thruster-blast/contracts/NonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from "@thruster-blast/interfaces/INonfungiblePositionManager.sol";
+import { ThrusterPoolFactory } from "@thruster-blast/contracts/ThrusterPoolFactory.sol";
 
 import "forge-std/console.sol";
 
 contract Fixtures is UniswapDeployer {
-    IUniswapV3Factory factory;
-    IUniswapV3Pool pool;
+    IThrusterPoolFactory factory;
+    IThrusterPool pool;
     SwapRouter router;
     INonfungiblePositionManager manager;
     WETH weth;
@@ -57,13 +58,14 @@ contract Fixtures is UniswapDeployer {
 
     function initPool() internal {
         // intialize uniswap contracts
-        factory = IUniswapV3Factory(deployUniswapV3Factory());
-        pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
+        // factory = IThrusterPoolFactory(deployUniswapV3Factory());
+        factory = IThrusterPoolFactory(new ThrusterPoolFactory(address(this), address(this)));
+        pool = IThrusterPool(factory.createPool(address(token0), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
 
     function initPoolAndAddLiquidity() internal {
-        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
+        manager = new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(this));
 
         token0.approve(address(manager), type(uint256).max);
         token1.approve(address(manager), type(uint256).max);
@@ -86,7 +88,7 @@ contract Fixtures is UniswapDeployer {
     }
 
     function initRouter() internal {
-        router = new SwapRouter(address(factory), address(weth));
+        router = new SwapRouter(address(factory), address(weth), address(this));
 
         token0.approve(address(router), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
@@ -112,9 +114,7 @@ contract Fixtures is UniswapDeployer {
         cltModules = new CLTModules();
         feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
-        base = new CLTBase(
-            "ALP Base", "ALP",  address(weth), address(feeHandler), address(cltModules), factory
-        );
+        base = new CLTBase("ALP Base", "ALP", address(weth), address(feeHandler), address(cltModules), factory);
 
         modes = new Modes(address(base), address(cltTwap));
         rebaseModule = new RebaseModule(msg.sender, address(base), address(cltTwap));

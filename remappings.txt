@@ -6,3 +6,7 @@ prb-test/=lib/prb-test/src/
 @uniswap/v3-periphery/=lib/v3-periphery/
 @openzeppelin/=lib/openzeppelin-contracts/
 @thruster-blast/=lib/thruster-blast/thruster-clmm/
+interfaces/=lib/thruster-blast/thruster-clmm/interfaces/
+interfaces/pool/=lib/thruster-blast/thruster-clmm/interfaces/pool/
+contracts/=lib/thruster-blast/thruster-clmm/contracts/
+contracts/libraries/=lib/thruster-blast/thruster-clmm/contracts/libraries/

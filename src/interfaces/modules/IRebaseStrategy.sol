@@ -28,7 +28,7 @@ interface IRebaseStrategy {
     /// @param sqrtPriceLimitX96 The Q64.96 sqrt price limit. If zero for one, the price cannot be less than this
 
     struct ExectuteStrategyParams {
-        IUniswapV3Pool pool;
+        IThrusterPool pool;
         bytes32 strategyID;
         int24 tickLower;
         int24 tickUpper;

@@ -11,7 +11,7 @@ import "../src/GovernanceFeeHandler.sol";
 import "../src/interfaces/IGovernanceFeeHandler.sol";
 import "../src/modules/rebasing/Modes.sol";
 import "../src/modules/rebasing/RebaseModule.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
 
 contract DeployALP is Script {
     // address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
@@ -21,7 +21,7 @@ contract DeployALP is Script {
     address _owner = 0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5;
     address _weth9 = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
-    IUniswapV3Factory _factoryAddress = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+    IThrusterPoolFactory _factoryAddress = IThrusterPoolFactory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");

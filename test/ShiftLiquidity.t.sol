@@ -9,8 +9,8 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { Fixtures } from "./utils/Fixtures.sol";
 import { Utilities } from "./utils/Utilities.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { FullMath } from "@thruster-blast/contracts/libraries/FullMath.sol";
+import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
@@ -18,8 +18,8 @@ import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { ModeTicksCalculation } from "../src/base/ModeTicksCalculation.sol";
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { ISwapRouter } from "@thruster-blast/interfaces/ISwapRouter.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
 
 import "forge-std/console.sol";
 
