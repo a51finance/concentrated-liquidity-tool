@@ -18,6 +18,10 @@ contract BasicModes is Test, RebaseFixtures {
         initBase(owner);
     }
 
+    function testtest() public {
+        console.log("Here");
+    }
+
     function testMode1ValidInputs() public {
         createBasicStrategy(2503, owner, true, 1);
 

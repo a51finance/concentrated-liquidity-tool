@@ -6,9 +6,9 @@ import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { Test } from "forge-std/Test.sol";
-import { IQuoter } from "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
+import { IQuoter } from "@thruster-blast/interfaces/IQuoter.sol";
 import { console } from "forge-std/console.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
 
 contract ManualOverrideTest is Test, RebaseFixtures {
     address payable[] users;

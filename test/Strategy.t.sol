@@ -9,7 +9,7 @@ import { Fixtures } from "./utils/Fixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
 
 import "forge-std/console.sol";
 

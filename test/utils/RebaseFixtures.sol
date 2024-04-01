@@ -17,8 +17,7 @@ import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { Utilities } from "./Utilities.sol";
-
-import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
+import { BlastPoints } from "./BlastPoints.sol";
 
 import { SwapRouter } from "@thruster-blast/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@thruster-blast/interfaces/ISwapRouter.sol";
@@ -29,8 +28,10 @@ import { INonfungiblePositionManager } from "@thruster-blast/interfaces/INonfung
 import { LiquidityAmounts } from "@thruster-blast/contracts/libraries/LiquidityAmounts.sol";
 import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
 import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
+import { ThrusterPoolDeployer } from "@thruster-blast/contracts/ThrusterPoolDeployer.sol";
 import { ThrusterPoolFactory } from "@thruster-blast/contracts/ThrusterPoolFactory.sol";
 import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
+import { console } from "forge-std/console.sol";
 
 contract RebaseFixtures is Utilities {
     NonfungiblePositionManager positionManager;
@@ -76,11 +77,12 @@ contract RebaseFixtures is Utilities {
             (token0, token1) = (token1, token0);
         }
 
-        // intialize uniswap contracts
-
-        factory = IThrusterPoolFactory(new ThrusterPoolFactory(address(recepient), address(recepient)));
-
-        // factory = IThrusterPoolFactory(deployUniswapV3Factory());
+        // intialize thruster contracts
+        ThrusterPoolFactory thrusterPoolFactory = new ThrusterPoolFactory(address(recepient), address(recepient));
+        factory = IThrusterPoolFactory(address(thrusterPoolFactory));
+        ThrusterPoolDeployer thrusterPoolDeployer = new ThrusterPoolDeployer(address(thrusterPoolFactory));
+        thrusterPoolFactory.setDeployer(address(thrusterPoolDeployer));
+        thrusterPoolFactory.setOwner(recepient);
         pool = IThrusterPool(factory.createPool(address(token0), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         router = new SwapRouter(address(factory), address(weth), address(this));
@@ -110,11 +112,11 @@ contract RebaseFixtures is Utilities {
         token0.approve(address(router), type(uint256).max);
         _hevm.prank(recepient);
         token1.approve(address(router), type(uint256).max);
-
+        console.log(address(pool));
         _hevm.prank(recepient);
         positionManager.mint(mintParams);
 
-        generateMultipleSwapsWithTime(recepient);
+        // generateMultipleSwapsWithTime(recepient);
     }
 
     function executeSwap(
