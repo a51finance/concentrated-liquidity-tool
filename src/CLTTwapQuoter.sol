@@ -4,9 +4,14 @@ pragma solidity =0.7.6;
 import { ICLTTwapQuoter } from "./interfaces/ICLTTwapQuoter.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
+// import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
+
+// import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
+
+// import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
+import { OracleLibrary } from "@thruster-blast/contracts/libraries/OracleLibrary.sol";
 
 contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
     /// @inheritdoc ICLTTwapQuoter
@@ -19,7 +24,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
         twapDuration = 3600;
     }
 
-    function checkDeviation(IUniswapV3Pool pool) external view override {
+    function checkDeviation(IThrusterPool pool) external view override {
         int24 twap = calculateTwap(pool);
         (int24 tick,) = getCurrentTick(pool);
         int24 deviation = tick > twap ? tick - twap : twap - tick;
@@ -28,7 +33,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
 
     /// @notice This function calculates the current twap of pool
     /// @param pool The pool address
-    function calculateTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
+    function calculateTwap(IThrusterPool pool) internal view returns (int24 twap) {
         uint128 inRangeLiquidity = pool.liquidity();
 
         if (inRangeLiquidity == 0) {
@@ -44,7 +49,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
     /// @dev Check price has not moved a lot recently. This mitigates price
     /// manipulation during shifting of position
     /// @return twap The time-weighted average price
-    function getTwap(IUniswapV3Pool pool) public view override returns (int24 twap) {
+    function getTwap(IThrusterPool pool) public view override returns (int24 twap) {
         (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
 
         (uint32 lastTimeStamp,,,) = pool.observations((observationIndex + 1) % observationCardinality);

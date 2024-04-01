@@ -5,3 +5,4 @@ prb-test/=lib/prb-test/src/
 @uniswap/v3-core/=lib/v3-core/
 @uniswap/v3-periphery/=lib/v3-periphery/
 @openzeppelin/=lib/openzeppelin-contracts/
+@thruster-blast/=lib/thruster-blast/thruster-clmm/

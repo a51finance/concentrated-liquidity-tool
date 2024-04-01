@@ -15,3 +15,6 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/thruster-blast"]
+	path = lib/thruster-blast
+	url = https://github.com/ThrusterX/thruster-blast

@@ -8,15 +8,16 @@ import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { IWETH9 } from "../interfaces/external/IWETH9.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+// import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
 
 /// @title  CLTPayments
 /// @notice Contain helper methods for safe token transfers with custom logic
 abstract contract CLTPayments is ICLTPayments {
     address private immutable WETH9;
-    IUniswapV3Factory private immutable factory;
+    IThrusterPoolFactory private immutable factory;
 
-    constructor(IUniswapV3Factory _factory, address _WETH9) {
+    constructor(IThrusterPoolFactory _factory, address _WETH9) {
         factory = _factory;
         WETH9 = _WETH9;
     }

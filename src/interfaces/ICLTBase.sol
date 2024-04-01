@@ -2,14 +2,15 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+// import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
 
 interface ICLTBase {
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
     /// @param tickUpper The upper tick of the A51's LP position
     struct StrategyKey {
-        IUniswapV3Pool pool;
+        IThrusterPool pool;
         int24 tickLower;
         int24 tickUpper;
     }
