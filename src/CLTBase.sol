@@ -18,9 +18,7 @@ import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-// import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { FullMath } from "@thruster-blast/contracts/libraries/FullMath.sol";
-// import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
@@ -263,7 +261,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             position.tokensOwed1 = 0;
         }
 
-        require(amount0 > params.amount0Min || amount1 > params.amount1Min, "MinimumAmountsExceeded");
+        require(amount0 > params.amount0Min || amount1 > params.amount1Min, "MAE");
 
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
@@ -295,8 +293,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         _updateGlobals(strategy, position.strategyId);
 
-        require(!strategy.isCompound, "ONC");
-        require(position.liquidityShare > 0, "NL");
+        require(!strategy.isCompound);
+        require(position.liquidityShare > 0);
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
@@ -467,7 +465,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             require(share > Constants.MIN_INITIAL_SHARES);
         }
 
-        require(amount0 > amount0Min || amount1 > amount1Min, "MinimumAmountsExceeded");
+        require(amount0 > amount0Min || amount1 > amount1Min, "MAE");
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);
