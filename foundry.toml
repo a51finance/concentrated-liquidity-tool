@@ -26,7 +26,6 @@
   goerli = { key = "${ETHERSCAN_API_KEY}" }
   unknownchain = {key = "${BLASTSCAN_API_KEY}", url = "https://blastscan.io/" }
 
-  
 
 [fmt]
   bracket_spacing = true
