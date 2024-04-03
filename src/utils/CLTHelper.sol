@@ -2,14 +2,9 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-// import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import { LiquidityAmounts } from "@thruster-blast/contracts/libraries/LiquidityAmounts.sol";
-
-// import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
-
-// import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
+import { LiquidityAmounts } from "@thruster-blast/contracts/libraries/LiquidityAmounts.sol";
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 

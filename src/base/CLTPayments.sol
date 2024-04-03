@@ -8,7 +8,6 @@ import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { IWETH9 } from "../interfaces/external/IWETH9.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
-// import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
 
 /// @title  CLTPayments

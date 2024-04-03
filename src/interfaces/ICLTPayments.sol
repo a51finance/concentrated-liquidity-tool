@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-
 pragma solidity >=0.5.0;
-
-// import { IUniswapV3MintCallback } from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-// import { IUniswapV3SwapCallback } from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 
 import { IThrusterMintCallback } from "@thruster-blast/interfaces/callback/IThrusterMintCallback.sol";
 import { IThrusterSwapCallback } from "@thruster-blast/interfaces/callback/IThrusterSwapCallback.sol";

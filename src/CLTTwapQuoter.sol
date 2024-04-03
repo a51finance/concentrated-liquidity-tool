@@ -4,13 +4,8 @@ pragma solidity =0.7.6;
 import { ICLTTwapQuoter } from "./interfaces/ICLTTwapQuoter.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-// import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
-
-// import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
-
-// import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { OracleLibrary } from "@thruster-blast/contracts/libraries/OracleLibrary.sol";
 
 contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
