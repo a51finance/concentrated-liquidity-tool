@@ -10,7 +10,7 @@
   gas_reports = ["*"]
   libs = ["lib"]
   optimizer = true
-  optimizer_runs = 4000
+  optimizer_runs = 10
   out = "out"
   script = "script"
   src = "src"
@@ -24,6 +24,7 @@
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
   goerli = { key = "${ETHERSCAN_API_KEY}" }
+  unknownchain = {key = "${BLASTSCAN_API_KEY}", url = "https://blastscan.io/" }
 
   
 
