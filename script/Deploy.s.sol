@@ -13,9 +13,6 @@ import "../src/modules/rebasing/RebaseModule.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 contract DeployALP is Script {
-    // address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    // address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
-
     // mainnet
     address _owner = 0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5;
     address _weth9 = 0x4300000000000000000000000000000000000004;
