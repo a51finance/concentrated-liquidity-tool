@@ -3,7 +3,6 @@ pragma solidity =0.8.15;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
 import { ICLTModules } from "./interfaces/ICLTModules.sol";
-import { IBlastPoints } from "./interfaces/IBlastPoints.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 
 import { CLTPayments } from "./base/CLTPayments.sol";
@@ -65,7 +64,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         address _weth9,
         address _feeHandler,
         address _cltModules,
-        address _pointsAdmin,
         IUniswapV3Factory _factory
     )
         AccessControl(_owner)
@@ -74,7 +72,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     {
         cltModules = _cltModules;
         feeHandler = _feeHandler;
-        IBlastPoints(BLAST_POINTS).configurePointsOperator(_pointsAdmin);
     }
 
     /// @inheritdoc ICLTBase
