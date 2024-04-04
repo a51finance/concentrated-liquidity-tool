@@ -112,7 +112,14 @@ contract Fixtures is UniswapDeployer {
         feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
         base = new CLTBase(
-            "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
+            "ALP Base",
+            "ALP",
+            address(this),
+            address(weth),
+            address(feeHandler),
+            address(cltModules),
+            address(0),
+            factory
         );
 
         modes = new Modes(address(base), address(cltTwap), address(this));
