@@ -29,6 +29,7 @@ import { LiquidityAmounts } from "@thruster-blast/contracts/libraries/LiquidityA
 import { TickMath } from "@thruster-blast/contracts/libraries/TickMath.sol";
 import { IThrusterPool } from "@thruster-blast/interfaces/IThrusterPool.sol";
 import { ThrusterPoolDeployer } from "@thruster-blast/contracts/ThrusterPoolDeployer.sol";
+import { ThrusterPool } from "@thruster-blast/contracts/ThrusterPool.sol";
 import { ThrusterPoolFactory } from "@thruster-blast/contracts/ThrusterPoolFactory.sol";
 import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
 import { console } from "forge-std/console.sol";
@@ -36,6 +37,7 @@ import { console } from "forge-std/console.sol";
 contract RebaseFixtures is Utilities {
     NonfungiblePositionManager positionManager;
     IThrusterPool pool;
+    ThrusterPool thrusterPool;
     SwapRouter router;
     Quoter quote;
 
@@ -49,6 +51,8 @@ contract RebaseFixtures is Utilities {
     ERC20Mock token0;
     ERC20Mock token1;
     WETH weth;
+
+    event LogBytes32(bytes32 indexed hash);
 
     function deployTokens(
         address recepient,
@@ -76,19 +80,33 @@ contract RebaseFixtures is Utilities {
         if (token0 >= token1) {
             (token0, token1) = (token1, token0);
         }
-
+        console.logBytes32(keccak256(type(ThrusterPool).creationCode));
         // intialize thruster contracts
         ThrusterPoolFactory thrusterPoolFactory = new ThrusterPoolFactory(address(recepient), address(recepient));
+
         factory = IThrusterPoolFactory(address(thrusterPoolFactory));
+
         ThrusterPoolDeployer thrusterPoolDeployer = new ThrusterPoolDeployer(address(thrusterPoolFactory));
+
         thrusterPoolFactory.setDeployer(address(thrusterPoolDeployer));
+
         thrusterPoolFactory.setOwner(recepient);
-        pool = IThrusterPool(factory.createPool(address(token0), address(token1), 500));
+
+        factory.createPool(address(token0), address(token1), 500);
+
+        pool = IThrusterPool(factory.getPool(address(token0), address(token1), 500));
+
+        console.log("Outside", address(pool));
+
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
+
         router = new SwapRouter(address(factory), address(weth), address(this));
+
         positionManager =
             new NonfungiblePositionManager(address(factory), address(weth), address(factory), address(this));
+
         pool.increaseObservationCardinalityNext(80);
+
         quote = new Quoter(address(factory), address(weth));
 
         mintParams.token0 = address(token0);
@@ -112,7 +130,6 @@ contract RebaseFixtures is Utilities {
         token0.approve(address(router), type(uint256).max);
         _hevm.prank(recepient);
         token1.approve(address(router), type(uint256).max);
-        console.log(address(pool));
         _hevm.prank(recepient);
         positionManager.mint(mintParams);
 

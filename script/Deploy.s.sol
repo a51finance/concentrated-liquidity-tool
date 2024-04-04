@@ -14,17 +14,17 @@ import "../src/modules/rebasing/RebaseModule.sol";
 import { IThrusterPoolFactory } from "@thruster-blast/interfaces/IThrusterPoolFactory.sol";
 
 contract DeployALP is Script {
-    // address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    // address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+    address _owner = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
+    address _weth9 = 0x4200000000000000000000000000000000000023;
 
     // mainnet
-    address _owner = 0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5;
-    address _weth9 = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
+    // address _owner = 0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5;
+    // address _weth9 = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
-    IThrusterPoolFactory _factoryAddress = IThrusterPoolFactory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+    IThrusterPoolFactory _factoryAddress = IThrusterPoolFactory(0xe832c58505D5BFECE4053B49f0c64Fb4c0a9AaD7);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
         vm.startBroadcast(deployerPrivateKey);
 
         new CLTHelper();
