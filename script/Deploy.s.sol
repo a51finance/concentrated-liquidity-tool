@@ -27,30 +27,30 @@ contract DeployALP is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         new CLTHelper();
-        CLTModules cltModules = new CLTModules(_owner);
-        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
+        // CLTModules cltModules = new CLTModules(_owner);
+        // CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
 
-        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
-            lpAutomationFee: 0,
-            strategyCreationFee: 0,
-            protcolFeeOnManagement: 0,
-            protcolFeeOnPerformance: 0
-        });
+        // IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+        //     lpAutomationFee: 0,
+        //     strategyCreationFee: 0,
+        //     protcolFeeOnManagement: 0,
+        //     protcolFeeOnPerformance: 0
+        // });
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
+        // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
-        CLTBase baseContract = new CLTBase(
-            "A51 Liquidity Positions NFT",
-            "ALPhy",
-            _owner,
-            _weth9,
-            address(feeHandler),
-            address(cltModules),
-            _factoryAddress
-        );
+        // CLTBase baseContract = new CLTBase(
+        //     "A51 Liquidity Positions NFT",
+        //     "ALPhy",
+        //     _owner,
+        //     _weth9,
+        //     address(feeHandler),
+        //     address(cltModules),
+        //     _factoryAddress
+        // );
 
-        new Modes(address(baseContract), address(twapQuoter), _owner);
-        new RebaseModule(_owner, address(baseContract), address(twapQuoter));
+        // new Modes(address(baseContract), address(twapQuoter), _owner);
+        // new RebaseModule(_owner, address(baseContract), address(twapQuoter));
 
         vm.stopBroadcast();
     }
