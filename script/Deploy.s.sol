@@ -18,9 +18,9 @@ contract DeployALP is Script {
 
     // mainnet
     address _owner = 0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5;
-    address _weth9 = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
+    address _weth9 = 0x0Dc808adcE2099A9F62AA87D9670745AbA741746;
 
-    IUniswapV3Factory _factoryAddress = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+    IUniswapV3Factory _factoryAddress = IUniswapV3Factory(0x56c2162254b0E4417288786eE402c2B41d4e181e);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
