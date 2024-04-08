@@ -8,13 +8,13 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { SafeCastExtended } from "./SafeCastExtended.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 
-import { PositionKey } from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
-import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import { PositionKey } from "@pancakeswap/v3-periphery/contracts/libraries/PositionKey.sol";
+import { LiquidityAmounts } from "@pancakeswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { SqrtPriceMath } from "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
+import { FullMath } from "@pancakeswap/v3-core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@pancakeswap/v3-core/contracts/libraries/TickMath.sol";
+import { IPancakeV3Pool } from "@pancakeswap/v3-core/contracts/interfaces/IPancakeV3Pool.sol";
+import { SqrtPriceMath } from "@pancakeswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
 
 /// @title  PoolActions
 /// @notice Provides functions for computing and safely managing liquidity on AMM
@@ -129,7 +129,7 @@ library PoolActions {
     /// @return amount0 The delta of the balance of token0 of the pool, exact when negative, minimum when positive
     /// @return amount1 The delta of the balance of token1 of the pool, exact when negative, minimum when positive
     function swapToken(
-        IUniswapV3Pool pool,
+        IPancakeV3Pool pool,
         bool zeroForOne,
         int256 amountSpecified,
         uint160 sqrtPriceLimitX96
@@ -289,7 +289,7 @@ library PoolActions {
     /// @return sqrtRatioX96 The current price of the pool as a sqrt(token1/token0) Q64.96 value
     /// @return tick The current tick of the pool, i.e. according to the last tick transition that was run
     /// @return observationCardinality The current maximum number of observations stored in the pool
-    function getSqrtRatioX96AndTick(IUniswapV3Pool pool)
+    function getSqrtRatioX96AndTick(IPancakeV3Pool pool)
         public
         view
         returns (uint160 sqrtRatioX96, int24 tick, uint16 observationCardinality)

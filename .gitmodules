@@ -15,3 +15,6 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/pancake-v3-contracts"]
+	path = lib/pancake-v3-contracts
+	url = https://github.com/pancakeswap/pancake-v3-contracts

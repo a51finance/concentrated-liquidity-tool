@@ -5,7 +5,7 @@ pragma abicoder v2;
 import { PoolActions } from "./PoolActions.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { FullMath } from "@pancakeswap/v3-core/contracts/libraries/FullMath.sol";
 
 /// @title  LiquidityShares
 /// @notice Provides functions for computing liquidity amounts and shares for individual strategy

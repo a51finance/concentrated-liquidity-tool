@@ -28,12 +28,12 @@ import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/int
 
 import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { IPancakeV3Pool } from "@pancakeswap/v3-core/contracts/interfaces/IPancakeV3Pool.sol";
+import { IPancakeV3Factory } from "@pancakeswap/v3-core/contracts/interfaces/IPancakeV3Factory.sol";
 
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
-    IUniswapV3Pool pool;
+    IPancakeV3Pool pool;
     SwapRouter router;
     Quoter quote;
 
@@ -64,7 +64,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
     }
 
-    function initPool(address recepient) internal returns (IUniswapV3Factory factory) {
+    function initPool(address recepient) internal returns (IPancakeV3Factory factory) {
         INonfungiblePositionManager.MintParams memory mintParams;
         ERC20Mock[] memory tokens = deployTokens(recepient, 2, 1e50);
 
@@ -76,8 +76,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
 
         // intialize uniswap contracts
-        factory = IUniswapV3Factory(deployUniswapV3Factory());
-        pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
+        factory = IPancakeV3Factory(deployUniswapV3Factory());
+        pool = IPancakeV3Pool(factory.createPool(address(token0), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         router = new SwapRouter(address(factory), address(weth));
         positionManager = new NonfungiblePositionManager(address(factory), address(weth), address(factory));
@@ -156,7 +156,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function initBase(address recepient) internal {
-        IUniswapV3Factory factory;
+        IPancakeV3Factory factory;
 
         (factory) = initPool(recepient);
 

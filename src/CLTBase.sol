@@ -18,8 +18,8 @@ import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { FullMath } from "@pancakeswap/v3-core/contracts/libraries/FullMath.sol";
+import { IPancakeV3Factory } from "@pancakeswap/v3-core/contracts/interfaces/IPancakeV3Factory.sol";
 
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
@@ -61,7 +61,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         address _weth9,
         address _feeHandler,
         address _cltModules,
-        IUniswapV3Factory _factory
+        IPancakeV3Factory _factory
     )
         AccessControl()
         ERC721(_name, _symbol)

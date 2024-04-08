@@ -5,7 +5,7 @@ import { ICLTTwapQuoter } from "./interfaces/ICLTTwapQuoter.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IPancakeV3Pool } from "@pancakeswap/v3-core/contracts/interfaces/IPancakeV3Pool.sol";
 import { OracleLibrary } from "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
 contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
@@ -19,7 +19,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
         twapDuration = 3600;
     }
 
-    function checkDeviation(IUniswapV3Pool pool) external view override {
+    function checkDeviation(IPancakeV3Pool pool) external view override {
         int24 twap = calculateTwap(pool);
         (int24 tick,) = getCurrentTick(pool);
         int24 deviation = tick > twap ? tick - twap : twap - tick;
@@ -28,7 +28,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
 
     /// @notice This function calculates the current twap of pool
     /// @param pool The pool address
-    function calculateTwap(IUniswapV3Pool pool) internal view returns (int24 twap) {
+    function calculateTwap(IPancakeV3Pool pool) internal view returns (int24 twap) {
         uint128 inRangeLiquidity = pool.liquidity();
 
         if (inRangeLiquidity == 0) {
@@ -44,7 +44,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
     /// @dev Check price has not moved a lot recently. This mitigates price
     /// manipulation during shifting of position
     /// @return twap The time-weighted average price
-    function getTwap(IUniswapV3Pool pool) public view override returns (int24 twap) {
+    function getTwap(IPancakeV3Pool pool) public view override returns (int24 twap) {
         (,, uint16 observationIndex, uint16 observationCardinality,,,) = pool.slot0();
 
         (uint32 lastTimeStamp,,,) = pool.observations((observationIndex + 1) % observationCardinality);
@@ -62,7 +62,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
 
     /// @notice This function fetches the current tick of the pool
     /// @param pool The pool address
-    function getCurrentTick(IUniswapV3Pool pool) public view returns (int24 tick, uint160 sqrtPriceX96) {
+    function getCurrentTick(IPancakeV3Pool pool) public view returns (int24 tick, uint160 sqrtPriceX96) {
         (sqrtPriceX96, tick,,,,,) = pool.slot0();
     }
 

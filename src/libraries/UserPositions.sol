@@ -6,7 +6,7 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { SafeCastExtended } from "./SafeCastExtended.sol";
 import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { FullMath } from "@pancakeswap/v3-core/contracts/libraries/FullMath.sol";
 
 /// @title  UserPositions
 /// @notice UserPositions store additional state for tracking fees owed to the user compound or no compound strategy

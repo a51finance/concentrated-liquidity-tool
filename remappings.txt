@@ -4,4 +4,7 @@ forge-std/=lib/forge-std/src/
 prb-test/=lib/prb-test/src/
 @uniswap/v3-core/=lib/v3-core/
 @uniswap/v3-periphery/=lib/v3-periphery/
+pancake-v3-contracts/=lib/pancake-v3-contracts/
+@pancakeswap/v3-core/=lib/pancake-v3-contracts/projects/v3-core
+@pancakeswap/v3-periphery/=lib/pancake-v3-contracts/projects/v3-periphery
 @openzeppelin/=lib/openzeppelin-contracts/

@@ -14,7 +14,7 @@ import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IPancakeV3Pool } from "@pancakeswap/v3-core/contracts/interfaces/IPancakeV3Pool.sol";
 
 import "forge-std/console.sol";
 
@@ -196,7 +196,7 @@ contract WithdrawTest is Test, Fixtures {
     }
 
     function test_withdraw_shouldPayInETH() public {
-        pool = IUniswapV3Pool(factory.createPool(address(weth), address(token1), 500));
+        pool = IPancakeV3Pool(factory.createPool(address(weth), address(token1), 500));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
         key = ICLTBase.StrategyKey({ pool: pool, tickLower: -100, tickUpper: 100 });
