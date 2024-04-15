@@ -23,10 +23,11 @@
     "lint:sol": "forge fmt --check && pnpm solhint {script,src,test}/**/*.sol",
     "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
     "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",
-    "deploy-alp-goerli": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
-    "deploy-rebaseModule-goerli": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
-    "deploy-alp-fork": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0 --broadcast -vvvv",
-    "deploy-rebaseModule-fork": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0 --broadcast -vvvv"
+    "deploy-alp-base":"forge script script/Deploy.s.sol:DeployALP --rpc-url https://base.llamarpc.com --broadcast --verify -vvvv",
+    "deploy-alp-scroll":"forge script script/Deploy.s.sol:DeployALP --rpc-url https://scroll-mainnet.public.blastapi.io --broadcast --verify -vvvv",
+    "deploy-alp-bnb":"forge script script/Deploy.s.sol:DeployALP --rpc-url https://bnb-bscnews.rpc.blxrbdn.com/ --broadcast --verify -vvvv",
+    "deploy-alp-polygon":"forge script script/Deploy.s.sol:DeployALP --rpc-url https://polygon-mainnet.g.alchemy.com/v2/T8_vfNBfbLZb4C5gAqBBLBMGa3YT8R8O --broadcast --verify -vvvv",
+    "deploy-alp-op":"forge script script/Deploy.s.sol:DeployALP --rpc-url https://1rpc.io/op --broadcast --verify -vvvv"
   },
   "main": "contract.js",
   "repository": "https://github.com/a51finance/concentrated-liquidity-tool.git",

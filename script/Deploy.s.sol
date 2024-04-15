@@ -13,14 +13,24 @@ import "../src/modules/rebasing/RebaseModule.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 contract DeployALP is Script {
-    // address _owner = 0x97fF40b5678D2234B1E5C894b5F39b8BA8535431;
-    // address _weth9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
-
     // mainnet
     address _owner = 0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5;
     address _weth9 = 0x0Dc808adcE2099A9F62AA87D9670745AbA741746;
 
-    IUniswapV3Factory _factoryAddress = IUniswapV3Factory(0x56c2162254b0E4417288786eE402c2B41d4e181e);
+    address baseFactory = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
+    address _weth9Base = 0x4200000000000000000000000000000000000006;
+
+    address bnbFactory = 0xdB1d10011AD0Ff90774D0C6Bb92e5C5c8b4461F7;
+    address _weth9bnb = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+
+    address polygonOptimismFactory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+    address _wmatic = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+    address _weth9Optimism = 0x4200000000000000000000000000000000000006;
+
+    address scrollFactory = 0x70C62C8b8e801124A4Aa81ce07b637A3e83cb919;
+    address scrollWeth = 0x5300000000000000000000000000000000000004;
+
+    IUniswapV3Factory _factoryInterface = IUniswapV3Factory(scrollFactory);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
@@ -43,10 +53,10 @@ contract DeployALP is Script {
             "A51 Liquidity Positions NFT",
             "ALPhy",
             _owner,
-            _weth9,
+            scrollWeth,
             address(feeHandler),
             address(cltModules),
-            _factoryAddress
+            _factoryInterface
         );
 
         new Modes(address(baseContract), address(twapQuoter), _owner);
