@@ -21,28 +21,28 @@ dotenvConfig({ path: resolve(__dirname, "./.env") });
 
 const etherscanApiKey = process.env.ETHMAINNET_API_KEY;
 
-
 const chainIds = {
-    sepolia: 11155111,
-    hardhat: 31337,
-    mainnet: 1,
-  };
+  sepolia: 11155111,
+  hardhat: 31337,
+  mainnet: 1,
+  manta: 169,
+};
 
 function createTestnetConfig(network: keyof typeof chainIds): NetworkUserConfig {
-    const url: string = "https://eth-sepolia.public.blastapi.io"
-    return {
-      accounts: [`${process.env.PRIVATE_KEY_A89}`],
-      chainId: chainIds[network],
-      url,
-      gas: 2100000,
-      gasPrice: 58000000000,
-    };
-  }
+  const url: string = "https://pacific-rpc.manta.network/http";
+  return {
+    accounts: [`${process.env.PRIVATE_KEY_MAIN}`],
+    chainId: chainIds[network],
+    url,
+    // gas: 2100000,
+    // gasPrice: 58000000000,
+  };
+}
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
-    sepolia: createTestnetConfig("sepolia"),
+    manta: createTestnetConfig("manta"),
   },
 
   solidity: {
@@ -57,11 +57,24 @@ const config: HardhatUserConfig = {
   paths: {
     sources: "./src", // Use ./src rather than ./contracts as Hardhat expects
     cache: "./cache_hardhat", // Use a different cache for Hardhat than Foundry
-    artifacts: "./artifacts"
+    artifacts: "./artifacts",
   },
   etherscan: {
-    apiKey: etherscanApiKey
+    apiKey: {
+      manta: "124",
+    },
+    customChains: [
+      {
+        network: "manta",
+        chainId: 169,
+        urls: {
+          apiURL: "https://manta-pacific.calderaexplorer.xyz/api",
+          browserURL: "https://manta-pacific.calderaexplorer.xyz/",
+        },
+      },
+    ],
   },
+
   preprocess: {
     eachLine: (hre) => ({
       transform: (line: string) => {

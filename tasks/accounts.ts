@@ -132,9 +132,9 @@ async function deployBaseContract(
 //   });
 
 task("deploy-all", "Deploying all a51 contracts")
-  .addParam("owner", "A51 governance")
-  .addParam("factory", "Factory Address")
-  .addParam("weth", "weth9 Address")
+  // .addParam("owner", "A51 governance")
+  // .addParam("factory", "Factory Address")
+  // .addParam("weth", "weth9 Address")
   .setAction(async (cliArgs, { ethers, run, network }) => {
     await run("compile");
 
@@ -146,126 +146,126 @@ task("deploy-all", "Deploying all a51 contracts")
     console.log("   ", network.name);
     console.log("Task Args");
 
-    const helperContract = await deployContract("CLTHelper", await ethers.getContractFactory("CLTHelper"), signer, []);
+    // const helperContract = await deployContract("CLTHelper", await ethers.getContractFactory("CLTHelper"), signer, []);
+    await ethers.getContractFactory("CLTHelper")
+    // await helperContract.deployTransaction.wait(5);
 
-    await helperContract.deployTransaction.wait(5);
-
-    delay(60000);
+    // delay(60000);
 
     await run("verify:verify", {
-      address: helperContract.address,
+      address: "0xA1d8180F4482359CEb7Eb7437FCf4a2616830F81",
       constructorArguments: [],
     });
 
-    const modulesContract = await deployContract("CLTModules", await ethers.getContractFactory("CLTModules"), signer, [
-      cliArgs.owner,
-    ]);
+    // const modulesContract = await deployContract("CLTModules", await ethers.getContractFactory("CLTModules"), signer, [
+    //   cliArgs.owner,
+    // ]);
 
-    await modulesContract.deployTransaction.wait(5);
+    // await modulesContract.deployTransaction.wait(5);
 
-    delay(60000);
+    // delay(60000);
 
-    await run("verify:verify", {
-      address: modulesContract.address,
-      constructorArguments: [cliArgs.owner],
-    });
+    // await run("verify:verify", {
+    //   address: modulesContract.address,
+    //   constructorArguments: [cliArgs.owner],
+    // });
 
-    const twapQuoterContract = await deployContract(
-      "CLTHelper",
-      await ethers.getContractFactory("CLTTwapQuoter"),
-      signer,
-      [cliArgs.owner],
-    );
+    // const twapQuoterContract = await deployContract(
+    //   "CLTHelper",
+    //   await ethers.getContractFactory("CLTTwapQuoter"),
+    //   signer,
+    //   [cliArgs.owner],
+    // );
 
-    await twapQuoterContract.deployTransaction.wait(5);
+    // await twapQuoterContract.deployTransaction.wait(5);
 
-    delay(60000);
+    // delay(60000);
 
-    await run("verify:verify", {
-      address: twapQuoterContract.address,
-      constructorArguments: [cliArgs.owner],
-    });
+    // await run("verify:verify", {
+    //   address: twapQuoterContract.address,
+    //   constructorArguments: [cliArgs.owner],
+    // });
 
-    const feeParam = {
-      lpAutomationFee: 0,
-      strategyCreationFee: 0,
-      protcolFeeOnManagement: 0,
-      protcolFeeOnPerformance: 0,
-    };
+    // const feeParam = {
+    //   lpAutomationFee: 0,
+    //   strategyCreationFee: 0,
+    //   protcolFeeOnManagement: 0,
+    //   protcolFeeOnPerformance: 0,
+    // };
 
-    const feeHandlerContract = await deployContract(
-      "GovernanceFeeHandler",
-      await ethers.getContractFactory("GovernanceFeeHandler"),
-      signer,
-      [cliArgs.owner, feeParam, feeParam],
-    );
+    // const feeHandlerContract = await deployContract(
+    //   "GovernanceFeeHandler",
+    //   await ethers.getContractFactory("GovernanceFeeHandler"),
+    //   signer,
+    //   [cliArgs.owner, feeParam, feeParam],
+    // );
 
-    await feeHandlerContract.deployTransaction.wait(5);
+    // await feeHandlerContract.deployTransaction.wait(5);
 
-    delay(60000);
+    // delay(60000);
 
-    await run("verify:verify", {
-      address: feeHandlerContract.address,
-      constructorArguments: [cliArgs.owner, feeParam, feeParam],
-    });
+    // await run("verify:verify", {
+    //   address: feeHandlerContract.address,
+    //   constructorArguments: [cliArgs.owner, feeParam, feeParam],
+    // });
 
-    const baseContract = await deployContract("CLTBase", await ethers.getContractFactory("CLTBase"), signer, [
-      "A51 Liquidity Positions NFT",
-      "ALPhy",
-      cliArgs.owner,
-      cliArgs.weth9,
-      feeHandlerContract.address,
-      modulesContract.address,
-      cliArgs.factory,
-    ]);
+    // const baseContract = await deployContract("CLTBase", await ethers.getContractFactory("CLTBase"), signer, [
+    //   "A51 Liquidity Positions NFT",
+    //   "ALPhy",
+    //   cliArgs.owner,
+    //   cliArgs.weth9,
+    //   feeHandlerContract.address,
+    //   modulesContract.address,
+    //   cliArgs.factory,
+    // ]);
 
-    await baseContract.deployTransaction.wait(5);
+    // await baseContract.deployTransaction.wait(5);
 
-    delay(60000);
+    // delay(60000);
 
-    await run("verify:verify", {
-      address: baseContract.address,
-      constructorArguments: [
-        "A51 Liquidity Positions NFT",
-        "ALPhy",
-        cliArgs.owner,
-        cliArgs.weth9,
-        feeHandlerContract.address,
-        modulesContract.address,
-        cliArgs.factory,
-      ],
-    });
+    // await run("verify:verify", {
+    //   address: baseContract.address,
+    //   constructorArguments: [
+    //     "A51 Liquidity Positions NFT",
+    //     "ALPhy",
+    //     cliArgs.owner,
+    //     cliArgs.weth9,
+    //     feeHandlerContract.address,
+    //     modulesContract.address,
+    //     cliArgs.factory,
+    //   ],
+    // });
 
-    const modesContract = await deployContract("Modes", await ethers.getContractFactory("Modes"), signer, [
-      baseContract.address,
-      twapQuoterContract.address,
-      cliArgs.owner,
-    ]);
+    // const modesContract = await deployContract("Modes", await ethers.getContractFactory("Modes"), signer, [
+    //   baseContract.address,
+    //   twapQuoterContract.address,
+    //   cliArgs.owner,
+    // ]);
 
-    await modesContract.deployTransaction.wait(5);
+    // await modesContract.deployTransaction.wait(5);
 
-    delay(60000);
+    // delay(60000);
 
-    await run("verify:verify", {
-      address: modesContract.address,
-      constructorArguments: [baseContract.address, twapQuoterContract.address, cliArgs.owner],
-    });
+    // await run("verify:verify", {
+    //   address: modesContract.address,
+    //   constructorArguments: [baseContract.address, twapQuoterContract.address, cliArgs.owner],
+    // });
 
-    const rebaseContract = await deployContract(
-      "RebaseModule",
-      await ethers.getContractFactory("RebaseModule"),
-      signer,
-      [baseContract.address, twapQuoterContract.address, cliArgs.owner],
-    );
+    // const rebaseContract = await deployContract(
+    //   "RebaseModule",
+    //   await ethers.getContractFactory("RebaseModule"),
+    //   signer,
+    //   [baseContract.address, twapQuoterContract.address, cliArgs.owner],
+    // );
 
-    await rebaseContract.deployTransaction.wait(5);
+    // await rebaseContract.deployTransaction.wait(5);
 
-    delay(60000);
+    // delay(60000);
 
-    await run("verify:verify", {
-      address: rebaseContract.address,
-      constructorArguments: [baseContract.address, twapQuoterContract.address, cliArgs.owner],
-    });
+    // await run("verify:verify", {
+    //   address: rebaseContract.address,
+    //   constructorArguments: [baseContract.address, twapQuoterContract.address, cliArgs.owner],
+    // });
   });
 
 function delay(ms: number) {
