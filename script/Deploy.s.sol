@@ -30,7 +30,10 @@ contract DeployALP is Script {
     address scrollFactory = 0x70C62C8b8e801124A4Aa81ce07b637A3e83cb919;
     address scrollWeth = 0x5300000000000000000000000000000000000004;
 
-    IUniswapV3Factory _factoryInterface = IUniswapV3Factory(scrollFactory);
+    address baseSwapFactory = 0x38015D05f4fEC8AFe15D7cc0386a126574e8077B;
+    address baseWeth9 = 0x4200000000000000000000000000000000000006;
+
+    IUniswapV3Factory _factoryInterface = IUniswapV3Factory(baseSwapFactory);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
@@ -53,7 +56,7 @@ contract DeployALP is Script {
             "A51 Liquidity Positions NFT",
             "ALPhy",
             _owner,
-            scrollWeth,
+            baseWeth9,
             address(feeHandler),
             address(cltModules),
             _factoryInterface
