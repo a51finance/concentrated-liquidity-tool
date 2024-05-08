@@ -50,8 +50,6 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// among the strategies having same ticks as of global account ticks according to the strategy fee growth & share
     mapping(bytes32 => StrategyFeeShares.GlobalAccount) private strategyGlobalFees;
 
-    address private constant BLAST_POINTS = 0x2536FE9ab3F511540F2f9e2eC2A805005C3Dd800;
-
     modifier isAuthorizedForToken(uint256 tokenId) {
         _authorization(tokenId);
         _;
