@@ -1,7 +1,10 @@
 # directories
-cache
 node_modules
-out
+
+# Foundry
+cache/
+out/
+
 
 # files
 *.env
@@ -16,3 +19,11 @@ yarn.lock
 broadcast/*
 broadcast/*/31337/
 previousTest.txt
+
+#Hardhat files
+cache_hardhat/
+artifacts/
+
+#Hardhat plugin files
+typechain-types/
+typechain

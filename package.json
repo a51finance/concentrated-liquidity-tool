@@ -4,8 +4,28 @@
   "version": "1.0.0",
   "author": "a51finance (https://github.com/a51finance)",
   "devDependencies": {
+    "@nomicfoundation/hardhat-verify": "^2.0.5",
+    "@nomiclabs/hardhat-ethers": "^2.0.6",
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@typechain/ethers-v5": "^10.0.0",
+    "@typechain/hardhat": "^6.0.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.1.0",
+    "@types/node": "^17.0.35",
+    "chai": "^4.3.6",
+    "dotenv": "^16.3.1",
+    "ethereum-waffle": "^3.2.0",
+    "ethers": "^5.6.6",
+    "hardhat": "^2.9.5",
+    "hardhat-gas-reporter": "^1.0.6",
+    "hardhat-preprocessor": "^0.1.4",
     "prettier": "^3.0.0",
-    "solhint-community": "^3.6.0"
+    "solhint-community": "^3.6.0",
+    "solidity-coverage": "^0.7.17",
+    "ts-node": "^10.7.0",
+    "typechain": "^8.0.0",
+    "typescript": "^4.6.4",
+    "web3": "^1.9.0"
   },
   "keywords": [
     "blockchain",
@@ -22,17 +42,21 @@
     "lint": "pnpm lint:sol && pnpm prettier:check",
     "lint:sol": "forge fmt --check && pnpm solhint {script,src,test}/**/*.sol",
     "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
+    "verify": "hardhat verify --network",
     "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",
-    "deploy-alp-goerli": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
-    "deploy-rebaseModule-goerli": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
-    "deploy-alp-fork": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0 --broadcast -vvvv",
-    "deploy-rebaseModule-fork": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0 --broadcast -vvvv"
+    "deploy-alp-base": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://base.llamarpc.com --broadcast --verify -vvvv",
+    "deploy-alp-scroll": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://scroll-mainnet.public.blastapi.io --broadcast --verify -vvvv",
+    "deploy-alp-bnb": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://bnb-bscnews.rpc.blxrbdn.com/ --broadcast --verify -vvvv",
+    "deploy-alp-polygon": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://polygon-mainnet.g.alchemy.com/v2/T8_vfNBfbLZb4C5gAqBBLBMGa3YT8R8O --broadcast --verify -vvvv",
+    "deploy-alp-op": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://1rpc.io/op --broadcast --verify -vvvv"
   },
   "main": "contract.js",
   "repository": "https://github.com/a51finance/concentrated-liquidity-tool.git",
   "license": "MIT",
   "dependencies": {
-    "dotenv": "^16.3.1",
-    "web3": "^1.9.0"
+    "@nomiclabs/hardhat-etherscan": "^2.1.8",
+    "fs": "^0.0.1-security",
+    "hardhat-contract-sizer": "^2.3.0",
+    "node-fetch": "^3.3.2"
   }
 }

@@ -24,9 +24,6 @@
 
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
-  goerli = { key = "${ETHERSCAN_API_KEY}" }
-  unknownchain = {key = "${BLASTSCAN_API_KEY}", url = "https://manta.socialscan.io/" }
-
   
 
 [fmt]

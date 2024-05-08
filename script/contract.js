@@ -6,29 +6,30 @@ const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
 
 require("dotenv").config();
 
-const web3 = new Web3("https://arb-mainnet.g.alchemy.com/v2/QQ9BC-2o2PL0EWLKhj_sWQ-QmcjRnKMX");
-const contractAddressBase = "0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6";
-const contractAddressCLTModules = "0xC203e40Fb4D742a0559705E33C9C2Af41Af2b4dc";
-const contractAddressRebaseModule = "0x599cBbCE726a2d6a849364aB1A5b7ae1573Af0bC";
+const web3 = new Web3("https://pacific-rpc.manta.network/http");
+const contractAddressBase = "0x69317029384c3305fC04670c68a2b434e2D8C44C";
+const contractAddressCLTModules = "0x634062496B8ecC63D597401D81d11d5d24eeDD55";
+const contractAddressRebaseModule = "0x86f5714eCeA724Dc7A7A2bDc005AC36F08a46093";
+const contractModeModule = "0x599cBbCE726a2d6a849364aB1A5b7ae1573Af0bC";
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 const token0 = "0x07865c6E87B9F70255377e024ace6630C1Eaa37F";
 const token1 = "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6";
 
-const contractABIBase = CLTABI.abi;
+const contractABIBase = _abi;
 const baseContract = new web3.eth.Contract(contractABIBase, contractAddressBase);
 
-const contractABIModules = CLTModulesABI.abi;
+const contractABIModules = __abi;
 const ModulesContract = new web3.eth.Contract(contractABIModules, contractAddressCLTModules);
 
-const contractABIRebase = RebaseModuleABI.abi;
+const contractABIRebase = ___abi;
 const RebaseContract = new web3.eth.Contract(contractABIRebase, contractAddressRebaseModule);
 
-const ERC20ABI = ECR20ABI.abi;
+const ERC20ABI = abi;
 const ercContractToken0 = new web3.eth.Contract(ERC20ABI, token0);
 const ercContractToken1 = new web3.eth.Contract(ERC20ABI, token1);
 
-const fromAddress = "0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5";
+const fromAddress = "0x9a9DdE861b91B965DEAA0ce2D208DBE693e87fCb";
 const fromAddressA89 = "0xa0e9E6B79a3e1AB87FeB209567eF3E0373210a89";
 const privateKey = process.env.PRIVATE_KEY_MAIN;
 const privateKeyA89 = process.env.PRIVATE_KEY_A89;
@@ -36,26 +37,20 @@ const privateKeyA89 = process.env.PRIVATE_KEY_A89;
 const rebaseStrategy = "0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204";
 const rebasePricePrefernece = "0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b";
 const rebaseInactivity = "0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893";
+const modeStrategy = "";
 
 // Define the parameters for createStrategy
 
-
-// const strategyKey = {
-//   pool: "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
-//   tickLower: "197050",
-//   tickUpper: "201050",
-// };
-// 1715
 const strategyKey = {
-  pool: "0xfae941346ac34908b8d7d000f86056a18049146e",
-  tickLower: "94230",
-  tickUpper: "100230",
+  pool: "0x12cdded759b14bf6a34fbf6638aec9b735824a9e",
+  tickLower: "-195163",
+  tickUpper: "-197163",
 };
 
 const positionActions = {
   exitStrategy: [],
   liquidityDistribution: [],
-  mode: "2",
+  mode: "3",
   rebaseStrategy: [
     {
       actionName: "0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b",
@@ -169,8 +164,6 @@ async function deposit(strategyId) {
     console.log(error);
   }
 }
-
-
 
 async function updatePositon() {
   try {
@@ -314,7 +307,7 @@ async function getPositionData() {
 
 async function getBlockDetails() {
   console.log(await web3.eth.getBlock(19110518));
-  console.log(await web3.eth.getBlock(19110525))
+  console.log(await web3.eth.getBlock(19110525));
 }
 
 // async function init(){
@@ -323,7 +316,50 @@ async function getBlockDetails() {
 //   deposit(strategyId);
 // }
 
+// async function verifyManta() {
+//   // Path to your Solidity source code file
+//   try {
+//     const fetch = (await import("node-fetch")).default;
+//     // Update this path to where your Solidity file is actually located
+//     const sourceCode = await fs.readFile(
+//       "/home/lunar-grave/Documents/Office Work/0.8.15/concentrated-liquidity-tool/src/flatten/RebaseModule.flattened.sol",
+//       "utf8",
+//     );
+//     const response = await fetch(
+//       "https://manta-pacific.calderaexplorer.xyz/api/v2/smart-contracts/0x86f5714eCeA724Dc7A7A2bDc005AC36F08a46093/verification/via/flattened-code",
+//       {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify({
+//           compiler_version: "0.8.15+commit.e14f2714",
+//           license_type: "unlicense",
+//           source_code: sourceCode,
+//           is_optimization_enabled: true,
+//           optimization_runs: 4000,
+//           contract_name: "RebaseModule",
+//           // libraries: {
+//           //     LiquidityShares: "0x7794A94FF4C4c6840Cbf92b793092730a068A0e2",
+//           //     PoolActions: "0x9D80597D9403bDb35b3d7d9f400377E790b01053",
+//           //     Position: "0xC203e40Fb4D742a0559705E33C9C2Af41Af2b4dc",
+//           //     StrategyFeeShares: "0xC22E20950aA1f2e91faC75AB7fD8a21eF2C3aB1E",
+//           //     TransferHelper: "0x44Ae07568378d2159ED41D0f060a3d6baefBEb97",
+//           //     UserPositions: "0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6",
+//           // },
+//           evm_version: "london",
+//           autodetect_constructor_args: true,
+//         }),
+//       },
+//     );
+//     const data = await response.json();
+//     console.log(data);
+//   } catch (err) {
+//     console.error("Failed to submit verification:", err);
+//   }
+// }
 
+// verifyManta();
 // init();
 // getBlockDetails();
 // txnData();
