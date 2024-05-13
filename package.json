@@ -47,6 +47,7 @@
     "deploy-alp-goerli": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
     "deploy-alp-manta": "forge script script/Deploy.s.sol:DeployALP --rpc-url  https://pacific-rpc.manta.network/http --broadcast --verify -vvvv",
     "deploy-alp-polygon": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://polygon.gateway.tenderly.co/3AuL1qqVSzuhn1x1ySYF5X --broadcast --verify -vvvv",
+    "deploy-alp-linea": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://rpc.linea.build --broadcast --verify -vvvv",
     "deploy-alp-polygonzkEVM": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://zkevm-rpc.com --broadcast --verify -vvvv",
     "deploy-rebaseModule-goerli": "forge script script/Deploy.s.sol:DeployRebaseModule --rpc-url https://eth-goerli.g.alchemy.com/v2/p7Rzbslijs8xlqztHm9KZjH0rmuhAMX8 --broadcast --verify -vvvv",
     "deploy-alp-fork": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0 --broadcast -vvvv",
