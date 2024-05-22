@@ -40,32 +40,6 @@ contract DeployALP is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         new CLTHelper();
-<<<<<<< HEAD
-        // CLTModules cltModules = new CLTModules(_owner);
-        // CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
-
-        // IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
-        //     lpAutomationFee: 0,
-        //     strategyCreationFee: 0,
-        //     protcolFeeOnManagement: 0,
-        //     protcolFeeOnPerformance: 0
-        // });
-
-        // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
-
-        // CLTBase baseContract = new CLTBase(
-        //     "A51 Liquidity Positions NFT",
-        //     "ALPhy",
-        //     _owner,
-        //     _weth9,
-        //     address(feeHandler),
-        //     address(cltModules),
-        //     _factoryAddress
-        // );
-
-        // new Modes(address(baseContract), address(twapQuoter), _owner);
-        // new RebaseModule(_owner, address(baseContract), address(twapQuoter));
-=======
         CLTModules cltModules = new CLTModules(_owner);
         CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
 
@@ -90,7 +64,6 @@ contract DeployALP is Script {
 
         new Modes(address(baseContract), address(twapQuoter), _owner);
         new RebaseModule(_owner, address(baseContract), address(twapQuoter));
->>>>>>> c8a5b13c42f1d8bb5fc1d4e4ddd2ee92607334bd
 
         vm.stopBroadcast();
     }
