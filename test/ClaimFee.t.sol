@@ -24,6 +24,8 @@ contract ClaimFeeTest is Test, Fixtures {
     Utilities utils;
     ICLTBase.StrategyKey key;
 
+    event Collect(uint256 tokenId, address recipient, uint256 amount0Collected, uint256 amount1Collected);
+
     function setUp() public {
         initManagerRoutersAndPoolsWithLiq();
         utils = new Utilities();
@@ -46,6 +48,42 @@ contract ClaimFeeTest is Test, Fixtures {
                 recipient: address(this)
             })
         );
+    }
+
+    function test_claimFee_emitCorrectValues() public {
+        // earn fee
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (, uint256 fee0, uint256 fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
+
+        vm.expectEmit(true, true, false, true);
+        emit Collect(1, msg.sender, fee0 - 1, fee1 - 1);
+
+        base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
     }
 
     function test_claimFee_revertsIfCompounder() public {
