@@ -24,10 +24,6 @@
 
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
-  goerli = { key = "${ETHERSCAN_API_KEY}" }
-  polygon-mumbai = { key = "${POLYGONSCAN_API_KEY}" , url= "https://mumbai.polygonscan.com/"}
-
-  
 
 [fmt]
   bracket_spacing = true
