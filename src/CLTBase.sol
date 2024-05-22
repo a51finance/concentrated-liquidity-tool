@@ -296,7 +296,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         _updateGlobals(strategy, position.strategyId);
 
         require(!strategy.isCompound, "ONC");
-        require(position.liquidityShare > 0, "NL");
+        require(position.liquidityShare > 0);
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
