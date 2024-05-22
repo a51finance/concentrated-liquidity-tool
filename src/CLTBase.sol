@@ -323,7 +323,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         position.tokensOwed0 = 0;
         position.tokensOwed1 = 0;
 
-        emit Collect(params.tokenId, params.recipient, fee0, fee1);
+        emit Collect(params.tokenId, params.recipient, tokensOwed0 - fee0, tokensOwed1 - fee1);
     }
 
     /// @inheritdoc ICLTBase
