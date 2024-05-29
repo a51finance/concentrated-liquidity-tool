@@ -6,5 +6,5 @@ prb-test/=lib/prb-test/src/
 @uniswap/v3-core/=lib/v3-core/
 @uniswap/v3-periphery/=lib/v3-periphery/
 @solmate/=lib/solmate/src/
-@cryptoalgebra/core/=lib/AlgebraV1/src/core/
-@cryptoalgebra/periphery/=lib/AlgebraV1/src/periphery/
+@cryptoalgebra/core/=lib/Algebra/src/core/
+@cryptoalgebra/periphery/=lib/Algebra/src/periphery/
