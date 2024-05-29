@@ -27,7 +27,7 @@ import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgeb
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
 /// user preferences with the help of basic and advance liquidity modes
 /// Holds the state for all strategies and it's users
-/// Version: Algebra Integral 1.1
+/// Version: Algebra Integral
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Position for StrategyData;
     using UserPositions for UserPositions.Data;

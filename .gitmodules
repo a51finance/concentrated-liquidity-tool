@@ -6,9 +6,6 @@
   branch = "release-v0"
   path = "lib/prb-test"
   url = "https://github.com/PaulRBerg/prb-test"
-[submodule "lib/Algebra"]
-	path = lib/Algebra
-	url = https://github.com/cryptoalgebra/Algebra
 [submodule "lib/solmate"]
 	path = lib/solmate
 	url = https://github.com/transmissions11/solmate
