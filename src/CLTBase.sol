@@ -22,11 +22,12 @@ import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
-/// @title A51 Finance Autonomus Liquidity Provision Base Contract
+/// @title  A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
 /// user preferences with the help of basic and advance liquidity modes
 /// Holds the state for all strategies and it's users
+/// Version: Algebra Integral 1.1
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Position for StrategyData;
     using UserPositions for UserPositions.Data;
