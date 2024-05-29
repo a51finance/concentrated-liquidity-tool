@@ -9,3 +9,6 @@
 [submodule "lib/Algebra"]
 	path = lib/Algebra
 	url = https://github.com/cryptoalgebra/Algebra
+[submodule "lib/solmate"]
+	path = lib/solmate
+	url = https://github.com/transmissions11/solmate
