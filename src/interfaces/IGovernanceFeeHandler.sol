@@ -1,8 +1,12 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.15;
 
 interface IGovernanceFeeHandler {
+    error StrategyFeeLimitExceed();
+    error ManagementFeeLimitExceed();
+    error PerformanceFeeLimitExceed();
+    error LPAutomationFeeLimitExceed();
+
     /// @param lpAutomationFee The value of fee applied for automation of strategy
     /// @param strategyCreationFee The value of fee applied for creation of new strategy
     /// @param protcolFeeOnManagement  The value of fee applied on strategiest earned fee on managment of strategy

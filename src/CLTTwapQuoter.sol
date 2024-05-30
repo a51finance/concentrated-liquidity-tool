@@ -3,19 +3,19 @@ pragma solidity =0.7.6;
 
 import { ICLTTwapQuoter } from "./interfaces/ICLTTwapQuoter.sol";
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { Owned } from "@solmate/auth/Owned.sol";
+import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 import { WeightedDataStorageLibrary } from "@cryptoalgebra/periphery/contracts/libraries/WeightedDataStorageLibrary.sol";
 
-contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
+contract CLTTwapQuoter is ICLTTwapQuoter, Owned {
     /// @inheritdoc ICLTTwapQuoter
     uint32 public override twapDuration;
 
     /// @inheritdoc ICLTTwapQuoter
     mapping(address => PoolStrategy) public override poolStrategy;
 
-    constructor() Ownable() {
+    constructor(address _owner) Owned(_owner) {
         twapDuration = 3600;
     }
 
@@ -24,7 +24,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
         (int24 tick,) = getCurrentTick(pool);
         int24 deviation = tick > twap ? tick - twap : twap - tick;
 
-        require(deviation <= poolStrategy[address(pool)].maxTwapDeviation, "MaxTwapDeviationExceeded");
+        if (deviation > poolStrategy[address(pool)].maxTwapDeviation) revert MaxTwapDeviationExceeded();
     }
 
     /// @notice This function calculates the current twap of pool
@@ -80,7 +80,7 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Ownable {
     }
 
     function setStandardTwapDuration(uint32 _twapDuration) external onlyOwner {
-        require(_twapDuration > 0, "InvalidInput");
+        if (_twapDuration == 0) revert InvalidInput();
         twapDuration = _twapDuration;
     }
 }

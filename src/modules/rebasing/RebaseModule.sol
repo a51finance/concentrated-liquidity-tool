@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.15;
 
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
@@ -31,7 +30,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
     /// @notice Constructs the RebaseModule with the provided parameters.
     /// @param _baseContractAddress Address of the base contract.
-    constructor(address _baseContractAddress, address _twapQuoter) AccessControl() {
+    constructor(address _governance, address _baseContractAddress, address _twapQuoter) AccessControl(_governance) {
         twapQuoter = ICLTTwapQuoter(_twapQuoter);
         cltBase = ICLTBase(payable(_baseContractAddress));
     }
@@ -92,8 +91,8 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
             cltBase.strategies(executeParams.strategyID);
 
-        require(strategyOwner != address(0), "StrategyIdDonotExist");
-        require(strategyOwner == _msgSender(), "InvalidCaller");
+        if (strategyOwner == address(0)) revert StrategyIdDonotExist(executeParams.strategyID);
+        if (strategyOwner != msg.sender) revert InvalidCaller();
 
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
@@ -142,12 +141,12 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     }
 
     /// @notice Checks and updates the swap count within a single day threshold.
-    /// @dev This function is used to limit the number of manual swaps within a 24-hour period. Reverts if the number of
-    /// swaps exceeds the set threshold within a day.
+    /// @dev This function is used to limit the number of manual swaps within a 24-hour period.
     /// @param lastUpdateTimeStamp The last time the swap count was updated.
     /// @param manualSwapsCount The current count of manual swaps.
     /// @return uint256 The updated time stamp.
     /// @return uint256 The updated swap count.
+    /// @custom:errors SwapsThresholdExceeded if the number of swaps exceeds the set threshold within a day.
     function _checkSwapsInADay(
         uint256 lastUpdateTimeStamp,
         uint256 manualSwapsCount
@@ -157,7 +156,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         returns (uint256, uint256)
     {
         if (block.timestamp <= lastUpdateTimeStamp + 1 days) {
-            require(manualSwapsCount < swapsThreshold, "SwapsThresholdExceeded");
+            if (manualSwapsCount >= swapsThreshold) revert SwapsThresholdExceeded();
             return (lastUpdateTimeStamp, manualSwapsCount += 1);
         } else {
             return (block.timestamp, manualSwapsCount = 1);
@@ -331,17 +330,22 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
-            require(lowerPreferenceDiff > 0 && upperPreferenceDiff > 0, "InvalidPricePreferenceDifference");
+            if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
+                revert InvalidPricePreferenceDifference();
+            }
             return true;
         }
 
         if (hasInActivity) {
             uint256 preferredInActivity = abi.decode(actionsData.data, (uint256));
-            require(preferredInActivity > 0, "RebaseInactivityCannotBeZero");
+
+            if (preferredInActivity == 0) {
+                revert RebaseInactivityCannotBeZero();
+            }
+
             return true;
         }
-
-        revert();
+        revert RebaseStrategyDataCannotBeZero();
     }
 
     /// @notice Checks the bytes value is non zero or not.
@@ -363,17 +367,22 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @param data An array of strategy IDs.
     /// @return true if the strategies array is valid.
     function checkStrategiesArray(bytes32[] memory data) public returns (bool) {
-        require(data.length > 0, "StrategyIdsCannotBeEmpty");
-
+        if (data.length == 0) {
+            revert StrategyIdsCannotBeEmpty();
+        }
         // check 0 strategyId
         uint256 dataLength = data.length;
         for (uint256 i = 0; i < dataLength; i++) {
             (, address strategyOwner,,,,,,,) = cltBase.strategies(data[i]);
-            require(data[i] != bytes32(0) && strategyOwner != address(0), "InvalidStrategyId");
+            if (data[i] == bytes32(0) || strategyOwner == address(0)) {
+                revert InvalidStrategyId(data[i]);
+            }
 
             // check duplicacy
             for (uint256 j = i + 1; j < data.length; j++) {
-                require(data[i] != data[j], "DuplicateStrategyId");
+                if (data[i] == data[j]) {
+                    revert DuplicateStrategyId(data[i]);
+                }
             }
         }
 
@@ -422,7 +431,9 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @dev Reverts if the new threshold is less than zero.
     /// @param _newThreshold The new liquidity threshold value.
     function updateSwapsThreshold(uint256 _newThreshold) external onlyOperator {
-        require(_newThreshold >= 0, "InvalidThreshold");
+        if (_newThreshold < 0) {
+            revert InvalidThreshold();
+        }
         swapsThreshold = _newThreshold;
     }
 }

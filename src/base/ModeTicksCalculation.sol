@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity =0.8.15;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
 /// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
 abstract contract ModeTicksCalculation {
+    error LiquidityShiftNotNeeded();
+
     /// @notice Computes new tick lower and upper for the individual strategy downside
     /// @dev shift left will trail the strategy position closer to the cuurent tick, current tick will be one tick left
     /// from position
@@ -32,7 +34,7 @@ abstract contract ModeTicksCalculation {
             tickLower = currentTick + tickSpacing;
             tickUpper = floorTick(tickLower + positionWidth, tickSpacing);
         } else {
-            revert();
+            revert LiquidityShiftNotNeeded();
         }
     }
 
@@ -62,7 +64,7 @@ abstract contract ModeTicksCalculation {
             tickUpper = currentTick - tickSpacing;
             tickLower = floorTick(tickUpper - positionWidth, tickSpacing);
         } else {
-            revert();
+            revert LiquidityShiftNotNeeded();
         }
     }
 
@@ -82,7 +84,7 @@ abstract contract ModeTicksCalculation {
         if (currentTick < key.tickLower) return shiftLeft(key, currentTick);
         if (currentTick > key.tickUpper) return shiftRight(key, currentTick);
 
-        revert();
+        revert LiquidityShiftNotNeeded();
     }
 
     /// @dev Rounds tick down towards negative infinity so that it's a multiple

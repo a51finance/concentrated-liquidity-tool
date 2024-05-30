@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
-pragma abicoder v2;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
@@ -8,7 +7,7 @@ import { Constants } from "../libraries/Constants.sol";
 import { PoolActions } from "../libraries/PoolActions.sol";
 import { FixedPoint128 } from "../libraries/FixedPoint128.sol";
 
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
 
 /// @title  StrategyFeeShares

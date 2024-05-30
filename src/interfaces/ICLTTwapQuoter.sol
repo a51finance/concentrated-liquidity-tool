@@ -1,9 +1,12 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.7.6;
+pragma solidity =0.8.15;
 
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 interface ICLTTwapQuoter {
+    error InvalidInput();
+    error MaxTwapDeviationExceeded();
+
     /// @param twapDuration Period of time that we observe for price slippage
     /// @param maxTwapDeviation Maximum deviation of time waited avarage price in ticks
     struct PoolStrategy {

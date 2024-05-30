@@ -17,9 +17,8 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
-import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ERC721 } from "@solmate/tokens/ERC721.sol";
 import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
 
 /// @title  A51 Finance Autonomus Liquidity Provision Base Contract
@@ -61,12 +60,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     constructor(
         string memory _name,
         string memory _symbol,
+        address _owner,
         address _weth9,
         address _feeHandler,
         address _cltModules,
         IAlgebraFactory _factory
     )
-        AccessControl()
+        AccessControl(_owner)
         ERC721(_name, _symbol)
         CLTPayments(_factory, _weth9)
     {
@@ -198,9 +198,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, position.strategyId);
 
-        require(params.liquidity > 0);
-        require(position.liquidityShare > 0);
-        require(position.liquidityShare >= params.liquidity);
+        if (params.liquidity == 0) revert InvalidShare();
+        if (position.liquidityShare == 0) revert NoLiquidity();
+        if (position.liquidityShare < params.liquidity) revert InvalidShare();
 
         // these vars used for multipurpose || strategist fee & contract balance
         Account memory vars;
@@ -264,7 +264,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             position.tokensOwed1 = 0;
         }
 
-        require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, "MAE");
+        if (amount0 < params.amount0Min || amount1 < params.amount1Min) revert MinimumAmountsExceeded();
 
         if (amount0 > 0) {
             transferFunds(params.refundAsETH, params.recipient, strategy.key.pool.token0(), amount0);
@@ -296,8 +296,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         _updateGlobals(strategy, position.strategyId);
 
-        require(!strategy.isCompound, "ONC");
-        require(position.liquidityShare > 0);
+        if (strategy.isCompound) revert onlyNonCompounders();
+        if (position.liquidityShare == 0) revert NoLiquidity();
 
         (uint128 tokensOwed0, uint128 tokensOwed1) = position.claimFeeForNonCompounders(strategy);
 
@@ -413,8 +413,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         _validateModes(actions, managementFee, performanceFee);
 
         StrategyData storage strategy = strategies[strategyId];
-        require(strategy.owner == _msgSender());
-        require(owner != address(0));
+        if (strategy.owner != _msgSender()) revert InvalidCaller();
+        if (owner == address(0)) revert OwnerCannotBeZeroAddress();
 
         strategy.updateStrategyState(owner, managementFee, performanceFee, abi.encode(actions));
 
@@ -462,13 +462,13 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         (share, amount0, amount1) = LiquidityShares.computeLiquidityShare(strategy, amount0Desired, amount1Desired);
 
         // liquidity frontrun checks here
-        require(share > 0);
+        if (share == 0) revert InvalidShare();
 
         if (strategy.account.totalShares == 0) {
-            require(share > Constants.MIN_INITIAL_SHARES);
+            if (share < Constants.MIN_INITIAL_SHARES) revert InvalidShare();
         }
 
-        require(amount0 >= amount0Min && amount1 >= amount1Min, "MAE");
+        if (amount0 < amount0Min || amount1 < amount1Min) revert MinimumAmountsExceeded();
 
         pay(strategy.key.pool.token0(), _msgSender(), address(this), amount0);
         pay(strategy.key.pool.token1(), _msgSender(), address(this), amount1);

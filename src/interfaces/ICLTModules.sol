@@ -1,10 +1,12 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.15;
 
 import { ICLTBase } from "./ICLTBase.sol";
 
 interface ICLTModules {
+    error InvalidMode();
+    error InvalidStrategyAction();
+
     /// @notice Validates the strategy inputs
     /// @param actions The ids of all actions selected for new strategy creation
     /// @param managementFee  The value of strategist management fee on strategy

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
+pragma solidity =0.8.15;
 
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Owned } from "@solmate/auth/Owned.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 /// @title  AccessControl
 /// @notice Contain helper methods for accessibility of functions
-abstract contract AccessControl is Ownable, Pausable {
+abstract contract AccessControl is Owned, Pausable {
     uint32 private _unlocked = 1;
 
     mapping(address => bool) internal _operatorApproved;
@@ -23,7 +23,7 @@ abstract contract AccessControl is Ownable, Pausable {
         _unlocked = 1;
     }
 
-    constructor() Ownable() { }
+    constructor(address _owner) Owned(_owner) { }
 
     /// @notice Updates the status of given account as operator
     /// @dev Must be called by the current governance

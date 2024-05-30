@@ -9,17 +9,17 @@ import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 import { ILiquidityDistributionStrategy } from "./interfaces/modules/ILiquidityDistributionStrategy.sol";
 
+import { Owned } from "@solmate/auth/Owned.sol";
 import { Constants } from "./libraries/Constants.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title  CLTModules
 /// @notice CLTModules contains methods for managing modes and it's actions for strategy
-contract CLTModules is ICLTModules, Ownable {
+contract CLTModules is ICLTModules, Owned {
     mapping(bytes32 => address) public modeVaults;
 
     mapping(bytes32 => mapping(bytes32 => bool)) public modulesActions;
 
-    constructor() Ownable() { }
+    constructor(address owner) Owned(owner) { }
 
     /// @notice Whitlist new ids for advance strategy modes
     /// @dev New id can only be added for only rebase, exit & liquidity advance modes
@@ -73,9 +73,11 @@ contract CLTModules is ICLTModules, Ownable {
         external
         override
     {
-        require(actions.mode > 0 && actions.mode < 5, "InvalidMode");
-        require(managementFee <= Constants.MAX_MANAGEMENT_FEE, "ManagementFeeLimitExceed");
-        require(performanceFee <= Constants.MAX_PERFORMANCE_FEE, "PerformanceFeeLimitExceed");
+        if (managementFee > Constants.MAX_MANAGEMENT_FEE) revert IGovernanceFeeHandler.ManagementFeeLimitExceed();
+
+        if (performanceFee > Constants.MAX_PERFORMANCE_FEE) revert IGovernanceFeeHandler.PerformanceFeeLimitExceed();
+
+        if (actions.mode < 1 || actions.mode > 4) revert InvalidMode();
 
         if (actions.exitStrategy.length > 0) {
             _checkModeIds(Constants.EXIT_STRATEGY, actions.exitStrategy);
@@ -96,7 +98,7 @@ contract CLTModules is ICLTModules, Ownable {
     /// @dev Common checks for valid inputs.
     function _checkModeIds(bytes32 mode, ICLTBase.StrategyPayload[] memory array) private view {
         for (uint256 i = 0; i < array.length; i++) {
-            require(modulesActions[mode][array[i].actionName], "InvalidStrategyAction");
+            if (!modulesActions[mode][array[i].actionName]) revert InvalidStrategyAction();
         }
     }
 

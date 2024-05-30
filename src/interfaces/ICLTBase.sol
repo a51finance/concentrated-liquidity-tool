@@ -1,10 +1,16 @@
 //SPDX-License-Identifier: MIT
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.15;
 
 import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
 
 interface ICLTBase {
+    error NoLiquidity();
+    error InvalidShare();
+    error InvalidCaller();
+    error onlyNonCompounders();
+    error MinimumAmountsExceeded();
+    error OwnerCannotBeZeroAddress();
+
     /// @param pool The Uniswap V3 pool
     /// @param tickLower The lower tick of the A51's LP position
     /// @param tickUpper The upper tick of the A51's LP position
