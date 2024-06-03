@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
-import { IRebaseStrategy } from "./interfaces/modules/IRebaseStrategy.sol";
 import { ICLTModules } from "./interfaces/ICLTModules.sol";
 import { IExitStrategy } from "./interfaces/modules/IExitStrategy.sol";
+import { IRebaseStrategy } from "./interfaces/modules/IRebaseStrategy.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 import { ILiquidityDistributionStrategy } from "./interfaces/modules/ILiquidityDistributionStrategy.sol";
 

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.8.20;
 
 import "../ICLTBase.sol";
 
 interface IRebaseStrategy {
     error InvalidCaller();
     error InvalidThreshold();
-    error InvalidStrategyId(bytes32);
-    error InvalidPricePreferenceDifference();
+    error SwapsThresholdExceeded();
     error StrategyIdsCannotBeEmpty();
+    error InvalidStrategyId(bytes32);
     error DuplicateStrategyId(bytes32);
     error StrategyIdDonotExist(bytes32);
-    error RebaseStrategyDataCannotBeZero();
     error RebaseInactivityCannotBeZero();
-    error SwapsThresholdExceeded();
+    error RebaseStrategyDataCannotBeZero();
+    error InvalidPricePreferenceDifference();
 
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static

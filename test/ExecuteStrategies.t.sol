@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { CLTBase } from "../src/CLTBase.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { console } from "forge-std/console.sol";
@@ -726,16 +725,16 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         bytes32[] memory strategyIDs = new bytes32[](10);
 
         for (uint256 i = 0; i < 10; i++) {
-            uint256 randomValue1 = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i))) % 1000;
+            uint256 randomValue1 = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i))) % 1000;
 
             uint256 randomValue2 =
-                uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, "second"))) % 1000;
+                uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i, "second"))) % 1000;
 
             int24 depositAmount = int24(
-                int256(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, "deposit"))) % 1000 + 1)
+                int256(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i, "deposit"))) % 1000 + 1)
             );
 
-            uint256 mode = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, i, "last"))) % 3 + 1;
+            uint256 mode = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, i, "last"))) % 3 + 1;
 
             ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
             rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
@@ -890,7 +889,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         (, uint256 shares2,,,,) = base.positions(2);
 
         _hevm.prank(address(base));
-        key.pool.burn(key.tickLower, key.tickUpper, 0);
+        key.pool.burn(key.tickLower, key.tickUpper, 0, "");
 
         _hevm.prank(address(base));
 

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
-import "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
-import "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
+import "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
 import "../interfaces/ICLTBase.sol";
 
@@ -38,7 +37,7 @@ contract CLTHelper {
         view
         returns (uint256 reserves0, uint256 reserves1)
     {
-        (uint160 sqrtPriceX96,,,,,,) = IAlgebraPool(poolAddress).globalState();
+        (uint160 sqrtPriceX96,,,,,) = IAlgebraPool(poolAddress).globalState();
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
 

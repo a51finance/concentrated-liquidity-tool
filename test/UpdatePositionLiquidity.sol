@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -11,8 +10,8 @@ import { Utilities } from "./utils/Utilities.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
-import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract UpdatePositionLiquidityTest is Test, Fixtures {
@@ -259,7 +258,7 @@ contract UpdatePositionLiquidityTest is Test, Fixtures {
         );
 
         vm.prank(address(base));
-        pool.burn(key.tickLower, key.tickUpper, 0);
+        pool.burn(key.tickLower, key.tickUpper, 0, "");
 
         (uint128 totalFee0, uint128 totalFee1) = getPoolPositionFee(key);
 

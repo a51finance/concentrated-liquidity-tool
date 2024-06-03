@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -15,8 +14,8 @@ import { Constants } from "../src/libraries/Constants.sol";
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
@@ -369,7 +368,7 @@ contract ClaimFeeTest is Test, Fixtures {
 
         // after changing ticks user fee growth will be invalid because strategy has been assigned new fee growth for
         // new ticks
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);

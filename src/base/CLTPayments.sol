@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.8.20;
 
 import { Constants } from "../libraries/Constants.sol";
 import { TransferHelper } from "../libraries/TransferHelper.sol";
@@ -7,7 +7,7 @@ import { TransferHelper } from "../libraries/TransferHelper.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { IWETH9 } from "../interfaces/external/IWETH9.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
-import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
 /// @title  CLTPayments
 /// @notice Contain helper methods for safe token transfers with custom logic

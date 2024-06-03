@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
@@ -8,7 +7,7 @@ import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { Test } from "forge-std/Test.sol";
 import { IQuoter } from "@cryptoalgebra/periphery/contracts/interfaces/IQuoter.sol";
 import { console } from "forge-std/console.sol";
-import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 
 contract ManualOverrideTest is Test, RebaseFixtures {
     address payable[] users;
@@ -43,7 +42,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -71,7 +70,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -103,7 +102,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -133,7 +132,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = keccak256(abi.encode(users[1], 1));
@@ -175,7 +174,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -217,7 +216,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -265,7 +264,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        (, int24 tick,,,,,) = key.pool.globalState();
+        (, int24 tick,,,,) = key.pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -314,7 +313,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         (reserve0, reserve1) = getStrategyReserves(key, account.uniswapLiquidity);
 
-        (, tick,,,,,) = key.pool.globalState();
+        (, tick,,,,) = key.pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -345,7 +344,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         ICLTBase.Account memory account;
         Accounting memory accounting;
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -364,7 +363,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -406,7 +405,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         tickUpper = key.tickUpper;
 
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -423,7 +422,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -479,7 +478,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -536,7 +535,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -598,7 +597,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -644,7 +643,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -690,7 +689,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -736,7 +735,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -763,7 +762,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -782,7 +781,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -828,7 +827,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (key,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -847,7 +846,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -953,7 +952,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1031,7 +1030,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         ICLTBase.Account memory account;
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -1047,7 +1046,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1126,7 +1125,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1146,7 +1145,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1205,7 +1204,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1225,7 +1224,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1284,7 +1283,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1304,7 +1303,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1367,7 +1366,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         Accounting memory accounting;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         accounting.balance0Before = account.balance0;
         accounting.balance1Before = account.balance1;
@@ -1387,7 +1386,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1457,7 +1456,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1547,7 +1546,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1621,7 +1620,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1703,7 +1702,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         assertEq(false, checkRange(tickLower, tickUpper));
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -1798,7 +1797,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         ICLTBase.Account memory account;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -1815,7 +1814,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1889,7 +1888,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         ICLTBase.Account memory account;
 
         (strategyKey,,,,,,,, account) = base.strategies(strategyID);
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(true, checkRange(tickLower, tickUpper));
 
@@ -1906,7 +1905,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         assertEq(false, checkRange(tickLower, tickUpper));
         (reserve0, reserve1) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
 
-        (, tick,,,,,) = pool.globalState();
+        (, tick,,,,) = pool.globalState();
 
         executeParams.pool = strategyKey.pool;
         executeParams.strategyID = strategyID;
@@ -1951,7 +1950,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         executeParams.pool = key.pool;
         executeParams.strategyID = strategyID;
@@ -2023,7 +2022,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
 
@@ -2106,7 +2105,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
 
@@ -2149,7 +2148,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
 
         IRebaseStrategy.ExectuteStrategyParams memory executeParams;
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID1);
 

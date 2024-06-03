@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { Vm } from "forge-std/Vm.sol";
 import { Test } from "forge-std/Test.sol";
@@ -9,13 +8,13 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { Fixtures } from "./utils/Fixtures.sol";
 import { Utilities } from "./utils/Utilities.sol";
 
-import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
+import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
@@ -97,7 +96,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
             })
         );
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);
@@ -301,7 +300,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
             })
         );
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);
@@ -369,7 +368,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
             })
         );
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);
@@ -639,7 +638,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         uint256 fee1;
 
         vm.prank(address(base));
-        pool.burn(key.tickLower, key.tickUpper, 0);
+        pool.burn(key.tickLower, key.tickUpper, 0, "");
         (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(key);
 
         (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 1));
@@ -704,7 +703,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
             })
         );
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
         int24 tickSpacing = key.pool.tickSpacing();
 
         tick = utils.floorTicks(tick, tickSpacing);
@@ -759,7 +758,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         );
 
         vm.prank(address(base));
-        pool.burn(newKey.tickLower, newKey.tickUpper, 0);
+        pool.burn(newKey.tickLower, newKey.tickUpper, 0, "");
 
         (uint256 totalFee0, uint256 totalFee1) = getPoolPositionFee(newKey);
 
@@ -769,7 +768,7 @@ contract ShiftLiquidityTest is Test, Fixtures {
         assertEq(fee1, totalFee1 - 1);
 
         vm.prank(address(base));
-        pool.burn(key.tickLower, key.tickUpper, 0);
+        pool.burn(key.tickLower, key.tickUpper, 0, "");
         (totalFee0, totalFee1) = getPoolPositionFee(key);
 
         (, fee0, fee1) = base.getStrategyReserves(getStrategyID(address(this), 2));

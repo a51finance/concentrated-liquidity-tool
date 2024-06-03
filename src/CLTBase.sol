@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { ICLTBase } from "./interfaces/ICLTBase.sol";
 import { ICLTModules } from "./interfaces/ICLTModules.sol";
@@ -18,8 +17,8 @@ import { LiquidityShares } from "./libraries/LiquidityShares.sol";
 import { StrategyFeeShares } from "./libraries/StrategyFeeShares.sol";
 
 import { ERC721 } from "@solmate/tokens/ERC721.sol";
-import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
-import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
+import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
 /// @title  A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
@@ -117,7 +116,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         (, uint256 strategyCreationFeeAmount,,) = _getGovernanceFee(isPrivate);
 
-        if (strategyCreationFeeAmount > 0) TransferHelper.safeTransferETH(owner(), strategyCreationFeeAmount);
+        if (strategyCreationFeeAmount > 0) {
+            TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
+        }
 
         refundETH();
 
@@ -229,7 +230,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.performanceFee,
             vars.fee0,
             vars.fee1,
-            owner(),
+            owner,
             strategy.owner
         );
 
@@ -242,7 +243,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.managementFee,
             amount0,
             amount1,
-            owner(),
+            owner,
             strategy.owner
         );
 
@@ -309,7 +310,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
             strategy.performanceFee,
             tokensOwed0,
             tokensOwed1,
-            owner(),
+            owner,
             strategy.owner
         );
 
@@ -349,7 +350,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         // deduct any fees if required for protocol
         (vars.fee0, vars.fee1) =
-            transferFee(strategy.key, 0, automationFee, vars.balance0, vars.balance1, address(0), owner());
+            transferFee(strategy.key, 0, automationFee, vars.balance0, vars.balance1, address(0), owner);
 
         vars.balance0 -= vars.fee0;
         vars.balance1 -= vars.fee1;

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { Constants } from "./libraries/Constants.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";

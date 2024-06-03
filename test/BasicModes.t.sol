@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
@@ -65,7 +64,7 @@ contract BasicModes is Test, RebaseFixtures {
         modes.ShiftBase(strategyIDs);
         (key,,,,,,,,) = base.strategies(strategyID);
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(key.tickLower > tick, true);
         assertEq(key.tickUpper > key.tickLower, true);
@@ -119,7 +118,7 @@ contract BasicModes is Test, RebaseFixtures {
         modes.ShiftBase(strategyIDs);
         (key,,,,,,,,) = base.strategies(strategyID);
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(key.tickLower < key.tickUpper, true);
         assertEq(key.tickUpper < tick, true);
@@ -173,7 +172,7 @@ contract BasicModes is Test, RebaseFixtures {
         modes.ShiftBase(strategyIDs);
         (key,,,,,,,,) = base.strategies(strategyID);
 
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         assertEq(key.tickLower < key.tickUpper, true);
         assertEq(key.tickUpper < tick, true);

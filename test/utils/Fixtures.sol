@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { Vm } from "forge-std/Vm.sol";
 
@@ -19,15 +18,15 @@ import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
-import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
 import { SwapRouter } from "@cryptoalgebra/periphery/contracts/SwapRouter.sol";
+import { AlgebraPool } from "@cryptoalgebra/integral-core/contracts/AlgebraPool.sol";
+import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
+import { AlgebraFactory } from "@cryptoalgebra/integral-core/contracts/AlgebraFactory.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
-import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
-import { AlgebraFactory } from "@cryptoalgebra/core/contracts/AlgebraFactory.sol";
-import { AlgebraPool } from "@cryptoalgebra/core/contracts/AlgebraPool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
-import { AlgebraPoolDeployer } from "@cryptoalgebra/core/contracts/AlgebraPoolDeployer.sol";
+import { AlgebraPoolDeployer } from "@cryptoalgebra/integral-core/contracts/AlgebraPoolDeployer.sol";
 
 import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
 import { NonfungiblePositionManager } from "@cryptoalgebra/periphery/contracts/NonfungiblePositionManager.sol";
@@ -63,10 +62,9 @@ contract Fixtures is UniswapDeployer {
 
     function initPool() internal {
         // intialize algebra contracts
-        deployer = new AlgebraPoolDeployer();
-        factory = new AlgebraFactory(address(deployer), address(0));
+        deployer = new AlgebraPoolDeployer(address(1));
+        factory = new AlgebraFactory(address(deployer));
 
-        deployer.setFactory(address(factory));
         factory.createPool(address(token0), address(token1));
 
         pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
@@ -119,15 +117,17 @@ contract Fixtures is UniswapDeployer {
             protcolFeeOnPerformance: 0
         });
 
-        cltModules = new CLTModules();
-        cltTwap = new CLTTwapQuoter();
+        cltModules = new CLTModules(address(this));
+        cltTwap = new CLTTwapQuoter(address(this));
 
         feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
-        base = new CLTBase("ALP Base", "ALP", address(weth), address(feeHandler), address(cltModules), factory);
+        base = new CLTBase(
+            "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
+        );
 
-        modes = new Modes(address(base), address(cltTwap));
-        rebaseModule = new RebaseModule(address(base), address(cltTwap));
+        modes = new Modes(address(base), address(cltTwap), address(this));
+        rebaseModule = new RebaseModule(address(this), address(base), address(cltTwap));
 
         cltModules.setNewModule(keccak256("EXIT_STRATEGY"), keccak256("SMART_EXIT"));
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
@@ -153,7 +153,7 @@ contract Fixtures is UniswapDeployer {
             positionKey := or(shl(24, or(shl(24, vault), and(tickLower, 0xFFFFFF))), and(tickUpper, 0xFFFFFF))
         }
 
-        (,,,, totalFee0, totalFee1) = key.pool.positions(positionKey);
+        (,,, totalFee0, totalFee1) = key.pool.positions(positionKey);
     }
 
     function deployFreshState() internal {
@@ -181,7 +181,7 @@ contract Fixtures is UniswapDeployer {
         view
         returns (uint256 reserves0, uint256 reserves1)
     {
-        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.globalState();
+        (uint160 sqrtPriceX96,,,,,) = keyInput.pool.globalState();
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(keyInput.tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(keyInput.tickUpper);
 

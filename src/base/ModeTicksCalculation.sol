@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.15;
+pragma solidity =0.8.20;
 
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
 
@@ -25,7 +25,7 @@ abstract contract ModeTicksCalculation {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick < key.tickLower) {
-            (, currentTick,,,,,) = key.pool.globalState();
+            (, currentTick,,,,) = key.pool.globalState();
 
             currentTick = floorTick(currentTick, tickSpacing);
 
@@ -55,7 +55,7 @@ abstract contract ModeTicksCalculation {
         int24 tickSpacing = key.pool.tickSpacing();
 
         if (currentTick > key.tickUpper) {
-            (, currentTick,,,,,) = key.pool.globalState();
+            (, currentTick,,,,) = key.pool.globalState();
 
             currentTick = floorTick(currentTick, tickSpacing);
 

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import "forge-std/Script.sol";
 import "../src/CLTBase.sol";
@@ -11,9 +10,11 @@ import "../src/GovernanceFeeHandler.sol";
 import "../src/interfaces/IGovernanceFeeHandler.sol";
 import "../src/modules/rebasing/Modes.sol";
 import "../src/modules/rebasing/RebaseModule.sol";
-import "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
+import "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
 contract DeployALP is Script {
+    address owner = 0x4eF03f0eA9e744F22B768E17628cE39a2f48AbE5;
+
     // polygon mainnet
     // address _weth = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
     // IAlgebraFactory _factoryAddress = IAlgebraFactory(0x411b0fAcC3489691f28ad58c47006AF5E3Ab3A28);
@@ -27,12 +28,12 @@ contract DeployALP is Script {
     IAlgebraFactory _factoryAddress = IAlgebraFactory(0x622b2c98123D303ae067DB4925CD6282B3A08D0F);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         // new CLTHelper();
-        CLTModules cltModules = new CLTModules();
-        CLTTwapQuoter twapQuoter = new CLTTwapQuoter();
+        CLTModules cltModules = new CLTModules(owner);
+        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(owner);
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
@@ -44,11 +45,17 @@ contract DeployALP is Script {
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         CLTBase baseContract = new CLTBase(
-            "A51 Liquidity Positions NFT", "ALPhy", _weth9, address(feeHandler), address(cltModules), _factoryAddress
+            "A51 Liquidity Positions NFT",
+            "ALPhy",
+            owner,
+            _weth9,
+            address(feeHandler),
+            address(cltModules),
+            _factoryAddress
         );
 
-        new Modes(address(baseContract), address(twapQuoter));
-        new RebaseModule(address(baseContract), address(twapQuoter));
+        new Modes(owner, address(baseContract), address(twapQuoter));
+        new RebaseModule(owner, address(baseContract), address(twapQuoter));
 
         vm.stopBroadcast();
     }

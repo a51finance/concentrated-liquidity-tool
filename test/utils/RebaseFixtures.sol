@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.7.6;
-pragma abicoder v2;
+pragma solidity =0.8.20;
 
 import { WETH } from "../mocks/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
@@ -22,17 +21,17 @@ import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
 import { SwapRouter } from "@cryptoalgebra/periphery/contracts/SwapRouter.sol";
 import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
-import { AlgebraPoolDeployer } from "@cryptoalgebra/core/contracts/AlgebraPoolDeployer.sol";
+import { AlgebraPoolDeployer } from "@cryptoalgebra/integral-core/contracts/AlgebraPoolDeployer.sol";
 import { NonfungiblePositionManager } from "@cryptoalgebra/periphery/contracts/NonfungiblePositionManager.sol";
 import { INonfungiblePositionManager } from
     "@cryptoalgebra/periphery/contracts/interfaces/INonfungiblePositionManager.sol";
-import { AlgebraFactory } from "@cryptoalgebra/core/contracts/AlgebraFactory.sol";
-import { AlgebraPool } from "@cryptoalgebra/core/contracts/AlgebraPool.sol";
+import { AlgebraFactory } from "@cryptoalgebra/integral-core/contracts/AlgebraFactory.sol";
+import { AlgebraPool } from "@cryptoalgebra/integral-core/contracts/AlgebraPool.sol";
 
 import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
-import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
-import { IAlgebraFactory } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraFactory.sol";
+import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
@@ -79,10 +78,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
 
         // intialize algebra contracts
-        deployer = new AlgebraPoolDeployer();
-        factory = new AlgebraFactory(address(deployer), address(0));
-
-        deployer.setFactory(address(factory));
+        deployer = new AlgebraPoolDeployer(address(1));
+        factory = new AlgebraFactory(address(deployer));
 
         factory.createPool(address(token0), address(token1));
         pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
@@ -172,20 +169,22 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             protcolFeeOnPerformance: 0
         });
 
-        cltTwap = new CLTTwapQuoter();
-        cltModules = new CLTModules();
+        cltTwap = new CLTTwapQuoter(address(this));
+        cltModules = new CLTModules(address(this));
 
         GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
-        base = new CLTBase("ALP Base", "ALP", address(weth), address(feeHandler), address(cltModules), factory);
+        base = new CLTBase(
+            "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
+        );
 
         _hevm.prank(recepient);
         token0.approve(address(base), type(uint256).max);
         _hevm.prank(recepient);
         token1.approve(address(base), type(uint256).max);
 
-        modes = new Modes(address(base), address(cltTwap));
-        rebaseModule = new RebaseModule(address(base), address(cltTwap));
+        modes = new Modes(address(base), address(cltTwap), address(this));
+        rebaseModule = new RebaseModule(address(this), address(base), address(cltTwap));
 
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);
@@ -207,7 +206,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function initStrategy(int24 difference) public {
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         int24 tickLower = floorTicks(tick - difference, pool.tickSpacing());
         int24 tickUpper = floorTicks(tick + difference, pool.tickSpacing());
@@ -324,7 +323,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         view
         returns (uint256 reserves0, uint256 reserves1)
     {
-        (uint160 sqrtPriceX96,,,,,,) = keyInput.pool.globalState();
+        (uint160 sqrtPriceX96,,,,,) = keyInput.pool.globalState();
         uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(keyInput.tickLower);
         uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(keyInput.tickUpper);
 
@@ -335,7 +334,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function checkRange(int24 tickLower, int24 tickUpper) public view returns (bool) {
-        (, int24 tick,,,,,) = pool.globalState();
+        (, int24 tick,,,,) = pool.globalState();
 
         if (tick > tickLower && tick < tickUpper) return true;
         return false;

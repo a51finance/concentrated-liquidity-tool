@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
-pragma abicoder v2;
 
 import { Constants } from "./Constants.sol";
 
@@ -10,11 +9,11 @@ import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 
 import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import { FullMath } from "@cryptoalgebra/core/contracts/libraries/FullMath.sol";
-import { TickMath } from "@cryptoalgebra/core/contracts/libraries/TickMath.sol";
-import { TokenDeltaMath } from "@cryptoalgebra/core/contracts/libraries/TokenDeltaMath.sol";
+import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
+// import { TokenDeltaMath } from "@cryptoalgebra/integral-core/contracts/libraries/TokenDeltaMath.sol";
 
-import { IAlgebraPool } from "@cryptoalgebra/core/contracts/interfaces/IAlgebraPool.sol";
+import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 
 /// @title  PoolActions
 /// @notice Provides functions for computing and safely managing liquidity on AMM
@@ -29,7 +28,7 @@ library PoolActions {
         (liquidity,,) = getPositionLiquidity(key.pool, key.tickLower, key.tickUpper);
 
         if (liquidity > 0) {
-            key.pool.burn(key.tickLower, key.tickUpper, 0);
+            key.pool.burn(key.tickLower, key.tickUpper, 0, "");
         }
     }
 
@@ -49,7 +48,7 @@ library PoolActions {
     {
         // only use individual liquidity of strategy we need otherwise it will pull all strategies liquidity
         if (strategyliquidity > 0) {
-            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, strategyliquidity);
+            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, strategyliquidity, "");
 
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
@@ -79,7 +78,7 @@ library PoolActions {
         if (strategyliquidity > 0) {
             liquidity = (FullMath.mulDiv(uint256(strategyliquidity), userSharePercentage, 1e18)).toUint128();
 
-            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity);
+            (amount0, amount1) = key.pool.burn(key.tickLower, key.tickUpper, liquidity, "");
 
             if (amount0 > 0 || amount1 > 0) {
                 (uint256 collect0, uint256 collect1) =
@@ -207,6 +206,7 @@ library PoolActions {
         view
         returns (uint128 liquidity, uint128 tokensOwed0, uint128 tokensOwed1)
     {
+        uint256 _liquidity;
         bytes32 positionKey;
         address vault = address(this);
 
@@ -214,7 +214,8 @@ library PoolActions {
             positionKey := or(shl(24, or(shl(24, vault), and(_tickLower, 0xFFFFFF))), and(_tickUpper, 0xFFFFFF))
         }
 
-        (liquidity,,,, tokensOwed0, tokensOwed1) = pool.positions(positionKey);
+        (_liquidity,,, tokensOwed0, tokensOwed1) = pool.positions(positionKey);
+        liquidity = uint128(_liquidity);
     }
 
     /// @notice Computes the maximum amount of liquidity received for a given amount of token0, token1, the current
@@ -232,7 +233,7 @@ library PoolActions {
         view
         returns (uint128)
     {
-        (uint160 sqrtRatioX96,,,,,,) = key.pool.globalState();
+        (uint160 sqrtRatioX96,,,,,) = key.pool.globalState();
 
         return LiquidityAmounts.getLiquidityForAmounts(
             sqrtRatioX96,
@@ -257,7 +258,7 @@ library PoolActions {
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint160 sqrtRatioX96,,,,,,) = key.pool.globalState();
+        (uint160 sqrtRatioX96,,,,,) = key.pool.globalState();
 
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtRatioX96,
@@ -271,13 +272,9 @@ library PoolActions {
     /// @param pool The address of the AMM Pool
     /// @return sqrtRatioX96 The current price of the pool as a sqrt(token1/token0) Q64.96 value
     /// @return tick The current tick of the pool, i.e. according to the last tick transition that was run
-    /// @return observationCardinality The current maximum number of observations stored in the pool
-    function getSqrtRatioX96AndTick(IAlgebraPool pool)
-        public
-        view
-        returns (uint160 sqrtRatioX96, int24 tick, uint16 observationCardinality)
-    {
-        (sqrtRatioX96, tick,, observationCardinality,,,) = pool.globalState();
+    // / @return observationCardinality The current maximum number of observations stored in the pool
+    function getSqrtRatioX96AndTick(IAlgebraPool pool) public view returns (uint160 sqrtRatioX96, int24 tick) {
+        (sqrtRatioX96, tick,,,,) = pool.globalState();
     }
 
     /// @notice Computes the direction of tokens recieved after swap to merge in strategy reserves

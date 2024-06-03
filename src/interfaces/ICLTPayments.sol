@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import { IAlgebraMintCallback } from "@cryptoalgebra/core/contracts/interfaces/callback/IAlgebraMintCallback.sol";
-import { IAlgebraSwapCallback } from "@cryptoalgebra/core/contracts/interfaces/callback/IAlgebraSwapCallback.sol";
+import { IAlgebraMintCallback } from
+    "@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraMintCallback.sol";
+import { IAlgebraSwapCallback } from
+    "@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraSwapCallback.sol";
 
 /// @title Liquidity management functions
 /// @notice Internal functions for safely managing liquidity in Uniswap V3
