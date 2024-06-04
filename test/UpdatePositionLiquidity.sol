@@ -12,7 +12,7 @@ import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 
 import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
 import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
-import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
+import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract UpdatePositionLiquidityTest is Test, Fixtures {
     Utilities utils;

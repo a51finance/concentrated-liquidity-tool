@@ -18,20 +18,20 @@ import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
 import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
 
-import { SwapRouter } from "@cryptoalgebra/periphery/contracts/SwapRouter.sol";
+import { SwapRouter } from "@cryptoalgebra/integral-periphery/contracts/SwapRouter.sol";
 import { AlgebraPool } from "@cryptoalgebra/integral-core/contracts/AlgebraPool.sol";
 import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 import { AlgebraFactory } from "@cryptoalgebra/integral-core/contracts/AlgebraFactory.sol";
-import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
+import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
 import { AlgebraPoolDeployer } from "@cryptoalgebra/integral-core/contracts/AlgebraPoolDeployer.sol";
 
-import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
-import { NonfungiblePositionManager } from "@cryptoalgebra/periphery/contracts/NonfungiblePositionManager.sol";
+import { LiquidityAmounts } from "@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol";
+import { NonfungiblePositionManager } from "@cryptoalgebra/integral-periphery/contracts/NonfungiblePositionManager.sol";
 import { INonfungiblePositionManager } from
-    "@cryptoalgebra/periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+    "@cryptoalgebra/integral-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import "forge-std/console.sol";
 

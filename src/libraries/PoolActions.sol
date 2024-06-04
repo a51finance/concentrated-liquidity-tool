@@ -7,13 +7,11 @@ import { ICLTBase } from "../interfaces/ICLTBase.sol";
 import { SafeCastExtended } from "./SafeCastExtended.sol";
 import { ICLTPayments } from "../interfaces/ICLTPayments.sol";
 
-import { LiquidityAmounts } from "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
-
 import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol";
 import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
-// import { TokenDeltaMath } from "@cryptoalgebra/integral-core/contracts/libraries/TokenDeltaMath.sol";
-
 import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+
+import { LiquidityAmounts } from "@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 /// @title  PoolActions
 /// @notice Provides functions for computing and safely managing liquidity on AMM

@@ -5,7 +5,7 @@ import { RebaseFixtures } from "./utils/RebaseFixtures.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { Test } from "forge-std/Test.sol";
-import { IQuoter } from "@cryptoalgebra/periphery/contracts/interfaces/IQuoter.sol";
+import { IQuoter } from "@cryptoalgebra/integral-periphery/contracts/interfaces/IQuoter.sol";
 import { console } from "forge-std/console.sol";
 import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 

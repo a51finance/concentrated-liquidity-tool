@@ -5,4 +5,5 @@ forge-std/=lib/forge-std/src/
 prb-test/=lib/prb-test/src/
 @solmate/=lib/solmate/src/
 @cryptoalgebra/integral-core/=lib/Algebra/src/core/
-@cryptoalgebra/periphery/=lib/Algebra/src/periphery/
+@cryptoalgebra/integral-periphery/=lib/Algebra/src/periphery/
+@cryptoalgebra/plugin/=lib/Algebra/src/plugin/

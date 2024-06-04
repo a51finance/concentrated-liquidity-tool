@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 import "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
-import "@cryptoalgebra/periphery/contracts/libraries/LiquidityAmounts.sol";
+import "@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "../interfaces/ICLTBase.sol";
 
 contract CLTHelper {

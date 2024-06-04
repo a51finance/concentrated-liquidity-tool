@@ -13,7 +13,7 @@ import { FullMath } from "@cryptoalgebra/integral-core/contracts/libraries/FullM
 
 import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
-import { ISwapRouter } from "@cryptoalgebra/periphery/contracts/interfaces/ISwapRouter.sol";
+import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "forge-std/console.sol";
 
