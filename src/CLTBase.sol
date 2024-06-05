@@ -366,8 +366,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         vars.balance1 += strategy.account.balance1;
 
         if (params.swapAmount != 0) {
-            (int256 amount0Swapped, int256 amount1Swapped) =
-                PoolActions.swapToken(params.key.pool, params.zeroForOne, params.swapAmount, params.sqrtPriceLimitX96);
+            (int256 amount0Swapped, int256 amount1Swapped) = PoolActions.swapToken(
+                params.key.pool, params.zeroForOne, params.swapAmount, params.sqrtPriceLimitX96, params.isRebaseToken
+            );
 
             (vars.balance0, vars.balance1) = PoolActions.amountsDirection(
                 params.zeroForOne,

@@ -306,6 +306,8 @@ interface ICLTBase {
     /// @param moduleStatus The encoded data for each of the strategy to track any detail for futher actions
     /// @param sqrtPriceLimitX96 The Q64.96 sqrt price limit. If zero for one, the price cannot be less than this
     /// value after the swap. If one for zero, the price cannot be greater than this value after the swap
+    /// @param isRebaseToken Bool weather input token is rebasing token, amount will be transferred from user before the
+    /// actual swap.
     struct ShiftLiquidityParams {
         StrategyKey key;
         bytes32 strategyId;
@@ -314,6 +316,7 @@ interface ICLTBase {
         int256 swapAmount;
         bytes moduleStatus;
         uint160 sqrtPriceLimitX96;
+        bool isRebaseToken;
     }
 
     /// @notice Updates the strategy's liquidity accordingly w.r.t basic or advance module when it is activated

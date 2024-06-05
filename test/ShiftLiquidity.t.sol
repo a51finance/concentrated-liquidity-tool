@@ -78,7 +78,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
     }
@@ -115,7 +116,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
     }
@@ -143,7 +145,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -159,7 +162,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
     }
@@ -195,7 +199,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: false,
                 zeroForOne: false,
                 swapAmount: 0,
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -212,7 +217,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 shouldMint: true,
                 zeroForOne: false,
                 swapAmount: 0,
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
     }
@@ -244,7 +250,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -433,7 +440,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -457,7 +465,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -484,7 +493,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -504,7 +514,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -593,7 +604,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: abi.encode(1, true),
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -606,7 +618,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: abi.encode(1, true),
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -720,7 +733,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 
@@ -803,7 +817,8 @@ contract ShiftLiquidityTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: int256(accountStrategy1.balance1 / 2),
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 

@@ -65,6 +65,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
             params.strategyId = _queue[i].strategyID;
             params.shouldMint = true;
             params.swapAmount = 0;
+            params.isRebaseToken = false;
 
             uint256 queueActionNames = _queue[i].actionNames.length;
             for (uint256 j = 0; j < queueActionNames; j++) {
@@ -124,6 +125,7 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         params.zeroForOne = executeParams.zeroForOne;
         params.swapAmount = executeParams.swapAmount;
         params.sqrtPriceLimitX96 = executeParams.sqrtPriceLimitX96;
+        params.isRebaseToken;
 
         isExited = !executeParams.shouldMint;
 

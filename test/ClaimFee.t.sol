@@ -386,7 +386,8 @@ contract ClaimFeeTest is Test, Fixtures {
                 zeroForOne: false,
                 swapAmount: 0,
                 moduleStatus: "",
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: 0,
+                isRebaseToken: false
             })
         );
 

@@ -109,7 +109,8 @@ contract Modes is ModeTicksCalculation, Owned {
             zeroForOne: false,
             swapAmount: 0,
             moduleStatus: "",
-            sqrtPriceLimitX96: 0
+            sqrtPriceLimitX96: 0,
+            isRebaseToken: false
         });
 
         baseVault.shiftLiquidity(params);

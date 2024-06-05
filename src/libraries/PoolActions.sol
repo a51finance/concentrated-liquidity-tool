@@ -129,18 +129,30 @@ library PoolActions {
         IAlgebraPool pool,
         bool zeroForOne,
         int256 amountSpecified,
-        uint160 sqrtPriceLimitX96
+        uint160 sqrtPriceLimitX96,
+        bool isRebaseToken
     )
         external
         returns (int256 amount0, int256 amount1)
     {
-        (amount0, amount1) = pool.swap(
-            address(this),
-            zeroForOne,
-            amountSpecified,
-            sqrtPriceLimitX96,
-            abi.encode(ICLTPayments.SwapCallbackData({ token0: pool.token0(), token1: pool.token1() }))
-        );
+        if (isRebaseToken) {
+            pool.swapWithPaymentInAdvance(
+                address(this),
+                address(this),
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                abi.encode(ICLTPayments.SwapCallbackData({ token0: pool.token0(), token1: pool.token1() }))
+            );
+        } else {
+            (amount0, amount1) = pool.swap(
+                address(this),
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                abi.encode(ICLTPayments.SwapCallbackData({ token0: pool.token0(), token1: pool.token1() }))
+            );
+        }
     }
 
     /// @notice Collects up to a maximum amount of fees owed to a specific position to the recipient

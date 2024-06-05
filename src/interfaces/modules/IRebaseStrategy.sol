@@ -36,7 +36,8 @@ interface IRebaseStrategy {
     /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
     /// exact output (negative)
     /// @param sqrtPriceLimitX96 The Q64.96 sqrt price limit. If zero for one, the price cannot be less than this
-
+    /// @param isRebaseToken Bool weather input token is rebasing token, amount will be transferred from user before the
+    /// actual swap.
     struct ExectuteStrategyParams {
         IAlgebraPool pool;
         bytes32 strategyID;
@@ -46,6 +47,7 @@ interface IRebaseStrategy {
         bool zeroForOne;
         int256 swapAmount;
         uint160 sqrtPriceLimitX96;
+        bool isRebaseToken;
     }
 
     event Executed(ExecutableStrategiesData[] strategyIds);
