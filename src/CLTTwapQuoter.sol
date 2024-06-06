@@ -48,6 +48,8 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Owned {
     /// manipulation during shifting of position
     /// @return twap The time-weighted average price
     function getTwap(IAlgebraPool pool) public view override returns (int24 twap) {
+        if (pool.plugin() == address(0)) revert PluginNotConnected();
+
         IVolatilityOracle oracle = IVolatilityOracle(pool.plugin());
 
         uint16 observationIndex = oracle.timepointIndex();

@@ -5,6 +5,7 @@ import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/
 
 interface ICLTTwapQuoter {
     error InvalidInput();
+    error PluginNotConnected();
     error MaxTwapDeviationExceeded();
 
     /// @param twapDuration Period of time that we observe for price slippage
