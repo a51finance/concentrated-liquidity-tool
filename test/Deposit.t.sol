@@ -22,7 +22,6 @@ import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfa
 import "forge-std/console.sol";
 
 contract DepositTest is Test, Fixtures {
-    Utilities utils;
     ICLTBase.StrategyKey key;
 
     event Deposit(

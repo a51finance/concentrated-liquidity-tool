@@ -20,7 +20,6 @@ import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfa
 import "forge-std/console.sol";
 
 contract ShiftLiquidityTest is Test, Fixtures {
-    Utilities utils;
     ICLTBase.StrategyKey key;
 
     event LiquidityShifted(bytes32 indexed strategyId, bool isLiquidityMinted, bool zeroForOne, int256 swapAmount);

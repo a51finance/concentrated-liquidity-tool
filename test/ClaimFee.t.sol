@@ -21,7 +21,6 @@ import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfa
 import "forge-std/console.sol";
 
 contract ClaimFeeTest is Test, Fixtures {
-    Utilities utils;
     ICLTBase.StrategyKey key;
 
     event Collect(uint256 tokenId, address recipient, uint256 amount0Collected, uint256 amount1Collected);

@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import { Vm } from "forge-std/Vm.sol";
+import { Test } from "forge-std/Test.sol";
 
 import { WETH } from "../mocks/WETH.sol";
 import { ERC20Mock } from "../mocks/ERC20Mock.sol";
@@ -16,7 +17,7 @@ import { Modes } from "../../src/modules/rebasing/Modes.sol";
 import { GovernanceFeeHandler } from "../../src/GovernanceFeeHandler.sol";
 import { RebaseModule } from "../../src/modules/rebasing/RebaseModule.sol";
 
-import { UniswapDeployer } from "../lib/UniswapDeployer.sol";
+import { Utilities } from "../utils/Utilities.sol";
 
 import { SwapRouter } from "@cryptoalgebra/integral-periphery/contracts/SwapRouter.sol";
 import { AlgebraPool } from "@cryptoalgebra/integral-core/contracts/AlgebraPool.sol";
@@ -35,7 +36,7 @@ import { INonfungiblePositionManager } from
 
 import "forge-std/console.sol";
 
-contract Fixtures is UniswapDeployer {
+contract Fixtures is Test {
     AlgebraPoolDeployer deployer;
     IAlgebraFactory factory;
     IAlgebraPool pool;
@@ -52,6 +53,8 @@ contract Fixtures is UniswapDeployer {
     ERC20Mock token0;
     ERC20Mock token1;
 
+    Utilities utils;
+
     function deployTokens(uint8 count, uint256 totalSupply) public returns (ERC20Mock[] memory tokens) {
         tokens = new ERC20Mock[](count);
         for (uint8 i = 0; i < count; i++) {
@@ -61,14 +64,17 @@ contract Fixtures is UniswapDeployer {
     }
 
     function initPool() internal {
+        utils = new Utilities();
+
+        // pre-calculate factory address
+        address predictAddress = utils.computeAddress(address(this), vm.getNonce(address(this)) + 1);
+
         // intialize algebra contracts
-        deployer = new AlgebraPoolDeployer(address(1));
+        deployer = new AlgebraPoolDeployer(predictAddress);
         factory = new AlgebraFactory(address(deployer));
 
         factory.createPool(address(token0), address(token1));
-
         pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
-
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
 

@@ -15,7 +15,6 @@ import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/
 import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract UpdatePositionLiquidityTest is Test, Fixtures {
-    Utilities utils;
     ICLTBase.StrategyKey key;
 
     event PositionUpdated(uint256 indexed tokenId, uint256 share, uint256 amount0, uint256 amount1);

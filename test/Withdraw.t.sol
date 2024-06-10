@@ -18,7 +18,6 @@ import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfa
 import "forge-std/console.sol";
 
 contract WithdrawTest is Test, Fixtures {
-    Utilities utils;
     ICLTBase.StrategyKey key;
 
     event Withdraw(
