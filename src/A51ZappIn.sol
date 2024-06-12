@@ -111,7 +111,9 @@ contract A51ZappIn is Multicall, AccessControl {
         if (!success) revert OKXSwapFailed();
 
         // Reset approval for security reasons
-        tokenIn.safeApprove(tokenApprover, 0);
+        if (tokenIn.allowance(address(this), address(tokenApprover)) != 0) {
+            tokenIn.safeApprove(address(tokenApprover), 0);
+        }
 
         // Check output amount
         tokenAmountOut = tokenOut.balanceOf(address(this));
