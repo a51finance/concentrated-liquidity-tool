@@ -16,6 +16,7 @@ contract A51ZappIn is Multicall, AccessControl {
     error PastDeadline();
     error OKXSwapFailed();
     error InsufficientOutput();
+    error InvalidAmountInput();
 
     event ZapInCompleted(address zapper, uint256 tokenId, uint256 share, uint256 amount0, uint256 amount1);
 
@@ -50,35 +51,17 @@ contract A51ZappIn is Multicall, AccessControl {
         uint256 amount0Desired = useContractBalance0 ? token0.balanceOf(address(this)) : _depositParams.amount0Desired;
         uint256 amount1Desired = useContractBalance1 ? token1.balanceOf(address(this)) : _depositParams.amount1Desired;
 
-        _handleTokenOperations(token0, amount0Desired, address(cltBase), useContractBalance0);
-        _handleTokenOperations(token1, amount1Desired, address(cltBase), useContractBalance1);
+        _handleTokenOperations(token0, amount0Desired, address(cltBase), useContractBalance0, true, true);
+        _handleTokenOperations(token1, amount1Desired, address(cltBase), useContractBalance1, true, true);
 
         // Call deposit on cltBase
         (tokenId, share, amount0, amount1) = cltBase.deposit(_depositParams);
 
         // Refund any excess tokens back to msg.sender
-        _refundTokens(token0);
-        _refundTokens(token1);
+        _refundTokens(token0, msg.sender);
+        _refundTokens(token1, msg.sender);
 
         emit ZapInCompleted(msg.sender, tokenId, share, amount0, amount1);
-    }
-
-    function _handleTokenOperations(ERC20 token, uint256 amountDesired, address to, bool useBalance) private {
-        if (!useBalance && amountDesired > 0) {
-            token.safeTransferFrom(msg.sender, address(this), amountDesired);
-        }
-        uint256 currentAllowance = token.allowance(address(this), to);
-        if (currentAllowance < amountDesired) {
-            token.safeApprove(to, 0); // Reset approval to 0 first to comply with ERC20 standard
-            token.safeApprove(to, amountDesired);
-        }
-    }
-
-    function _refundTokens(ERC20 token) private {
-        uint256 balance = token.balanceOf(address(this));
-        if (balance > 0) {
-            token.safeTransfer(msg.sender, balance);
-        }
     }
 
     function doZeroExSwap(
@@ -94,26 +77,20 @@ contract A51ZappIn is Multicall, AccessControl {
         external
         payable
         virtual
+        nonReentrancy
         returns (uint256 tokenAmountOut)
     {
-        if (tokenIn == tokenOut) revert SameToken();
-        if (block.timestamp > deadline) revert PastDeadline();
+        validateSwapInputs(tokenIn, tokenOut, tokenAmountIn, deadline);
 
-        if (tokenAmountIn > 0) {
-            tokenIn.safeTransferFrom(msg.sender, address(this), tokenAmountIn);
-        }
+        // Transfer tokenIn to the contract
+        _handleTokenOperations(tokenIn, tokenAmountIn, address(this), false, true, false);
 
-        // Approve okxProxy to spend tokens if necessary
-        tokenIn.safeApprove(tokenApprover, tokenAmountIn);
+        // Approve the token amount for the OKX proxy
+        _handleTokenOperations(tokenIn, tokenAmountIn, tokenApprover, false, false, true);
 
         // Execute swap
         (bool success,) = okxProxy.call(swapData);
         if (!success) revert OKXSwapFailed();
-
-        // Reset approval for security reasons
-        if (tokenIn.allowance(address(this), address(tokenApprover)) != 0) {
-            tokenIn.safeApprove(address(tokenApprover), 0);
-        }
 
         // Check output amount
         tokenAmountOut = tokenOut.balanceOf(address(this));
@@ -121,15 +98,50 @@ contract A51ZappIn is Multicall, AccessControl {
 
         // Transfer output tokens to recipient
         if (recipient != address(this)) {
-            tokenOut.safeTransfer(recipient, tokenAmountOut);
+            _handleTokenOperations(tokenOut, tokenAmountOut, recipient, false, true, false);
         }
 
         // Refund any excess input tokens
-        uint256 balance = tokenIn.balanceOf(address(this));
-        if (balance > 0) {
-            tokenIn.safeTransfer(refundRecipient, balance);
-        }
+        _refundTokens(tokenIn, refundRecipient);
 
         return tokenAmountOut;
+    }
+
+    function _handleTokenOperations(
+        ERC20 token,
+        uint256 amountDesired,
+        address to,
+        bool useBalance,
+        bool performTransfer,
+        bool performApproval
+    )
+        private
+    {
+        if (performTransfer && !useBalance && amountDesired > 0) {
+            token.safeTransferFrom(msg.sender, address(this), amountDesired);
+        }
+
+        if (performApproval) {
+            uint256 currentAllowance = token.allowance(address(this), to);
+            if (currentAllowance < amountDesired) {
+                if (currentAllowance != 0) {
+                    token.safeApprove(to, 0); // Reset only if non-zero to save gas
+                }
+                token.safeApprove(to, amountDesired);
+            }
+        }
+    }
+
+    function validateSwapInputs(ERC20 tokenIn, ERC20 tokenOut, uint256 tokenAmountIn, uint256 deadline) private view {
+        if (tokenIn == tokenOut) revert SameToken();
+        if (block.timestamp > deadline) revert PastDeadline();
+        if (tokenAmountIn == 0) revert InvalidAmountInput();
+    }
+
+    function _refundTokens(ERC20 token, address recepient) private {
+        uint256 balance = token.balanceOf(address(this));
+        if (balance > 0) {
+            token.safeTransfer(recepient, balance);
+        }
     }
 }
