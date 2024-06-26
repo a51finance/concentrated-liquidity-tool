@@ -111,7 +111,7 @@ contract ClaimFeeTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(bytes("ONC"));
+        vm.expectRevert(ICLTBase.onlyNonCompounders.selector);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 2, refundAsETH: true }));
     }
 
@@ -127,7 +127,7 @@ contract ClaimFeeTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert(bytes("NL"));
+        vm.expectRevert(ICLTBase.NoLiquidity.selector);
         base.claimPositionFee(ICLTBase.ClaimFeesParams({ recipient: msg.sender, tokenId: 1, refundAsETH: true }));
     }
 

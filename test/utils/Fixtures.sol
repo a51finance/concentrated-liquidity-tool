@@ -25,6 +25,7 @@ import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickM
 import { AlgebraFactory } from "@cryptoalgebra/integral-core/contracts/AlgebraFactory.sol";
 import { ISwapRouter } from "@cryptoalgebra/integral-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
+import { AlgebraPool } from "@cryptoalgebra/integral-core/contracts/AlgebraPool.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
 import { AlgebraPoolDeployer } from "@cryptoalgebra/integral-core/contracts/AlgebraPoolDeployer.sol";

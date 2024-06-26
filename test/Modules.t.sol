@@ -16,19 +16,19 @@ contract ModulesTest is Test, Fixtures {
 
     function test_modules_revertsIfNotOwnerToUpdateModule() public {
         vm.prank(msg.sender);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.expectRevert(bytes("UNAUTHORIZED"));
         cltModules.setNewModule(keccak256("LIQUIDITY_DISTRIBUTION"), keccak256("PRICE_RANGE"));
     }
 
     function test_modules_revertsIfNotOwnerToToggleModule() public {
         vm.prank(msg.sender);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.expectRevert(bytes("UNAUTHORIZED"));
         cltModules.toggleModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
     }
 
     function test_modules_revertsIfNotOwnerToUpdateModuleAddress() public {
         vm.prank(msg.sender);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.expectRevert(bytes("UNAUTHORIZED"));
         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(1445));
     }
 
@@ -40,21 +40,21 @@ contract ModulesTest is Test, Fixtures {
     function test_modules_revertsIfMaxManagementFee() public {
         ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
 
-        vm.expectRevert("ManagementFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.ManagementFeeLimitExceed.selector);
         cltModules.validateModes(actions, 0.6 ether, 0);
     }
 
     function test_modules_revertsIfMaxPerformanceFee() public {
         ICLTBase.PositionActions memory actions = createStrategyActions(1, 3, 0, 3, 0, 0);
 
-        vm.expectRevert("PerformanceFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.PerformanceFeeLimitExceed.selector);
         cltModules.validateModes(actions, 0, 0.501 ether);
     }
 
     function test_modules_revertsIfInvalidBasicMode() public {
         ICLTBase.PositionActions memory actions = createStrategyActions(5, 3, 0, 3, 0, 0);
 
-        vm.expectRevert("InvalidMode");
+        vm.expectRevert(ICLTModules.InvalidMode.selector);
         cltModules.validateModes(actions, 0, 0);
     }
 
@@ -71,7 +71,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: new ICLTBase.StrategyPayload[](0)
         });
 
-        vm.expectRevert("InvalidStrategyAction");
+        vm.expectRevert(ICLTModules.InvalidStrategyAction.selector);
         cltModules.validateModes(actions, 0, 0);
     }
 
@@ -88,7 +88,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: new ICLTBase.StrategyPayload[](0)
         });
 
-        vm.expectRevert("InvalidStrategyAction");
+        vm.expectRevert(ICLTModules.InvalidStrategyAction.selector);
         cltModules.validateModes(actions, 0, 0);
     }
 
@@ -105,7 +105,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: liquidityStrategyActions
         });
 
-        vm.expectRevert("InvalidStrategyAction");
+        vm.expectRevert(ICLTModules.InvalidStrategyAction.selector);
         cltModules.validateModes(actions, 0, 0);
     }
 
@@ -139,7 +139,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: new ICLTBase.StrategyPayload[](0)
         });
 
-        vm.expectRevert("InvalidPricePreferenceDifference");
+        vm.expectRevert(IRebaseStrategy.InvalidPricePreferenceDifference.selector);
         cltModules.validateModes(actions, 0, 0);
     }
 

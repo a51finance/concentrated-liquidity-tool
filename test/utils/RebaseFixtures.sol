@@ -49,6 +49,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     ERC20Mock token0;
     ERC20Mock token1;
     WETH weth;
+    Utilities utils;
 
     function deployTokens(
         address recepient,
@@ -67,7 +68,9 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     }
 
     function initPool(address recepient) internal returns (IAlgebraFactory factory) {
+        utils = new Utilities();
         INonfungiblePositionManager.MintParams memory mintParams;
+
         ERC20Mock[] memory tokens = deployTokens(recepient, 2, 1e50);
 
         token0 = tokens[0];
@@ -77,8 +80,11 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             (token0, token1) = (token1, token0);
         }
 
+        // pre-calculate factory address
+        address predictAddress = utils.computeAddress(address(this), _hevm.getNonce(address(this)) + 1);
+
         // intialize algebra contracts
-        deployer = new AlgebraPoolDeployer(address(1));
+        deployer = new AlgebraPoolDeployer(predictAddress);
         factory = new AlgebraFactory(address(deployer));
 
         factory.createPool(address(token0), address(token1));

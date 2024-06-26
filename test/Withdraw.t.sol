@@ -172,8 +172,8 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        assertEq(token0.balanceOf(msg.sender) + 4, amount0);
-        assertEq(token1.balanceOf(msg.sender) + 3, amount1);
+        assertEq(token0.balanceOf(msg.sender), amount0 - 12);
+        assertEq(token1.balanceOf(msg.sender), amount1 - 13);
 
         vm.prank(address(this));
         base.withdraw(
@@ -187,8 +187,8 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        assertEq(token0.balanceOf(users[0]) + 8, userShare0);
-        assertEq(token1.balanceOf(users[0]) + 6, userShare1);
+        assertEq(token0.balanceOf(users[0]), userShare0 - 3);
+        assertEq(token1.balanceOf(users[0]), userShare1 - 2);
     }
 
     function test_withdraw_shouldPayInETH() public {
@@ -405,13 +405,13 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        assertEq(token0.balanceOf(msg.sender), account.balance0 / 2 + 1);
+        assertEq(token0.balanceOf(msg.sender), account.balance0 / 2);
         assertEq(token1.balanceOf(msg.sender), account.balance1 / 2);
 
         (,,,,,,,, account) = base.strategies(strategyId);
 
         // same amount of shares should be left over in strategy
-        assertEq(account.balance0, token0.balanceOf(msg.sender) - 1);
+        assertEq(account.balance0, token0.balanceOf(msg.sender));
         assertEq(account.balance1, token1.balanceOf(msg.sender));
     }
 
@@ -531,13 +531,13 @@ contract WithdrawTest is Test, Fixtures {
         );
 
         assertEq(token0.balanceOf(msg.sender), (account.balance0 + fee0) / 2 - 2);
-        assertEq(token1.balanceOf(msg.sender), (account.balance1 + fee1) / 2 - 1);
+        assertEq(token1.balanceOf(msg.sender), (account.balance1 + fee1) / 2 - 2);
 
         (,,,,,,,, account) = base.strategies(strategyId);
 
         // same amount of shares should be left over in strategy
-        assertEq(account.balance0 + account.fee0, token0.balanceOf(msg.sender) + 5);
-        assertEq(account.balance1 + account.fee1, token1.balanceOf(msg.sender) + 2);
+        assertEq(account.balance0 + account.fee0, token0.balanceOf(msg.sender) + 4);
+        assertEq(account.balance1 + account.fee1, token1.balanceOf(msg.sender) + 4);
     }
 
     function test_withdraw_multipleUsersNoCompounding() public {
@@ -655,8 +655,8 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        assertEq(token0.balanceOf(msg.sender) + 11, amount0);
-        assertEq(token1.balanceOf(msg.sender) + 12, amount1);
+        assertEq(token0.balanceOf(msg.sender), amount0 - 6);
+        assertEq(token1.balanceOf(msg.sender), amount1 - 7);
 
         (, liquidityShare,,,,) = base.positions(3);
 
@@ -672,15 +672,15 @@ contract WithdrawTest is Test, Fixtures {
             })
         );
 
-        assertEq(token0.balanceOf(users[1]) - 4, userShare0);
-        assertEq(token1.balanceOf(users[1]) - 6, userShare1);
+        assertEq(token0.balanceOf(users[1]), userShare0 + 2);
+        assertEq(token1.balanceOf(users[1]), userShare1 + 2);
 
         (,,,,,,,, account) = base.strategies(getStrategyID(address(this), 2));
 
         (reserves0, reserves1) = getStrategyReserves(key, account.uniswapLiquidity);
 
         // contract should have same assets left for last user
-        assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]) + 1);
+        assertEq(account.fee0 + account.balance0 + reserves0, token0.balanceOf(users[1]));
         assertEq(account.fee1 + account.balance1 + reserves1, token1.balanceOf(users[1]));
     }
 

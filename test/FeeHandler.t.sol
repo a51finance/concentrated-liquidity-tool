@@ -42,7 +42,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolFeeOnManagementFee() public {
-        vm.expectRevert("ManagementFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.ManagementFeeLimitExceed.selector);
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -52,7 +52,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert("ManagementFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.ManagementFeeLimitExceed.selector);
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -64,7 +64,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolFeeOnPerformanceFee() public {
-        vm.expectRevert("PerformanceFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.PerformanceFeeLimitExceed.selector);
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -74,7 +74,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert("PerformanceFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.PerformanceFeeLimitExceed.selector);
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -86,7 +86,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolAutomationFee() public {
-        vm.expectRevert("LPAutomationFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.LPAutomationFeeLimitExceed.selector);
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.6 ether,
@@ -96,7 +96,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert("LPAutomationFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.LPAutomationFeeLimitExceed.selector);
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0.6 ether,
@@ -108,7 +108,7 @@ contract FeeHandlerTest is Test, Fixtures {
     }
 
     function test_feeHandler_revertsIfMaxProtocolStrategyCreationFee() public {
-        vm.expectRevert("StrategyFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.StrategyFeeLimitExceed.selector);
         feeHandler.setPrivateFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,
@@ -118,7 +118,7 @@ contract FeeHandlerTest is Test, Fixtures {
             })
         );
 
-        vm.expectRevert("StrategyFeeLimitExceed");
+        vm.expectRevert(IGovernanceFeeHandler.StrategyFeeLimitExceed.selector);
         feeHandler.setPublicFeeRegistry(
             IGovernanceFeeHandler.ProtocolFeeRegistry({
                 lpAutomationFee: 0,

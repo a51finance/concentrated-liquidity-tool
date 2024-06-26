@@ -274,7 +274,7 @@ contract DepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(3);
 
-        assertEq(account.balance0, 49_713_714_623_866);
+        assertEq(account.balance0, 248_492_992_566_320);
         assertEq(account.balance1, 0);
         assertEq(account.totalShares, (depositAmount * 2) + liquidityShareUser2 + 1);
     }
@@ -313,7 +313,7 @@ contract DepositTest is Test, Fixtures {
 
         (, uint256 liquidityShareUser2,,,,) = base.positions(2);
 
-        assertEq(liquidityShareUser2, 497_725_126_939_380_199);
+        assertEq(liquidityShareUser2, 497_625_099_092_065_243);
     }
 
     function test_deposit_outOfRangePoc() public {
