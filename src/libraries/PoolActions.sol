@@ -136,7 +136,7 @@ library PoolActions {
         returns (int256 amount0, int256 amount1)
     {
         if (isRebaseToken) {
-            pool.swapWithPaymentInAdvance(
+            (amount0, amount1) = pool.swapWithPaymentInAdvance(
                 address(this),
                 address(this),
                 zeroForOne,
