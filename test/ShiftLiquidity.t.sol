@@ -400,6 +400,45 @@ contract ShiftLiquidityTest is Test, Fixtures {
         assertEq(newKey.tickLower, newKey.tickUpper - 240);
     }
 
+    function test_shiftLiquidity_succeedActiveRebalanceWithRebaseToken() public {
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                limitSqrtPrice: 0
+            })
+        );
+
+        (uint128 liquidity,,) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, liquidity);
+
+        ICLTBase.StrategyKey memory newKey = ICLTBase.StrategyKey({ pool: pool, tickLower: 180, tickUpper: 420 });
+
+        vm.prank(msg.sender);
+        base.shiftLiquidity(
+            ICLTBase.ShiftLiquidityParams({
+                key: newKey,
+                strategyId: getStrategyID(address(this), 1),
+                shouldMint: true,
+                zeroForOne: false,
+                swapAmount: int256(reserves1 / 2),
+                moduleStatus: "",
+                sqrtPriceLimitX96: TickMath.MAX_SQRT_RATIO - 1,
+                isRebaseToken: true
+            })
+        );
+
+        (liquidity,,) = base.getStrategyReserves(getStrategyID(address(this), 1));
+        (reserves0, reserves1) = getStrategyReserves(newKey, liquidity);
+
+        assertGe(reserves0, 0);
+        assertGe(reserves1, 0);
+    }
+
     function test_shiftLiquidity_mintLiquidityAfterExit() public {
         router.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({

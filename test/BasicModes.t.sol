@@ -219,7 +219,10 @@ contract BasicModes is Test, RebaseFixtures {
             if (address(key.pool) == address(0)) {
                 _strategyIDs[0] = strategyIDs[i];
 
-                vm.expectRevert(bytes("InvalidStrategyId"));
+                bytes memory encodedError =
+                    abi.encodeWithSignature("InvalidStrategyId(bytes32)", keccak256(abi.encode(address(this), 2)));
+
+                vm.expectRevert(encodedError);
                 modes.ShiftBase(_strategyIDs);
             } else {
                 _strategyIDs[0] = strategyIDs[i];

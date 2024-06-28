@@ -113,7 +113,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.swapAmount = 0;
 
         _hevm.prank(users[0]);
-        _hevm.expectRevert("InvalidCaller");
+        _hevm.expectRevert(IRebaseStrategy.InvalidCaller.selector);
         rebaseModule.executeStrategy(executeParams);
         (key,,,,,,,,) = base.strategies(strategyID);
     }
@@ -143,7 +143,9 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.swapAmount = 0;
 
         _hevm.prank(users[0]);
-        vm.expectRevert("StrategyIdDonotExist");
+        bytes memory encodedError =
+            abi.encodeWithSignature("StrategyIdDonotExist(bytes32)", keccak256(abi.encode(users[1], 1)));
+        vm.expectRevert(encodedError);
         rebaseModule.executeStrategy(executeParams);
     }
 
@@ -2185,7 +2187,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
         executeParams.sqrtPriceLimitX96 =
             (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
 
-        vm.expectRevert("SwapsThresholdExceeded");
+        vm.expectRevert(IRebaseStrategy.SwapsThresholdExceeded.selector);
         rebaseModule.executeStrategy(executeParams);
 
         _hevm.warp(block.timestamp + 1 days + 3600);
