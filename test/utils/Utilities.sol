@@ -47,7 +47,7 @@ contract Utilities is DSTest {
     }
 
     /// Returns the address where a contract will be stored if deployed via `deploy`.
-    function computeAddress(address addr, uint256 nonce) public view returns (address) {
+    function computeAddress(address addr, uint256 nonce) public pure returns (address) {
         bytes memory data;
         bytes1 len = bytes1(0x94);
 
