@@ -33,11 +33,14 @@ import { TickMath } from "@cryptoalgebra/integral-core/contracts/libraries/TickM
 import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
+import { BasePluginV1Factory } from "@cryptoalgebra/plugin/contracts/BasePluginV1Factory.sol";
+
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
     AlgebraPoolDeployer deployer;
     IAlgebraPool pool;
     SwapRouter router;
+    BasePluginV1Factory pluginFactory;
 
     ICLTBase.StrategyKey strategyKey;
     RebaseModule rebaseModule;
@@ -86,7 +89,9 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         // intialize algebra contracts
         deployer = new AlgebraPoolDeployer(predictAddress);
         factory = new AlgebraFactory(address(deployer));
+        pluginFactory = new BasePluginV1Factory(address(factory));
 
+        factory.setDefaultPluginFactory(address(pluginFactory));
         factory.createPool(address(token0), address(token1));
         pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));

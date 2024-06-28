@@ -35,6 +35,8 @@ import { NonfungiblePositionManager } from "@cryptoalgebra/integral-periphery/co
 import { INonfungiblePositionManager } from
     "@cryptoalgebra/integral-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
+import { BasePluginV1Factory } from "@cryptoalgebra/plugin/contracts/BasePluginV1Factory.sol";
+
 import "forge-std/console.sol";
 
 contract Fixtures is Test {
@@ -43,6 +45,7 @@ contract Fixtures is Test {
     IAlgebraPool pool;
     SwapRouter router;
     INonfungiblePositionManager manager;
+    BasePluginV1Factory pluginFactory;
     WETH weth;
 
     Modes modes;
@@ -73,8 +76,11 @@ contract Fixtures is Test {
         // intialize algebra contracts
         deployer = new AlgebraPoolDeployer(predictAddress);
         factory = new AlgebraFactory(address(deployer));
+        pluginFactory = new BasePluginV1Factory(address(factory));
 
+        factory.setDefaultPluginFactory(address(pluginFactory));
         factory.createPool(address(token0), address(token1));
+
         pool = IAlgebraPool(factory.poolByPair(address(token0), address(token1)));
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
     }
