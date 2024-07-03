@@ -195,6 +195,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.prank(recepient);
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
         _hevm.prank(recepient);
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("ACTIVE_REBALANCE"));
+        _hevm.prank(recepient);
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
         _hevm.prank(recepient);
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"));
