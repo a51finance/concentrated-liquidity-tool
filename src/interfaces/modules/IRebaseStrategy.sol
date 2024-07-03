@@ -26,7 +26,14 @@ interface IRebaseStrategy {
     struct ExecutableStrategiesData {
         bytes32 strategyID;
         uint256 mode;
-        bytes32[2] actionNames;
+        bytes32[3] actionNames;
+    }
+
+    struct StrategyProcessingDetails {
+        bool hasRebaseInactivity;
+        uint256 rebaseCount;
+        uint256 manualSwapsCount;
+        uint256 lastUpdateTimeStamp;
     }
 
     function checkInputData(ICLTBase.StrategyPayload memory data) external returns (bool);

@@ -1,32 +1,47 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
+import { PositionKey } from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
+import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
+import { ActiveTicksCalculation } from "../../base/ActiveTicksCalculation.sol";
 
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
 import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
+
+import { PoolActions } from "../../libraries/PoolActions.sol";
 
 /// @title A51 Finance Autonomous Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice This contract is part of the A51 Finance platform, focusing on automated liquidity provision and rebalancing
 /// strategies. The RebaseModule contract is responsible for validating and verifying the strategies before executing
 /// them through CLTBase.
-contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
+contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice The address of base contract
     ICLTBase public immutable cltBase;
 
-    /// @notice The address of twap qupter
+    /// @notice The address of twap quoter
     ICLTTwapQuoter public twapQuoter;
+
+    /// @notice slippage percentage
+    uint160 slippage = 1e5;
 
     /// @notice Threshold for swaps in manual override
     uint256 public swapsThreshold = 5;
+
+    /// @notice Percentage for swaps in active rebalancing
+    uint8 public swapsPecentage = 50;
 
     // 0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b
     bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
     // 0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893
     bytes32 public constant REBASE_INACTIVITY = keccak256("REBASE_INACTIVITY");
+    // 0x71b5978b6e44da7015285ded9bf0268792b41f7b24b8326894bf7495311010ea
+    bytes32 public constant ACTIVE_REBALANCE = keccak256("ACTIVE_REBALANCE");
 
     /// @notice Constructs the RebaseModule with the provided parameters.
     /// @param _governance Address of the owner.
@@ -37,55 +52,99 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     }
 
     /// @notice Executes given strategies via bot.
-    /// @dev Can only be called by any one.
+    /// @dev Can be called by any one.
     /// @param strategyIDs Array of strategy IDs to be executed.
+
     function executeStrategies(bytes32[] calldata strategyIDs) external nonReentrancy {
         checkStrategiesArray(strategyIDs);
-
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
-
         uint256 queueLength = _queue.length;
         for (uint256 i = 0; i < queueLength; i++) {
-            uint256 rebaseCount;
-            uint256 manualSwapsCount;
-            uint256 lastUpdateTimeStamp;
-            bool hasRebaseInactivity = false;
+            processStrategy(_queue[i]);
+        }
+    }
 
-            ICLTBase.ShiftLiquidityParams memory params;
+    // Internal function to process a single strategy
+    function processStrategy(ExecutableStrategiesData memory data) internal {
+        (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) = cltBase.strategies(data.strategyID);
+        IRebaseStrategy.StrategyProcessingDetails memory details =
+            initializeStrategyDetails(actionStatus, data.actionNames);
 
-            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) =
-                cltBase.strategies(_queue[i].strategyID);
+        ICLTBase.ShiftLiquidityParams memory params;
+        params.strategyId = data.strategyID;
+        params.shouldMint = true;
 
-            if (_queue[i].actionNames[0] == REBASE_INACTIVITY || _queue[i].actionNames[1] == REBASE_INACTIVITY) {
-                hasRebaseInactivity = true;
-                if (actionStatus.length > 0) {
-                    (rebaseCount,, lastUpdateTimeStamp, manualSwapsCount) =
-                        abi.decode(actionStatus, (uint256, bool, uint256, uint256));
-                }
+        executeStrategyActions(data, key, params, details, actionStatus);
+    }
+
+    // Function to initialize details for processing a strategy
+    function initializeStrategyDetails(
+        bytes memory actionStatus,
+        bytes32[3] memory actionNames
+    )
+        internal
+        pure
+        returns (IRebaseStrategy.StrategyProcessingDetails memory details)
+    {
+        details.hasRebaseInactivity = checkRebaseInactivity(actionNames);
+        if (details.hasRebaseInactivity && actionStatus.length > 0) {
+            (details.rebaseCount,, details.lastUpdateTimeStamp, details.manualSwapsCount) =
+                abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+        }
+        return details;
+    }
+
+    // Helper function to check for REBASE_INACTIVITY in action names
+    function checkRebaseInactivity(bytes32[3] memory actionNames) internal pure returns (bool) {
+        for (uint256 i = 0; i < actionNames.length; i++) {
+            if (actionNames[i] == REBASE_INACTIVITY) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Function to execute actions for a strategy
+    function executeStrategyActions(
+        ExecutableStrategiesData memory data,
+        ICLTBase.StrategyKey memory key,
+        ICLTBase.ShiftLiquidityParams memory params,
+        IRebaseStrategy.StrategyProcessingDetails memory details,
+        bytes memory actionStatus
+    )
+        internal
+    {
+        ICLTBase.StrategyKey memory originalKey =
+            ICLTBase.StrategyKey({ pool: key.pool, tickLower: key.tickLower, tickUpper: key.tickUpper });
+
+        for (uint256 j = 0; j < data.actionNames.length; j++) {
+            if (data.actionNames[j] == bytes32(0) || data.actionNames[j] == REBASE_INACTIVITY) {
+                continue;
+            }
+            // Update key values
+            (key.tickLower, key.tickUpper) = getTicksForModeWithActions(key, data.mode, data.actionNames[j]);
+            if (data.actionNames[j] == ACTIVE_REBALANCE) {
+                (int256 amountToSwap, bool zeroForOne) = _getSwapAmount(data.strategyID, originalKey, key);
+
+                (uint160 sqrtPriceX96,,,,,,) = key.pool.slot0();
+                // @audit-info need to add update method here for slippage
+                uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (slippage / 2)) / 1e6;
+
+                params.swapAmount = amountToSwap;
+                params.zeroForOne = zeroForOne;
+
+                params.sqrtPriceLimitX96 =
+                    zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact;
+            } else if (data.actionNames[j] == PRICE_PREFERENCE) {
+                params.swapAmount = 0;
             }
 
-            params.strategyId = _queue[i].strategyID;
-            params.shouldMint = true;
-            params.swapAmount = 0;
+            params.key = key;
+            params.moduleStatus = details.hasRebaseInactivity
+                ? abi.encode(uint256(++details.rebaseCount), false, details.lastUpdateTimeStamp, details.manualSwapsCount)
+                : actionStatus;
 
-            uint256 queueActionNames = _queue[i].actionNames.length;
-            for (uint256 j = 0; j < queueActionNames; j++) {
-                if (_queue[i].actionNames[j] == bytes32(0) || _queue[i].actionNames[j] == REBASE_INACTIVITY) {
-                    continue;
-                }
-
-                (int24 tickLower, int24 tickUpper) = getTicksForMode(key, _queue[i].mode);
-
-                key.tickLower = tickLower;
-                key.tickUpper = tickUpper;
-
-                params.key = key;
-                params.moduleStatus = hasRebaseInactivity
-                    ? abi.encode(uint256(++rebaseCount), false, lastUpdateTimeStamp, manualSwapsCount)
-                    : actionStatus;
-
-                cltBase.shiftLiquidity(params);
-            }
+            cltBase.shiftLiquidity(params);
         }
     }
 
@@ -144,6 +203,62 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         cltBase.shiftLiquidity(params);
     }
 
+    function _getSwapAmount(
+        bytes32 strategyId,
+        ICLTBase.StrategyKey memory originalKey,
+        ICLTBase.StrategyKey memory newKey
+    )
+        internal
+        returns (int256 amountSpecified, bool zeroForOne)
+    {
+        /**
+         * Need the assets that needs to be swapped
+         * Divide that asset by half
+         *      Condition-1: If all the assets are converted into single
+         *      Condition-2: If any of the two assets converted partialy into other
+         */
+
+        // condition-1: getting the assets for completely out of range liquidity
+        (,,,,,,,, ICLTBase.Account memory account) = cltBase.strategies(strategyId);
+        (uint256 amount0, uint256 amount1) = PoolActions.getAmountsForLiquidity(originalKey, account.uniswapLiquidity);
+        (, uint256 fee0, uint256 fee1) = cltBase.getStrategyReserves(strategyId);
+        // @audit-info need to remove tax from this
+        amount0 += account.balance0 + fee0;
+        amount1 += account.balance1 + fee1;
+
+        if ((account.uniswapLiquidity > 0) && (amount0 == 0 || amount1 == 0)) {
+            zeroForOne = amount0 > 0 ? true : false;
+
+            amountSpecified = zeroForOne
+                ? int256(FullMath.mulDiv(amount0, swapsPecentage, 100))
+                : int256(FullMath.mulDiv(amount1, swapsPecentage, 100));
+            return (amountSpecified, zeroForOne);
+        }
+        // condition-2: getting the assets for partial out of range liquidity
+        else {
+            uint128 newliquidity = PoolActions.getLiquidityForAmounts(newKey, amount0, amount1);
+            (uint256 newAmount0, uint256 newAmount1) = PoolActions.getAmountsForLiquidity(newKey, newliquidity);
+            zeroForOne = getZeroForOne(amount0, amount1, newAmount0, newAmount1);
+
+            amountSpecified = zeroForOne
+                ? int256(FullMath.mulDiv(amount0 - newAmount0, swapsPecentage, 100))
+                : int256(FullMath.mulDiv(amount1 - newAmount1, swapsPecentage, 100));
+        }
+    }
+
+    function getZeroForOne(
+        uint256 amount0Desired,
+        uint256 amount1Desired,
+        uint256 amount0,
+        uint256 amount1
+    )
+        internal
+        returns (bool zeroGreaterOne)
+    {
+        zeroGreaterOne =
+            (amount0Desired - amount0) * amount1Desired > (amount1Desired - amount1) * amount0Desired ? true : false;
+    }
+
     /// @notice Checks and updates the swap count within a single day threshold.
     /// @dev This function is used to limit the number of manual swaps within a 24-hour period.
     /// @param lastUpdateTimeStamp The last time the swap count was updated.
@@ -164,6 +279,25 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
             return (lastUpdateTimeStamp, manualSwapsCount += 1);
         } else {
             return (block.timestamp, manualSwapsCount = 1);
+        }
+    }
+
+    function getTicksForModeWithActions(
+        ICLTBase.StrategyKey memory key,
+        uint256 mode,
+        bytes32 actionName
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        if (actionName == PRICE_PREFERENCE) {
+            (tickLower, tickUpper) = getTicksForMode(key, mode);
+        }
+        if (actionName == ACTIVE_REBALANCE) {
+            // The strategy is already verified in _checkActiveRebalancingStrategies()
+            // so we dont need to check further we just need to create new ticks
+            (tickLower, tickUpper) = getTicksForModeActive(key, mode);
         }
     }
 
@@ -189,6 +323,23 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         } else if (mode == 3) {
             (tickLower, tickUpper) = shiftBothSide(key, currentTick);
         }
+    }
+
+    /// @notice Computes ticks for active rebalancing in a given mode.
+    /// @dev Logic to adjust the ticks based on mode.
+    /// @param key Strategy key.
+    /// @param mode Mode to calculate ticks.
+    /// @return tickLower and tickUpper values.
+    function getTicksForModeActive(
+        ICLTBase.StrategyKey memory key,
+        uint256 mode
+    )
+        internal
+        view
+        returns (int24 tickLower, int24 tickUpper)
+    {
+        int24 currentTick = twapQuoter.getTwap(key.pool);
+        (tickLower, tickUpper) = shiftActive(key, currentTick);
     }
 
     /// @notice Checks and processes strategies based on their validity.
@@ -228,22 +379,24 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
                 strategyActionsData.rebaseStrategy[i].actionName == REBASE_INACTIVITY
                     && !_checkRebaseInactivityStrategies(strategyActionsData.rebaseStrategy[i], actionStatus)
             ) {
-                return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0)]);
+                return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
             }
         }
 
         ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
-
+        bool hasActiveRebalancing = false;
         for (uint256 i = 0; i < actionDataLength; i++) {
             ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
-            if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode)) {
+            if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode, hasActiveRebalancing)) {
+                // @audit-info need to rethinkg this logic
+                rebaseAction.actionName == ACTIVE_REBALANCE ? hasActiveRebalancing = true : hasActiveRebalancing = false;
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
             }
         }
 
         if (count == 0) {
-            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0)]);
+            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
         }
 
         executableStrategiesData.mode = strategyActionsData.mode;
@@ -259,17 +412,19 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     function shouldAddToQueue(
         ICLTBase.StrategyPayload memory rebaseAction,
         ICLTBase.StrategyKey memory key,
-        uint256 mode
+        uint256 mode,
+        bool hasActiveRebalancing
     )
         internal
         view
         returns (bool)
     {
-        if (rebaseAction.actionName == PRICE_PREFERENCE) {
-            return _checkRebasePreferenceStrategies(key, rebaseAction.data, mode);
-        } else {
-            return true;
+        if (rebaseAction.actionName == ACTIVE_REBALANCE) {
+            return _checkActiveRebalancingStrategies(key, rebaseAction.data, mode);
+        } else if (rebaseAction.actionName == PRICE_PREFERENCE) {
+            return !hasActiveRebalancing && _checkRebasePreferenceStrategies(key, rebaseAction.data, mode);
         }
+        return true;
     }
 
     /// @notice Checks if rebase preference strategies are satisfied for the given key and action data.
@@ -285,15 +440,44 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         view
         returns (bool)
     {
-        (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData, (int24, int24));
+        (int24 lowerThresholDifference, int24 upperThresholDifference) = abi.decode(actionsData, (int24, int24));
 
-        (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
-            _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
+        (int24 lowerThresholdTick, int24 upperThresholdTick) =
+            _getPreferenceTicks(key, PRICE_PREFERENCE, lowerThresholDifference, upperThresholDifference);
 
         int24 tick = twapQuoter.getTwap(key.pool);
 
         if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower || mode == 3) {
-            if (tick < lowerPreferenceTick || tick > upperPreferenceTick) {
+            if (tick < lowerThresholdTick || tick > upperThresholdTick) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// @notice Checks if strategies are satisfied for active rebalancing given key and action data.
+    /// @param key The strategy key to be checked.
+    /// @param actionsData The actions data that includes the rebase strategy data.
+    /// @return true if the conditions are met, false otherwise.
+    function _checkActiveRebalancingStrategies(
+        ICLTBase.StrategyKey memory key,
+        bytes memory actionsData,
+        uint256 mode
+    )
+        internal
+        view
+        returns (bool)
+    {
+        (int24 lowerThresholDifference, int24 upperThresholDifference) = abi.decode(actionsData, (int24, int24));
+
+        (int24 lowerThresholdTick, int24 upperThresholdTick) =
+            _getPreferenceTicks(key, ACTIVE_REBALANCE, lowerThresholDifference, upperThresholDifference);
+
+        int24 tick = twapQuoter.getTwap(key.pool);
+
+        if (mode == 2 && tick > upperThresholdTick || mode == 1 && tick < lowerThresholdTick || mode == 3) {
+            if (tick > upperThresholdTick || tick < lowerThresholdTick) {
                 return true;
             }
         }
@@ -325,12 +509,29 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
         return true;
     }
 
+    function _getPositionLiquidity(ICLTBase.StrategyKey memory key)
+        internal
+        view
+        returns (
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        )
+    {
+        bytes32 positionKey = PositionKey.compute(address(cltBase), key.tickLower, key.tickUpper);
+        (liquidity, feeGrowthInside0LastX128, feeGrowthInside1LastX128, tokensOwed0, tokensOwed1) =
+            key.pool.positions(positionKey);
+    }
+
     /// @notice Validates the given strategy payload data for rebase strategies.
     /// @param actionsData The strategy payload to validate, containing action names and associated data.
     /// @return True if the strategy payload data is valid, otherwise it reverts.
     function checkInputData(ICLTBase.StrategyPayload memory actionsData) external pure override returns (bool) {
         bool hasDiffPreference = actionsData.actionName == PRICE_PREFERENCE;
         bool hasInActivity = actionsData.actionName == REBASE_INACTIVITY;
+        bool hasActiveRebalancing = actionsData.actionName == ACTIVE_REBALANCE;
 
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
@@ -349,6 +550,15 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
 
             return true;
         }
+
+        if (hasActiveRebalancing && isNonZero(actionsData.data)) {
+            (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
+            if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
+                revert InvalidPricePreferenceDifference();
+            }
+            return true;
+        }
+
         revert RebaseStrategyDataCannotBeZero();
     }
 
@@ -397,32 +607,43 @@ contract RebaseModule is ModeTicksCalculation, AccessControl, IRebaseStrategy {
     /// @dev  This function adjusts the given tick bounds (both lower and upper) based on a preference difference. The
     /// preference differences indicate by how much the ticks should be moved.
     /// @param _key The strategy key.
-    /// @param lowerPreferenceDiff The lower preference difference.
-    /// @param upperPreferenceDiff The upper preference difference.
-    /// @return lowerPreferenceTick The calculated lower preference tick.
-    /// @return upperPreferenceTick The calculated upper preference tick.
+    /// @param lowerThresholdDiff The lower preference difference.
+    /// @param upperThresholdDiff The upper preference difference.
+    /// @return lowerThresholdTick The calculated lower preference tick.
+    /// @return upperThresholdTick The calculated upper preference tick.
     function _getPreferenceTicks(
         ICLTBase.StrategyKey memory _key,
-        int24 lowerPreferenceDiff,
-        int24 upperPreferenceDiff
+        bytes32 actionName,
+        int24 lowerThresholdDiff,
+        int24 upperThresholdDiff
     )
         internal
-        pure
-        returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
+        view
+        returns (int24 lowerThresholdTick, int24 upperThresholdTick)
     {
-        lowerPreferenceTick = _key.tickLower - lowerPreferenceDiff;
-        upperPreferenceTick = _key.tickUpper + upperPreferenceDiff;
+        if (actionName == PRICE_PREFERENCE) {
+            lowerThresholdTick = _key.tickLower - lowerThresholdDiff;
+            upperThresholdTick = _key.tickUpper + upperThresholdDiff;
+        } else {
+            lowerThresholdTick = _key.tickLower + lowerThresholdDiff;
+            upperThresholdTick = _key.tickUpper - upperThresholdDiff;
+        }
     }
 
-    function getPreferenceTicks(bytes32 strategyID)
+    function getPreferenceTicks(
+        bytes32 strategyID,
+        bytes32 actionName,
+        bytes memory actionsData
+    )
         external
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,,) = cltBase.strategies(strategyID);
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = cltBase.strategies(strategyID);
 
         (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData, (int24, int24));
 
-        (lowerPreferenceTick, upperPreferenceTick) = _getPreferenceTicks(key, lowerPreferenceDiff, upperPreferenceDiff);
+        (lowerPreferenceTick, upperPreferenceTick) =
+            _getPreferenceTicks(key, actionName, lowerPreferenceDiff, upperPreferenceDiff);
     }
 
     /// @notice Updates the address twapQuoter.
