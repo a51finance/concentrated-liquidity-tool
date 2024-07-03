@@ -323,4 +323,11 @@ interface ICLTBase {
     /// @dev Only called by the whitlisted bot or owner of strategy
     /// @param params The params necessary to update a position, encoded as `ShiftLiquidityParams` in calldata
     function shiftLiquidity(ShiftLiquidityParams calldata params) external;
+
+    /// @notice Returns the liquidity and fee earned by A51 strategy.
+    /// @param strategyId Hash of strategy ID
+    /// @return liquidity The currently liquidity available to the pool by strategy
+    /// @return fee0 The computed amount of token0 owed to the strategy as of the global update
+    /// @return fee1 The computed amount of token1 owed to the strategy as of the global update
+    function getStrategyReserves(bytes32 strategyId) external returns (uint128 liquidity, uint256 fee0, uint256 fee1);
 }
