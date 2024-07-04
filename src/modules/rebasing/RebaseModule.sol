@@ -401,11 +401,18 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         ExecutableStrategiesData memory executableStrategiesData;
         uint256 count = 0;
         bool hasActiveRebalancing = false;
+        bool hasPricePreference = false;
         for (uint256 i = 0; i < actionDataLength; i++) {
             ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
-            if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode, hasActiveRebalancing)) {
-                // @audit-info need to rethinkg this logic
-                rebaseAction.actionName == ACTIVE_REBALANCE ? hasActiveRebalancing = true : hasActiveRebalancing = false;
+            if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode, hasActiveRebalancing, hasPricePreference))
+            {
+                // @audit-info need to test this logic thoroughly
+                if (rebaseAction.actionName == ACTIVE_REBALANCE) {
+                    hasActiveRebalancing = true;
+                }
+                if (rebaseAction.actionName == PRICE_PREFERENCE) {
+                    hasPricePreference = true;
+                }
                 executableStrategiesData.actionNames[count++] = rebaseAction.actionName;
             }
         }
@@ -428,14 +435,15 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         ICLTBase.StrategyPayload memory rebaseAction,
         ICLTBase.StrategyKey memory key,
         uint256 mode,
-        bool hasActiveRebalancing
+        bool hasActiveRebalancing,
+        bool hasPricePreference
     )
         internal
         view
         returns (bool)
     {
         if (rebaseAction.actionName == ACTIVE_REBALANCE) {
-            return _checkActiveRebalancingStrategies(key, rebaseAction.data, mode);
+            return !hasPricePreference && _checkActiveRebalancingStrategies(key, rebaseAction.data, mode);
         } else if (rebaseAction.actionName == PRICE_PREFERENCE) {
             return !hasActiveRebalancing && _checkRebasePreferenceStrategies(key, rebaseAction.data, mode);
         }
