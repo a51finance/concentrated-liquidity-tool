@@ -218,6 +218,10 @@ interface ICLTBase {
             uint128 tokensOwed1
         );
 
+    /// @notice Returns the handler contract address associated with base contract.
+    /// @return feeHandler The governance fee handler contract address.
+    function feeHandler() external returns (address feeHandler);
+
     /// @param amount0Desired The desired amount of token0 to be spent,
     /// @param amount1Desired The desired amount of token1 to be spent,
     /// @param amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
