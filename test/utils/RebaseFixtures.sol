@@ -63,7 +63,14 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         }
     }
 
-    function initPool(address recepient) internal returns (IUniswapV3Factory factory) {
+    function initPool(
+        address recepient,
+        uint256 initialAmount0,
+        uint256 initialAmount1
+    )
+        internal
+        returns (IUniswapV3Factory factory)
+    {
         INonfungiblePositionManager.MintParams memory mintParams;
         ERC20Mock[] memory tokens = deployTokens(recepient, 2, 1e50);
 
@@ -89,8 +96,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         mintParams.tickUpper = (600_000 / pool.tickSpacing()) * pool.tickSpacing();
         mintParams.fee = 500;
         mintParams.recipient = recepient;
-        mintParams.amount0Desired = 1000e18;
-        mintParams.amount1Desired = 1000e18;
+        mintParams.amount0Desired = initialAmount0;
+        mintParams.amount1Desired = initialAmount1;
         mintParams.amount0Min = 0;
         mintParams.amount1Min = 0;
         mintParams.deadline = 2_000_000_000;
@@ -154,10 +161,10 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.roll(block.number + 30);
     }
 
-    function initBase(address recepient) internal {
+    function initBase(address recepient, uint256 initialAmount0, uint256 initialAmount1) internal {
         IUniswapV3Factory factory;
 
-        (factory) = initPool(recepient);
+        (factory) = initPool(recepient, initialAmount0, initialAmount1);
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
@@ -273,6 +280,42 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         depositParams.strategyId = strategyID;
         depositParams.amount0Desired = 100e18;
         depositParams.amount1Desired = 100e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = recepient;
+
+        _hevm.prank(recepient);
+        base.deposit(depositParams);
+    }
+
+    function createStrategyAndDepositWithAmount(
+        ICLTBase.StrategyPayload[] memory rebaseActions,
+        int24 difference,
+        address recepient,
+        uint256 positionId,
+        uint256 mode,
+        bool isCompounded,
+        uint256 amount0,
+        uint256 amount1
+    )
+        public
+        returns (bytes32 strategyID)
+    {
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+
+        positionActions.mode = mode;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(difference, recepient, isCompounded, positionActions);
+
+        strategyID = getStrategyID(recepient, positionId);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = amount0;
+        depositParams.amount1Desired = amount1;
         depositParams.amount0Min = 0;
         depositParams.amount1Min = 0;
         depositParams.recipient = recepient;
