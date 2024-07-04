@@ -127,7 +127,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
                 (int256 amountToSwap, bool zeroForOne) = _getSwapAmount(data.strategyID, originalKey, key);
 
                 (uint160 sqrtPriceX96,,,,,,) = key.pool.slot0();
-                // @audit-info need to add update method here for slippage
+                // @audit-info need to rethink this logic
                 uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (slippage / 2)) / 1e6;
 
                 params.swapAmount = amountToSwap;
@@ -211,38 +211,53 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         internal
         returns (int256 amountSpecified, bool zeroForOne)
     {
-        /**
-         * Need the assets that needs to be swapped
-         * Divide that asset by half
-         *      Condition-1: If all the assets are converted into single
-         *      Condition-2: If any of the two assets converted partialy into other
-         */
+        IRebaseStrategy.SwapAmountsParams memory swapParams;
 
         // condition-1: getting the assets for completely out of range liquidity
-        (,,,,,,,, ICLTBase.Account memory account) = cltBase.strategies(strategyId);
-        (uint256 amount0, uint256 amount1) = PoolActions.getAmountsForLiquidity(originalKey, account.uniswapLiquidity);
-        (, uint256 fee0, uint256 fee1) = cltBase.getStrategyReserves(strategyId);
-        // @audit-info need to remove tax from this
-        amount0 += account.balance0 + fee0;
-        amount1 += account.balance1 + fee1;
+        (,,,, bool isCompound, bool isPrivate,,, ICLTBase.Account memory account) = cltBase.strategies(strategyId);
 
-        if ((account.uniswapLiquidity > 0) && (amount0 == 0 || amount1 == 0)) {
-            zeroForOne = amount0 > 0 ? true : false;
+        (swapParams.amount0Desired, swapParams.amount1Desired) =
+            PoolActions.getAmountsForLiquidity(originalKey, account.uniswapLiquidity);
+
+        (, swapParams.strategyFee0, swapParams.strategyFee1) = cltBase.getStrategyReserves(strategyId);
+
+        // remove tax from the balance
+        (swapParams.protocolFee0, swapParams.protocolFee1) = ActiveTicksCalculation.getProtocolFeeses(
+            originalKey, isPrivate, swapParams.amount0Desired, swapParams.amount1Desired, owner, cltBase.feeHandler()
+        );
+
+        swapParams.amount0Desired += account.balance0 - swapParams.protocolFee0;
+        swapParams.amount1Desired += account.balance1 - swapParams.protocolFee1;
+
+        if (isCompound) {
+            swapParams.amount0Desired += swapParams.strategyFee0;
+            swapParams.amount1Desired += swapParams.strategyFee1;
+        }
+
+        // @audit-info need to check why the amount left
+        // test this by getting the amounts and then inplace of rebase deposit liquidity in same range and amounts
+        if ((account.uniswapLiquidity > 0) && (swapParams.amount0Desired == 0 || swapParams.amount1Desired == 0)) {
+            zeroForOne = swapParams.amount0Desired > 0 ? true : false;
 
             amountSpecified = zeroForOne
-                ? int256(FullMath.mulDiv(amount0, swapsPecentage, 100))
-                : int256(FullMath.mulDiv(amount1, swapsPecentage, 100));
+                ? int256(FullMath.mulDiv(swapParams.amount0Desired, swapsPecentage, 100))
+                : int256(FullMath.mulDiv(swapParams.amount1Desired, swapsPecentage, 100));
             return (amountSpecified, zeroForOne);
         }
         // condition-2: getting the assets for partial out of range liquidity
         else {
-            uint128 newliquidity = PoolActions.getLiquidityForAmounts(newKey, amount0, amount1);
-            (uint256 newAmount0, uint256 newAmount1) = PoolActions.getAmountsForLiquidity(newKey, newliquidity);
-            zeroForOne = getZeroForOne(amount0, amount1, newAmount0, newAmount1);
+            uint128 newliquidity =
+                PoolActions.getLiquidityForAmounts(newKey, swapParams.amount0Desired, swapParams.amount1Desired);
+
+            (swapParams.newAmount0, swapParams.newAmount1) = PoolActions.getAmountsForLiquidity(newKey, newliquidity);
+
+            zeroForOne = getZeroForOne(
+                swapParams.amount0Desired, swapParams.amount1Desired, swapParams.newAmount0, swapParams.newAmount1
+            );
 
             amountSpecified = zeroForOne
-                ? int256(FullMath.mulDiv(amount0 - newAmount0, swapsPecentage, 100))
-                : int256(FullMath.mulDiv(amount1 - newAmount1, swapsPecentage, 100));
+                ? int256(FullMath.mulDiv(swapParams.amount0Desired - swapParams.newAmount0, swapsPecentage, 100))
+                : int256(FullMath.mulDiv(swapParams.amount1Desired - swapParams.newAmount1, swapsPecentage, 100));
         }
     }
 
@@ -660,5 +675,15 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             revert InvalidThreshold();
         }
         swapsThreshold = _newThreshold;
+    }
+
+    /// @notice Updates the slippage percentage.
+    /// @dev Reverts if the new slippage is greater than 50.
+    /// @param _newSlippage The new liquidity threshold value.
+    function updateSlippagePercentage(uint160 _newSlippage) external onlyOperator {
+        if (_newSlippage >= 1e8) {
+            revert SlippageThresholdExceeded();
+        }
+        slippage = _newSlippage;
     }
 }

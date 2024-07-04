@@ -19,6 +19,7 @@ interface IRebaseStrategy {
     error OnlyRebaseInactivityCannotBeSelected();
     error RebaseInactivityCannotBeZero();
     error SwapsThresholdExceeded();
+    error SlippageThresholdExceeded();
 
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
@@ -58,6 +59,17 @@ interface IRebaseStrategy {
         bool zeroForOne;
         int256 swapAmount;
         uint160 sqrtPriceLimitX96;
+    }
+
+    struct SwapAmountsParams {
+        uint256 amount0Desired;
+        uint256 amount1Desired;
+        uint256 newAmount0;
+        uint256 newAmount1;
+        uint256 strategyFee0;
+        uint256 strategyFee1;
+        uint256 protocolFee0;
+        uint256 protocolFee1;
     }
 
     event Executed(ExecutableStrategiesData[] strategyIds);
