@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
+import { Constants } from "../libraries/Constants.sol";
 import { ICLTBase } from "../interfaces/ICLTBase.sol";
+import { IGovernanceFeeHandler } from "../interfaces/IGovernanceFeeHandler.sol";
 
 /// @title  ModeTicksCalculation
 /// @notice Provides functions for computing ticks for basic modes of strategy
@@ -50,5 +52,35 @@ abstract contract ActiveTicksCalculation {
         returns (int24 width)
     {
         width = (currentTick - tickLower) + (tickUpper - currentTick);
+    }
+
+    /// @param key A51 strategy key details
+    /// @param isPrivate Bool weather strategy is open for all users or not
+    /// @param amount0 The amount of token0 from which the strategist fee will deduct
+    /// @param amount1 The amount of token1 from which the strategist fee will deduct
+    /// @param governance Address of protocol owner
+    /// @param feeHandler Address of governance fee handler contract.
+    function getProtocolFeeses(
+        ICLTBase.StrategyKey memory key,
+        bool isPrivate,
+        uint256 amount0,
+        uint256 amount1,
+        address governance,
+        address feeHandler
+    )
+        internal
+        returns (uint256 fee0, uint256 fee1)
+    {
+        (uint256 percentage,,,) = IGovernanceFeeHandler(feeHandler).getGovernanceFee(isPrivate);
+
+        if (percentage > 0) {
+            if (amount0 > 0) {
+                fee0 = (amount0 * percentage) / Constants.WAD;
+            }
+
+            if (amount1 > 0) {
+                fee1 = (amount1 * percentage) / Constants.WAD;
+            }
+        }
     }
 }
