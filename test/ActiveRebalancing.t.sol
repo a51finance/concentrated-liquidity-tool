@@ -17,6 +17,20 @@ import { Vm } from "forge-std/Vm.sol";
 import { console } from "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 
+/**
+ * FUNCTIONS TO TEST
+ *  getPreferenceTicks()
+ *  checkInputData()
+ *  executeStrategy()
+ *     _getSwapAmount()
+ *      getZeroForOne()
+ *      getTicksForModeWithActions()
+ *      getTicksForModeActive()
+ *      getStrategyData()
+ *      shouldAddToQueue()
+ *      _checkActiveRebalancingStrategies()
+ *  updateSlippagePercentage()
+ */
 contract ActiveRebalancingTest is Test, RebaseFixtures {
     address payable[] users;
     address owner;
@@ -229,4 +243,10 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         console.log("Reserves0", reserve0 / 1e18);
         console.log("Reserves1", reserve1 / 1e18);
     }
+
+    function test_ActiveRebalance_create_normal_strategy() public { }
+
+    function test_fail_ActiveRebalance_create_strategy_with_price_preference() public { }
+
+    function test_ActiveRebalance_cannot_create_stratgy_with_invalid_input_data() public { }
 }
