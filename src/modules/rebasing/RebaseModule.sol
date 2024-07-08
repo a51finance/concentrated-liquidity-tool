@@ -234,8 +234,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             swapParams.amount1Desired += swapParams.strategyFee1;
         }
 
-        // @audit-info need to check why the amount left
-        // test this by getting the amounts and then inplace of rebase deposit liquidity in same range and amounts
         if ((account.uniswapLiquidity > 0) && (swapParams.amount0Desired == 0 || swapParams.amount1Desired == 0)) {
             zeroForOne = swapParams.amount0Desired > 0 ? true : false;
 
