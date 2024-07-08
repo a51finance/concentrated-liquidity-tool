@@ -33,15 +33,20 @@ contract DeployALP is Script {
     address baseSwapFactory = 0x38015D05f4fEC8AFe15D7cc0386a126574e8077B;
     address baseWeth9 = 0x4200000000000000000000000000000000000006;
 
-    IUniswapV3Factory _factoryInterface = IUniswapV3Factory(baseSwapFactory);
+    // Holesky testnet
+    address _ownerSepolia = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
+    address _weth9Sepolia = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14;
+    address _sepoliaFactory = 0x0227628f3F023bb0B980b67D528571c95c6DaC1c;
+
+    IUniswapV3Factory _factoryInterface = IUniswapV3Factory(_sepoliaFactory);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
         vm.startBroadcast(deployerPrivateKey);
 
-        new CLTHelper();
-        CLTModules cltModules = new CLTModules(_owner);
-        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
+        // new CLTHelper();
+        CLTModules cltModules = new CLTModules(_ownerSepolia);
+        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_ownerSepolia);
 
         IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
             lpAutomationFee: 0,
@@ -50,20 +55,20 @@ contract DeployALP is Script {
             protcolFeeOnPerformance: 0
         });
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
+        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_ownerSepolia, feeParams, feeParams);
 
         CLTBase baseContract = new CLTBase(
             "A51 Liquidity Positions NFT",
             "ALPhy",
-            _owner,
-            baseWeth9,
+            _ownerSepolia,
+            _weth9Sepolia,
             address(feeHandler),
             address(cltModules),
             _factoryInterface
         );
 
-        new Modes(address(baseContract), address(twapQuoter), _owner);
-        new RebaseModule(_owner, address(baseContract), address(twapQuoter));
+        new Modes(address(baseContract), address(twapQuoter), _ownerSepolia);
+        new RebaseModule(_ownerSepolia, address(baseContract), address(twapQuoter));
 
         vm.stopBroadcast();
     }
