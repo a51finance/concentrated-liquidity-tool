@@ -193,8 +193,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         assertEq(address(key.pool), address(key.pool));
         _hevm.warp(block.timestamp + 3600);
 
-        (uint128 liquidity,,,,) = getPositionLiquidity(key);
-
         console.log("==========BEFORE SWAP==============");
 
         console.logInt(key.tickLower);
@@ -391,8 +389,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -447,8 +444,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
@@ -495,8 +491,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
@@ -552,8 +547,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -601,8 +595,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 3, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -657,8 +650,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 3, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
@@ -715,8 +707,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -760,8 +751,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);

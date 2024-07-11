@@ -54,21 +54,18 @@ abstract contract ActiveTicksCalculation {
         width = (currentTick - tickLower) + (tickUpper - currentTick);
     }
 
-    /// @param key A51 strategy key details
     /// @param isPrivate Bool weather strategy is open for all users or not
     /// @param amount0 The amount of token0 from which the strategist fee will deduct
     /// @param amount1 The amount of token1 from which the strategist fee will deduct
-    /// @param governance Address of protocol owner
     /// @param feeHandler Address of governance fee handler contract.
     function getProtocolFeeses(
-        ICLTBase.StrategyKey memory key,
         bool isPrivate,
         uint256 amount0,
         uint256 amount1,
-        address governance,
         address feeHandler
     )
         internal
+        view
         returns (uint256 fee0, uint256 fee1)
     {
         (uint256 percentage,,,) = IGovernanceFeeHandler(feeHandler).getGovernanceFee(isPrivate);

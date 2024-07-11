@@ -223,7 +223,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
         // remove tax from the balance
         (swapParams.protocolFee0, swapParams.protocolFee1) = ActiveTicksCalculation.getProtocolFeeses(
-            originalKey, isPrivate, swapParams.amount0Desired, swapParams.amount1Desired, owner, cltBase.feeHandler()
+            isPrivate, swapParams.amount0Desired, swapParams.amount1Desired, cltBase.feeHandler()
         );
 
         swapParams.amount0Desired += account.balance0 - swapParams.protocolFee0;
