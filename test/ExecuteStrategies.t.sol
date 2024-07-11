@@ -59,7 +59,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount1 < 8_388_608 && amount1 > 0);
         strategyDetail.data = abi.encode(uint256(0), uint256(30));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        bytes4 selector = bytes4(keccak256("InvalidRebalanceThresholdDifference()"));
         _hevm.expectRevert(selector);
         rebaseModule.checkInputData(strategyDetail);
     }
@@ -70,7 +70,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount0 < 8_388_608 && amount0 > 0);
         strategyDetail.data = abi.encode(uint256(amount0), uint256(0));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        bytes4 selector = bytes4(keccak256("InvalidRebalanceThresholdDifference()"));
         _hevm.expectRevert(selector);
         rebaseModule.checkInputData(strategyDetail);
     }

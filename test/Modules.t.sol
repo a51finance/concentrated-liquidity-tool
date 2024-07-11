@@ -139,7 +139,7 @@ contract ModulesTest is Test, Fixtures {
             liquidityDistribution: new ICLTBase.StrategyPayload[](0)
         });
 
-        vm.expectRevert(IRebaseStrategy.InvalidPricePreferenceDifference.selector);
+        vm.expectRevert(IRebaseStrategy.InvalidRebalanceThresholdDifference.selector);
         cltModules.validateModes(actions, 0, 0);
     }
 

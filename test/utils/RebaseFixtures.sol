@@ -29,6 +29,7 @@ import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/Liqu
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { console } from "forge-std/console.sol";
 
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
@@ -46,6 +47,14 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     ERC20Mock token0;
     ERC20Mock token1;
     WETH weth;
+
+    struct TickCalculatingVars {
+        int24 ntl;
+        int24 ntu;
+        int24 ntlp;
+        int24 ntup;
+        int24 td;
+    }
 
     function deployTokens(
         address recepient,
@@ -390,5 +399,32 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         token0.approve(address(base), type(uint256).max);
         _hevm.prank(user);
         token1.approve(address(base), type(uint256).max);
+    }
+
+    function getAllTicks(
+        bytes32 strategyID,
+        bytes32 actionName,
+        bytes memory actionsData,
+        bool shouldLog
+    )
+        public
+        returns (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t)
+    {
+        (ICLTBase.StrategyKey memory key,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        (, t,,,,,) = pool.slot0();
+
+        tl = key.tickLower;
+        tu = key.tickUpper;
+
+        (tlp, tup) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
+
+        if (shouldLog) {
+            console.logInt(tl);
+            console.logInt(tlp);
+            console.logInt(t);
+            console.logInt(tup);
+            console.logInt(tu);
+        }
     }
 }
