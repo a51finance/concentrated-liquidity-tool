@@ -310,7 +310,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         if (actionName == ACTIVE_REBALANCE) {
             // The strategy is already verified in _checkActiveRebalancingStrategies()
             // so we dont need to check further we just need to create new ticks
-            (tickLower, tickUpper) = getTicksForModeActive(key, mode);
+            (tickLower, tickUpper) = getTicksForModeActive(key);
         }
     }
 
@@ -341,12 +341,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     /// @notice Computes ticks for active rebalancing in a given mode.
     /// @dev Logic to adjust the ticks based on mode.
     /// @param key Strategy key.
-    /// @param mode Mode to calculate ticks.
     /// @return tickLower and tickUpper values.
-    function getTicksForModeActive(
-        ICLTBase.StrategyKey memory key,
-        uint256 mode
-    )
+    function getTicksForModeActive(ICLTBase.StrategyKey memory key)
         internal
         view
         returns (int24 tickLower, int24 tickUpper)
@@ -402,9 +398,12 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         bool hasPricePreference = false;
         for (uint256 i = 0; i < actionDataLength; i++) {
             ICLTBase.StrategyPayload memory rebaseAction = strategyActionsData.rebaseStrategy[i];
+
             if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode, hasActiveRebalancing, hasPricePreference))
             {
                 // @audit-info need to test this logic thoroughly
+                // below logic is to handle the case if rebaseActions array is passed from contract
+                // directly then the first action among the two below in the array will be prioritized
                 if (rebaseAction.actionName == ACTIVE_REBALANCE) {
                     hasActiveRebalancing = true;
                 }
@@ -496,7 +495,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             _getPreferenceTicks(key, ACTIVE_REBALANCE, lowerThresholDifference, upperThresholDifference);
 
         int24 tick = twapQuoter.getTwap(key.pool);
-
         if (mode == 2 && tick > upperThresholdTick || mode == 1 && tick < lowerThresholdTick || mode == 3) {
             if (tick > upperThresholdTick || tick < lowerThresholdTick) {
                 return true;
@@ -557,7 +555,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         if (hasDiffPreference && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
             if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
-                revert InvalidPricePreferenceDifference();
+                revert InvalidRebalanceThresholdDifference();
             }
             return true;
         }
@@ -575,7 +573,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         if (hasActiveRebalancing && isNonZero(actionsData.data)) {
             (int24 lowerPreferenceDiff, int24 upperPreferenceDiff) = abi.decode(actionsData.data, (int24, int24));
             if (lowerPreferenceDiff <= 0 || upperPreferenceDiff <= 0) {
-                revert InvalidPricePreferenceDifference();
+                revert InvalidRebalanceThresholdDifference();
             }
             return true;
         }

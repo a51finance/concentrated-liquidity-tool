@@ -9,7 +9,7 @@ interface IRebaseStrategy {
     error InvalidModesLength();
     error InvalidMode();
     error InvalidStrategyId(bytes32);
-    error InvalidPricePreferenceDifference();
+    error InvalidRebalanceThresholdDifference();
     error StrategyIdsCannotBeEmpty();
     error StrategyIdCannotBeZero();
     error DuplicateStrategyId(bytes32);
