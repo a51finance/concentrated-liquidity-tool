@@ -349,8 +349,7 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 3, false, 1000e18, 1000e18);
 
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) =
-            base.strategies(strategyID);
+        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,,) = base.strategies(strategyID);
 
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -388,8 +387,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
-
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -444,8 +441,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
 
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
-
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
@@ -490,8 +485,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
-
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
@@ -547,8 +540,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
 
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
-
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
@@ -594,8 +585,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 3, false, 1000e18, 1000e18);
-
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -649,8 +638,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 3, false, 1000e18, 1000e18);
-
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
 
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
@@ -707,8 +694,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
 
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
-
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
@@ -751,8 +736,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         bytes32 strategyID =
             createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
 
-        (,, bytes memory actionsData,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
-
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
@@ -781,5 +764,254 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         assertTrue(tu == tickCalculatingVars.ntu);
         assertTrue(tlp == tickCalculatingVars.ntlp);
         assertTrue(tup == tickCalculatingVars.ntup);
+    }
+
+    // with PP first
+
+    function test_Execute_Strategy_with_PP_AR_mode_1() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+        // TickCalculatingVars memory tickCalculatingVars;
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(10, 30);
+
+        rebaseActions[1].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[1].data = abi.encode(100, 100);
+
+        bytes32 strategyID =
+            createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
+
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 17_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        // tick has crossed both inner and outer threshold
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
+            getAllTicks(strategyID, rebaseActions[1].actionName, rebaseActions[1].data, false);
+
+        assertTrue(t < tl);
+        assertTrue(t < tlp);
+
+        (,,, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(t < tl);
+        assertTrue(t < tlp);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Price Preference is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup,) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl > t);
+        assertTrue(tu > t);
+        assertTrue(tu > tl);
+
+        // taking the price more backwards
+        executeSwap(token0, token1, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Price Preference is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl > t);
+        assertTrue(tu > t);
+        assertTrue(tu > tl);
+    }
+
+    function test_Execute_Strategy_with_PP_AR_mode_2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+        // TickCalculatingVars memory tickCalculatingVars;
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(10, 30);
+
+        rebaseActions[1].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[1].data = abi.encode(100, 100);
+
+        bytes32 strategyID =
+            createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 17_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        // tick has crossed both inner and outer threshold
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
+            getAllTicks(strategyID, rebaseActions[1].actionName, rebaseActions[1].data, false);
+
+        assertTrue(t > tu);
+        assertTrue(t > tup);
+
+        (,,, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(t > tu);
+        assertTrue(t > tup);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Price Preference is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup,) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl < t);
+        assertTrue(tu < t);
+        assertTrue(tu > tl);
+
+        // taking the price more forward
+        executeSwap(token1, token0, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Price Preference is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl < t);
+        assertTrue(tu < t);
+        assertTrue(tu > tl);
+    }
+
+    // with AR first
+    function test_Execute_Strategy_with_AR_PP_mode_1() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+        // TickCalculatingVars memory tickCalculatingVars;
+        rebaseActions[1].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[1].data = abi.encode(10, 30);
+
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(100, 100);
+
+        bytes32 strategyID =
+            createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 1, false, 1000e18, 1000e18);
+
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 17_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        // tick has crossed both inner and outer threshold
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
+            getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+
+        assertTrue(t < tl);
+        assertTrue(t < tlp);
+
+        (,,, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(t < tl);
+        assertTrue(t < tlp);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Active Rebalance is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup,) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl < t);
+        assertTrue(tu > t);
+        assertTrue(tu > tl);
+        assertTrue(tu > tup);
+        assertTrue(tl < tlp);
+
+        // taking the price more forward
+        executeSwap(token0, token1, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        (tl, tu, tlp, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+
+        assertTrue(t < tl);
+        assertTrue(t < tlp);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Active Rebalance is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl < t);
+        assertTrue(tu > t);
+        assertTrue(tu > tl);
+        assertTrue(tu > tup);
+        assertTrue(tl < tlp);
+    }
+
+    function test_Execute_Strategy_with_AR_PP_mode_2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+        // TickCalculatingVars memory tickCalculatingVars;
+        rebaseActions[1].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[1].data = abi.encode(10, 30);
+
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(100, 100);
+
+        bytes32 strategyID =
+            createStrategyAndDepositWithAmount(rebaseActions, 150, owner, 1, 2, false, 1000e18, 1000e18);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 17_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        // tick has crossed both inner and outer threshold
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
+            getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+
+        assertTrue(t > tu);
+        assertTrue(t > tup);
+
+        (,,, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(t > tu);
+        assertTrue(t > tup);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Active Rebalance is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup,) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl < t);
+        assertTrue(tu > t);
+        assertTrue(tu > tl);
+        assertTrue(tu > tup);
+        assertTrue(tl < tlp);
+
+        // taking the price more forward
+        executeSwap(token1, token0, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        (tl, tu, tlp, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+
+        assertTrue(t > tu);
+        assertTrue(t > tup);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        // since Active Rebalance is provided first in the array therefore contract prioritzes it.
+        (tl, tu, tlp, tup, t) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+        assertTrue(tl < t);
+        assertTrue(tu > t);
+        assertTrue(tu > tl);
+        assertTrue(tu > tup);
+        assertTrue(tl < tlp);
     }
 }

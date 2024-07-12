@@ -410,7 +410,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         public
         returns (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t)
     {
-        (ICLTBase.StrategyKey memory key,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID);
 
         (, t,,,,,) = pool.slot0();
 
