@@ -266,6 +266,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         uint256 amount1
     )
         internal
+        pure
         returns (bool zeroGreaterOne)
     {
         zeroGreaterOne =
