@@ -67,31 +67,19 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     // Internal function to process a single strategy
     function processStrategy(ExecutableStrategiesData memory data) internal {
         (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) = cltBase.strategies(data.strategyID);
-        IRebaseStrategy.StrategyProcessingDetails memory details =
-            initializeStrategyDetails(actionStatus, data.actionNames);
+        IRebaseStrategy.StrategyProcessingDetails memory details;
+
+        details.hasRebaseInactivity = checkRebaseInactivity(data.actionNames);
+        if (details.hasRebaseInactivity && actionStatus.length > 0) {
+            (details.rebaseCount,, details.lastUpdateTimeStamp, details.manualSwapsCount) =
+                abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+        }
 
         ICLTBase.ShiftLiquidityParams memory params;
         params.strategyId = data.strategyID;
         params.shouldMint = true;
 
         executeStrategyActions(data, key, params, details, actionStatus);
-    }
-
-    // Function to initialize details for processing a strategy
-    function initializeStrategyDetails(
-        bytes memory actionStatus,
-        bytes32[3] memory actionNames
-    )
-        internal
-        pure
-        returns (IRebaseStrategy.StrategyProcessingDetails memory details)
-    {
-        details.hasRebaseInactivity = checkRebaseInactivity(actionNames);
-        if (details.hasRebaseInactivity && actionStatus.length > 0) {
-            (details.rebaseCount,, details.lastUpdateTimeStamp, details.manualSwapsCount) =
-                abi.decode(actionStatus, (uint256, bool, uint256, uint256));
-        }
-        return details;
     }
 
     // Helper function to check for REBASE_INACTIVITY in action names
@@ -127,7 +115,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
                 (int256 amountToSwap, bool zeroForOne) = _getSwapAmount(data.strategyID, originalKey, key);
 
                 (uint160 sqrtPriceX96,,,,,,) = key.pool.slot0();
-                // @audit-info need to rethink this logic
                 uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (slippage / 2)) / 1e6;
 
                 params.swapAmount = amountToSwap;
@@ -203,6 +190,19 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         cltBase.shiftLiquidity(params);
     }
 
+    /// @dev Calculates the amount to be swapped based on the strategy's liquidity state.
+
+    /// @dev The function considers two main conditions:
+    /// 1. If the liquidity is completely out of range, it computes the swap amount based on the desired amounts
+    ///    and protocol fees.
+    /// 2. If the liquidity is partially out of range, it recalculates the desired amounts and determines the swap
+    ///    amount based on the difference between the old and new liquidity positions.
+
+    /// @param strategyId The unique identifier of the strategy.
+    /// @param originalKey The strategy's original liquidity position.
+    /// @param newKey The strategy's new liquidity position.
+    /// @return amountSpecified The amount to be swapped.
+    /// @return zeroForOne A boolean indicating the direction of the swap.
     function _getSwapAmount(
         bytes32 strategyId,
         ICLTBase.StrategyKey memory originalKey,
@@ -213,7 +213,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     {
         IRebaseStrategy.SwapAmountsParams memory swapParams;
 
-        // condition-1: getting the assets for completely out of range liquidity
         (,,,, bool isCompound, bool isPrivate,,, ICLTBase.Account memory account) = cltBase.strategies(strategyId);
 
         (swapParams.amount0Desired, swapParams.amount1Desired) =
@@ -241,9 +240,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
                 ? int256(FullMath.mulDiv(swapParams.amount0Desired, swapsPecentage, 100))
                 : int256(FullMath.mulDiv(swapParams.amount1Desired, swapsPecentage, 100));
             return (amountSpecified, zeroForOne);
-        }
-        // condition-2: getting the assets for partial out of range liquidity
-        else {
+        } else {
             uint128 newliquidity =
                 PoolActions.getLiquidityForAmounts(newKey, swapParams.amount0Desired, swapParams.amount1Desired);
 
@@ -259,6 +256,12 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         }
     }
 
+    /// @dev Determines the direction of the swap based on the desired and available amounts of token0 and token1.
+    /// @param amount0Desired The desired amount of token0.
+    /// @param amount1Desired The desired amount of token1.
+    /// @param amount0 The available amount of token0.
+    /// @param amount1 The available amount of token1.
+    /// @return zeroGreaterOne A boolean indicating the direction of the swap.
     function getZeroForOne(
         uint256 amount0Desired,
         uint256 amount1Desired,
@@ -296,6 +299,14 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         }
     }
 
+    /// @notice Computes ticks for a given mode and action.
+    /// @dev Determines the lower and upper ticks based on the provided mode and action name.
+    ///       Uses different methods for different action names.
+    /// @param key The strategy key.
+    /// @param mode The mode to calculate ticks for.
+    /// @param actionName The name of the action determining which tick calculation method to use.
+    /// @return tickLower The lower tick value.
+    /// @return tickUpper The upper tick value.
     function getTicksForModeWithActions(
         ICLTBase.StrategyKey memory key,
         uint256 mode,
@@ -374,7 +385,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         return _queue;
     }
 
-    // /// @notice Retrieves strategy data based on strategy ID.
+    /// @notice Retrieves strategy data based on strategy ID.
     /// @param strategyId The Data of the strategy to retrieve.
     /// @return ExecutableStrategiesData representing the retrieved strategy.
     function getStrategyData(bytes32 strategyId) internal returns (ExecutableStrategiesData memory) {
@@ -402,9 +413,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
             if (shouldAddToQueue(rebaseAction, key, strategyActionsData.mode, hasActiveRebalancing, hasPricePreference))
             {
-                // @audit-info need to test this logic thoroughly
-                // below logic is to handle the case if rebaseActions array is passed from contract
-                // directly then the first action among the two below in the array will be prioritized
                 if (rebaseAction.actionName == ACTIVE_REBALANCE) {
                     hasActiveRebalancing = true;
                 }
@@ -529,22 +537,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         return true;
     }
 
-    function _getPositionLiquidity(ICLTBase.StrategyKey memory key)
-        internal
-        view
-        returns (
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        )
-    {
-        bytes32 positionKey = PositionKey.compute(address(cltBase), key.tickLower, key.tickUpper);
-        (liquidity, feeGrowthInside0LastX128, feeGrowthInside1LastX128, tokensOwed0, tokensOwed1) =
-            key.pool.positions(positionKey);
-    }
-
     /// @notice Validates the given strategy payload data for rebase strategies.
     /// @param actionsData The strategy payload to validate, containing action names and associated data.
     /// @return True if the strategy payload data is valid, otherwise it reverts.
@@ -638,7 +630,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         int24 upperThresholdDiff
     )
         internal
-        view
+        pure
         returns (int24 lowerThresholdTick, int24 upperThresholdTick)
     {
         if (actionName == PRICE_PREFERENCE) {
@@ -650,6 +642,14 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         }
     }
 
+    /// @notice Computes the preference ticks for a given strategy and action.
+    /// @dev Retrieves the strategy key, decodes the action data, and calculates the preference ticks based on the
+    /// provided action name and differences.
+    /// @param strategyID The unique identifier of the strategy.
+    /// @param actionName The name of the action to determine which preference tick calculation method to use.
+    /// @param actionsData The encoded data containing the lower and upper preference differences.
+    /// @return lowerPreferenceTick The calculated lower preference tick.
+    /// @return upperPreferenceTick The calculated upper preference tick.
     function getPreferenceTicks(
         bytes32 strategyID,
         bytes32 actionName,
