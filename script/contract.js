@@ -2,41 +2,46 @@ const Web3 = require("web3");
 const ECR20ABI = require("../out/ERC20/ERC20.sol/ERC20.json");
 const CLTABI = require("../out/CLTBase.sol/CLTBase.json");
 const CLTModulesABI = require("../out/CLTModules.sol/CLTModules.json");
+const CLTTwapABI = require("../out/CLTTwapQuoter.sol/CLTTwapQuoter.json");
 const RebaseModuleABI = require("../out/RebaseModule.sol/RebaseModule.json");
+const IUniswapV3PoolABI = require("../out/IUniswapV3Pool.sol/IUniswapV3Pool.json");
 
 require("dotenv").config();
 
-const web3 = new Web3("https://pacific-rpc.manta.network/http");
+const web3 = new Web3("https://virtual.arbitrum.rpc.tenderly.co/0447af23-59dd-463d-9bea-902fcd249ee9");
 const contractAddressBase = "0x69317029384c3305fC04670c68a2b434e2D8C44C";
 const contractAddressCLTModules = "0x634062496B8ecC63D597401D81d11d5d24eeDD55";
-const contractAddressRebaseModule = "0x86f5714eCeA724Dc7A7A2bDc005AC36F08a46093";
+const contractAddressCLTTwapQuoter = "0x6bf322e9db8b725e840dac6fe403b923003584a0";
+const contractAddressRebaseModule = "0x7dba7a781b2b4b630257b2afc6c9330dce7dc7ef";
 const contractModeModule = "0x599cBbCE726a2d6a849364aB1A5b7ae1573Af0bC";
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 const token0 = "0x07865c6E87B9F70255377e024ace6630C1Eaa37F";
 const token1 = "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6";
+const pool = "0xc31e54c7a869b9fcbecc14363cf510d1c41fa443";
 
-const contractABIBase = _abi;
-const baseContract = new web3.eth.Contract(contractABIBase, contractAddressBase);
+const baseContract = new web3.eth.Contract(CLTABI.abi, contractAddressBase);
 
-const contractABIModules = __abi;
-const ModulesContract = new web3.eth.Contract(contractABIModules, contractAddressCLTModules);
+const ModulesContract = new web3.eth.Contract(CLTModulesABI.abi, contractAddressCLTModules);
 
-const contractABIRebase = ___abi;
-const RebaseContract = new web3.eth.Contract(contractABIRebase, contractAddressRebaseModule);
+const RebaseContract = new web3.eth.Contract(RebaseModuleABI.abi, contractAddressRebaseModule);
 
-const ERC20ABI = abi;
-const ercContractToken0 = new web3.eth.Contract(ERC20ABI, token0);
-const ercContractToken1 = new web3.eth.Contract(ERC20ABI, token1);
+const CltTwapContract = new web3.eth.Contract(CLTTwapABI.abi, contractAddressCLTTwapQuoter);
 
-const fromAddress = "0x9a9DdE861b91B965DEAA0ce2D208DBE693e87fCb";
+const IUniswapV3PoolContract = new web3.eth.Contract(IUniswapV3PoolABI.abi, pool);
+
+const ercContractToken0 = new web3.eth.Contract(ECR20ABI.abi, token0);
+const ercContractToken1 = new web3.eth.Contract(ECR20ABI.abi, token1);
+
+const fromAddress = "0xa0e9E6B79a3e1AB87FeB209567eF3E0373210a89";
 const fromAddressA89 = "0xa0e9E6B79a3e1AB87FeB209567eF3E0373210a89";
-const privateKey = process.env.PRIVATE_KEY_MAIN;
+const privateKey = process.env.PRIVATE_KEY_A89;
 const privateKeyA89 = process.env.PRIVATE_KEY_A89;
 
 const rebaseStrategy = "0x5eea0aea3d82798e316d046946dbce75c9d5995b956b9e60624a080c7f56f204";
 const rebasePricePrefernece = "0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b";
 const rebaseInactivity = "0x697d458f1054678eeb971e50a66090683c55cfb1cab904d3050bdfe6ab249893";
+const rebaseActiveRebalance = "0x71b5978b6e44da7015285ded9bf0268792b41f7b24b8326894bf7495311010ea";
 const modeStrategy = "";
 
 // Define the parameters for createStrategy
@@ -310,6 +315,47 @@ async function getBlockDetails() {
   console.log(await web3.eth.getBlock(19110525));
 }
 
+async function getTwap() {
+  console.log();
+}
+
+async function getPreferenceTicks(id, actionName, actionData) {
+  const twap = await CltTwapContract.methods.getTwap(pool).call();
+  const tick = await await CltTwapContract.methods.getCurrentTick(pool).call();;
+  console.log("tick", tick.tick);
+  console.log("twap", twap);
+  const res = await RebaseContract.methods.getPreferenceTicks(id, actionName, actionData).call();
+  if (twap > Number(res.upperPreferenceTick) || twap < Number(res.lowerPreferenceTick)) {
+    console.log("Eligible For Rebalance");
+  } else {
+    console.log("Not Eligible For Rebalance");
+  }
+}
+
+
+async function rebalanceStrategy(strategyIds) {
+
+  try {
+    const rebaseTxn = RebaseContract.methods.executeStrategies(strategyIds);
+    const gas = await rebaseTxn.estimateGas({ from: fromAddress });
+    const gasPrice = await web3.eth.getGasPrice();
+
+    const txData = {
+      to: contractAddressRebaseModule,
+      data: rebaseTxn.encodeABI(),
+      gas,
+      gasPrice,
+    };
+
+    const signedTx = await web3.eth.accounts.signTransaction(txData, privateKey);
+    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+    console.log("Transaction successful:", receipt);
+  } catch (error) {
+    console.error("Error executing createStrategy:", error);
+  }
+}
+
 // async function init(){
 //   const strategyId = executeCreateStrategy();
 //   approveTokens();
@@ -375,3 +421,6 @@ async function getBlockDetails() {
 // withdrawPosition();
 // withdrawPosition();
 // getPositionData();
+// getTwap();
+getPreferenceTicks("0x73f7e41cf52991a4cd4d6e04eae906fdfeac9b7c76940e77a47924bee10c7651", rebaseActiveRebalance, "0x000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000000000000000000000000064")
+// rebalanceStrategy(["0x872c69020c88ca7e7c540c1d53a36f50494f3a41f6a9fc1ca8d83c080b97b6a9"])

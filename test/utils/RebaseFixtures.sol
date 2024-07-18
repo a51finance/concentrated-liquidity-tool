@@ -427,4 +427,15 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             console.logInt(tu);
         }
     }
+
+    function getAmounts(int24 tickLower, int24 tickUpper, uint256 amount0) public returns (uint256, uint256) {
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
+            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), amount0
+        );
+
+        uint256 amount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), liquidity
+        );
+        return (amount0, amount1);
+    }
 }

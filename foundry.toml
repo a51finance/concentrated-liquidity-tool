@@ -18,12 +18,15 @@
   test = "test"
 
 
+
 [profile.ci]
   fuzz = { runs = 10_000 }
   verbosity = 4
 
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
+
+
   
 
 [fmt]
