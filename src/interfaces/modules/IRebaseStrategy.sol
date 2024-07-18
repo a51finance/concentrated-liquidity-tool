@@ -30,6 +30,11 @@ interface IRebaseStrategy {
         bytes32[3] actionNames;
     }
 
+    /// @notice Structure to hold the processing details of a strategy.
+    /// @param hasRebaseInactivity Indicates if the strategy has rebase inactivity.
+    /// @param rebaseCount The number of times the strategy has been rebased.
+    /// @param manualSwapsCount The number of manual swaps performed for the strategy.
+    /// @param lastUpdateTimeStamp The timestamp of the last update to the strategy.
     struct StrategyProcessingDetails {
         bool hasRebaseInactivity;
         uint256 rebaseCount;
@@ -37,6 +42,9 @@ interface IRebaseStrategy {
         uint256 lastUpdateTimeStamp;
     }
 
+    /// @notice Checks the validity of input data for a strategy.
+    /// @param data The strategy payload to be checked.
+    /// @return True if the input data is valid, false otherwise.
     function checkInputData(ICLTBase.StrategyPayload memory data) external returns (bool);
 
     /// @param pool The Uniswap V3 pool
@@ -49,7 +57,6 @@ interface IRebaseStrategy {
     /// @param swapAmount The amount of the swap, which implicitly configures the swap as exact input (positive), or
     /// exact output (negative)
     /// @param sqrtPriceLimitX96 The Q64.96 sqrt price limit. If zero for one, the price cannot be less than this
-
     struct ExectuteStrategyParams {
         IUniswapV3Pool pool;
         bytes32 strategyID;
@@ -61,6 +68,15 @@ interface IRebaseStrategy {
         uint160 sqrtPriceLimitX96;
     }
 
+    /// @notice Structure to hold the parameters for swap amounts in a strategy.
+    /// @param amount0Desired The desired amount of token0 for the swap.
+    /// @param amount1Desired The desired amount of token1 for the swap.
+    /// @param newAmount0 The new amount of token0 after the swap.
+    /// @param newAmount1 The new amount of token1 after the swap.
+    /// @param strategyFee0 The fee for token0 associated with the strategy.
+    /// @param strategyFee1 The fee for token1 associated with the strategy.
+    /// @param protocolFee0 The protocol fee for token0.
+    /// @param protocolFee1 The protocol fee for token1.
     struct SwapAmountsParams {
         uint256 amount0Desired;
         uint256 amount1Desired;
