@@ -320,8 +320,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             (tickLower, tickUpper) = getTicksForMode(key, mode);
         }
         if (actionName == ACTIVE_REBALANCE) {
-            // The strategy is already verified in _checkActiveRebalancingStrategies()
-            // so we dont need to check further we just need to create new ticks
             (tickLower, tickUpper) = getTicksForModeActive(key);
         }
     }
@@ -359,8 +357,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         view
         returns (int24 tickLower, int24 tickUpper)
     {
-        int24 currentTick = twapQuoter.getTwap(key.pool);
-        (tickLower, tickUpper) = shiftActive(key, currentTick);
+        (tickLower, tickUpper) = shiftActive(key);
     }
 
     /// @notice Checks and processes strategies based on their validity.

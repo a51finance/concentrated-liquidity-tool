@@ -13,10 +13,10 @@ abstract contract ActiveTicksCalculation {
     /// @param key A51 strategy key details
     /// @return tickLower The lower tick of the range
     /// @return tickUpper The upper tick of the range
-    function shiftActive(ICLTBase.StrategyKey memory key, int24 currentTick) internal view returns (int24, int24) {
+    function shiftActive(ICLTBase.StrategyKey memory key) internal view returns (int24, int24) {
         int24 tickSpacing = key.pool.tickSpacing();
 
-        (, currentTick,,,,,) = key.pool.slot0();
+        (, int24 currentTick,,,,,) = key.pool.slot0();
 
         int24 positionWidth = getActivePositionWidth(currentTick, key.tickLower, key.tickUpper);
 
