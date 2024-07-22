@@ -232,8 +232,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             swapParams.amount0Desired += swapParams.strategyFee0;
             swapParams.amount1Desired += swapParams.strategyFee1;
         }
-
-        if ((account.uniswapLiquidity > 0) && (swapParams.amount0Desired == 0 || swapParams.amount1Desired == 0)) {
+        if ((swapParams.amount0Desired == 0 || swapParams.amount1Desired == 0)) {
             zeroForOne = swapParams.amount0Desired > 0 ? true : false;
 
             amountSpecified = zeroForOne
