@@ -1,7 +1,7 @@
 # Full reference https://github.com/foundry-rs/foundry/tree/master/config
 
 [profile.default]
-  auto_detect_solc = false
+  auto_detect_solc = true
   block_timestamp = 1_680_220_800 # March 31, 2023 at 00:00 GMT
   bytecode_hash = "none"
   cbor_metadata = false
@@ -13,7 +13,6 @@
   optimizer_runs = 4000
   out = "out"
   script = "script"
-  solc = "0.8.15"
   src = "src"
   test = "test"
 
