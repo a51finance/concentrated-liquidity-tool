@@ -225,13 +225,17 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             isPrivate, swapParams.amount0Desired, swapParams.amount1Desired, cltBase.feeHandler()
         );
 
-        swapParams.amount0Desired += account.balance0 - swapParams.protocolFee0;
-        swapParams.amount1Desired += account.balance1 - swapParams.protocolFee1;
+        swapParams.amount0Desired -= swapParams.protocolFee0;
+        swapParams.amount1Desired -= swapParams.protocolFee1;
 
         if (isCompound) {
             swapParams.amount0Desired += swapParams.strategyFee0;
             swapParams.amount1Desired += swapParams.strategyFee1;
         }
+
+        swapParams.amount0Desired += account.balance0;
+        swapParams.amount1Desired += account.balance1;
+
         if ((swapParams.amount0Desired == 0 || swapParams.amount1Desired == 0)) {
             zeroForOne = swapParams.amount0Desired > 0 ? true : false;
 

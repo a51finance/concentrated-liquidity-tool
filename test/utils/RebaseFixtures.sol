@@ -38,6 +38,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     Quoter quote;
 
     ICLTBase.StrategyKey strategyKey;
+     GovernanceFeeHandler feeHandler;
     RebaseModule rebaseModule;
     CLTModules cltModules;
     CLTBase base;
@@ -185,7 +186,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         cltTwap = new CLTTwapQuoter(address(this));
         cltModules = new CLTModules(address(this));
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
+        feeHandler = new GovernanceFeeHandler(address(this), feeParams, feeParams);
 
         base = new CLTBase("ALP Base", "ALP", recepient, address(0), address(feeHandler), address(cltModules), factory);
 

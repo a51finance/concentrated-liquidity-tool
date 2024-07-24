@@ -6,6 +6,7 @@ import { CLTBase } from "../src/CLTBase.sol";
 import { ICLTBase } from "../src/interfaces/ICLTBase.sol";
 import { IRebaseStrategy } from "../src/interfaces/modules/IRebaseStrategy.sol";
 import { PoolActions } from "../src/libraries/PoolActions.sol";
+import { IGovernanceFeeHandler } from "../src/interfaces/IGovernanceFeeHandler.sol";
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { PositionKey } from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
@@ -1464,5 +1465,69 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         console.log("Balance0 After", account.balance0 / 1e18);
         console.log("Balance1 After", account.balance1 / 1e18);
+    }
+
+    function test_Execute_Strategy_with_tax_2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+        initStrategy(150);
+        rebaseActions[1].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[1].data = abi.encode(10, 30);
+
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(100, 100);
+
+        positionActions.mode = 2;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        feeHandler.setPublicFeeRegistry(
+            IGovernanceFeeHandler.ProtocolFeeRegistry({
+                lpAutomationFee: 10_000,
+                strategyCreationFee: 0,
+                protcolFeeOnManagement: 0,
+                protcolFeeOnPerformance: 0
+            })
+        );
+
+        base.createStrategy(strategyKey, positionActions, 1e15, 15e15, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 1000e18;
+        depositParams.amount1Desired = 1000e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = address(this);
+        base.deposit(depositParams);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 17_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 100_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        // tick has crossed both inner and outer threshold
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
+            getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
+
+        assertTrue(t > tu);
+        assertTrue(t > tup);
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        console.log("Balance0 Before", account.balance0);
+        console.log("Balance1 Before", account.balance1);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
     }
 }
