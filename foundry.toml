@@ -16,6 +16,9 @@
   solc = "0.8.15"
   src = "src"
   test = "test"
+  libraries = [
+  "./src/libraries/PoolActions.sol:PoolActions:0xFFD9acf25F2D930BE88D486D588ecBa7a418DE0B"
+]
 
 
 
@@ -25,9 +28,9 @@
 
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
+  # unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 42161, url = "${TENDERLY_VIRTUAL_TESTNET_RPC_URL}/verify/etherscan" }
 
 
-  
 
 [fmt]
   bracket_spacing = true
