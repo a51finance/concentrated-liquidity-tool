@@ -1657,7 +1657,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
             getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
 
-
         bytes32[] memory strategyIDs = new bytes32[](1);
         strategyIDs[0] = strategyID;
         rebaseModule.executeStrategies(strategyIDs);
@@ -1666,5 +1665,193 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         console.log("Balance0 After", account.balance0 / 1e18);
         console.log("Balance1 After", account.balance1 / 1e18);
+    }
+
+    // function testGetPreferenceTicksActive() public {
+    //     ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+    //     ICLTBase.PositionActions memory positionActions;
+    //     ICLTBase.DepositParams memory depositParams;
+
+    //     (, int24 tick,,,,,) = pool.slot0();
+
+    //     int24 tickLower = floorTicks(tick - 150, pool.tickSpacing());
+    //     int24 tickUpper = floorTicks(tick + 30, pool.tickSpacing());
+
+    //     strategyKey.pool = pool;
+    //     strategyKey.tickLower = tickLower;
+    //     strategyKey.tickUpper = tickUpper;
+
+    //     rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+
+    //     int256 LowerPercentage = (((-5 - (-160)) / -160) * 100) * 1e18;
+    //     int256 UpperPercentage = (((13 - (20)) / 20) * 100) * 1e18;
+
+    //     rebaseActions[0].data = abi.encode(LowerPercentage, UpperPercentage);
+
+    //     positionActions.mode = 3;
+    //     positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+    //     positionActions.rebaseStrategy = rebaseActions;
+    //     positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+    //     base.createStrategy(strategyKey, positionActions, 0, 0, false, false);
+
+    //     bytes32 strategyID = getStrategyID(address(this), 1);
+
+    //     (int24 lowerPreferenceTick, int24 upperPreferenceTick) = rebaseModule.getPreferenceTicks(
+    //         strategyID, rebaseModule.ACTIVE_REBALANCE(), abi.encode(LowerPercentage, UpperPercentage)
+    //     );
+
+    //     assertEq(lowerPreferenceTick, -5);
+    //     assertEq(upperPreferenceTick, 13);
+
+    //     (uint256 deposit0, uint256 deposit1) = getAmounts(strategyKey.tickLower, strategyKey.tickUpper, 100e18);
+
+    //     depositParams.strategyId = strategyID;
+    //     depositParams.amount0Desired = deposit0;
+    //     depositParams.amount1Desired = deposit1;
+    //     depositParams.amount0Min = 0;
+    //     depositParams.amount1Min = 0;
+    //     depositParams.recipient = address(this);
+    //     base.deposit(depositParams);
+
+    //     executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+    //     executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+    //     executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+    //     executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+    //     executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+    //     executeSwap(token1, token0, pool.fee(), owner, 10_000e18, 0, 0);
+    //     // executeSwap(token1, token0, pool.fee(), owner, 65_000e18, 0, 0);
+    //     _hevm.warp(block.timestamp + 3600);
+    //     _hevm.roll(1 days);
+
+    //     (tickLower, tickUpper, lowerPreferenceTick, upperPreferenceTick, tick) =
+    //         getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), abi.encode(LowerPercentage, UpperPercentage),
+    // true);
+
+    //     bytes32[] memory strategyIDs = new bytes32[](1);
+    //     strategyIDs[0] = strategyID;
+    //     rebaseModule.executeStrategies(strategyIDs);
+    //     console.log("======================");
+    //     (tickLower, tickUpper, lowerPreferenceTick, upperPreferenceTick, tick) =
+    //         getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), abi.encode(LowerPercentage, UpperPercentage),
+    // true);
+
+    //     console.logInt(tickLower * (1 - (LowerPercentage / 100)) / 1e18);
+    // }
+
+    function testGetPreferenceTicksActive() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        int24 tickLower = floorTicks(tick - 150, pool.tickSpacing());
+        int24 tickUpper = floorTicks(tick + 30, pool.tickSpacing());
+
+        strategyKey.pool = pool;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
+
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(140, 20, tick, tickLower, tickUpper);
+
+        positionActions.mode = 3;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        base.createStrategy(strategyKey, positionActions, 0, 0, false, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 100e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = address(this);
+        base.deposit(depositParams);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 10_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+        console.log("======================");
+
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) = getAllTicks(
+            strategyID, rebaseModule.ACTIVE_REBALANCE(), abi.encode(140, 20, tick, tickLower, tickUpper), true
+        );
+
+        assertTrue(tl < tlp);
+        assertTrue(tlp < t);
+        assertTrue(tu > tup);
+        assertTrue(tup > t);
+    }
+
+    function testGetPreferenceTicksActive2() public {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        int24 tickLower = floorTicks(tick - 150, pool.tickSpacing());
+        int24 tickUpper = floorTicks(tick + 30, pool.tickSpacing());
+
+        strategyKey.pool = pool;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
+
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(140, 20, tick, tickLower, tickUpper);
+
+        positionActions.mode = 3;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        base.createStrategy(strategyKey, positionActions, 0, 0, false, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 100e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = address(this);
+        base.deposit(depositParams);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 10_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+        console.log("======================");
+
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) = getAllTicks(
+            strategyID, rebaseModule.ACTIVE_REBALANCE(), abi.encode(140, 20, tick, tickLower, tickUpper), true
+        );
+
+        assertTrue(tl < tlp);
+        assertTrue(tlp < t);
+        assertTrue(tu > tup);
+        assertTrue(tup > t);
     }
 }

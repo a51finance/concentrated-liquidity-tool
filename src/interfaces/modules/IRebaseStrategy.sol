@@ -20,6 +20,8 @@ interface IRebaseStrategy {
     error RebaseInactivityCannotBeZero();
     error SwapsThresholdExceeded();
     error SlippageThresholdExceeded();
+    error ErrorGettingPreferenceTicks();
+    error CannotManuallyAdjustActiveRebalance();
 
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
@@ -40,6 +42,7 @@ interface IRebaseStrategy {
         uint256 rebaseCount;
         uint256 manualSwapsCount;
         uint256 lastUpdateTimeStamp;
+        int24 lastRebalancedTicks;
     }
 
     /// @notice Checks the validity of input data for a strategy.
@@ -86,6 +89,20 @@ interface IRebaseStrategy {
         uint256 strategyFee1;
         uint256 protocolFee0;
         uint256 protocolFee1;
+    }
+
+    /// @notice Struct for threshold parameters used in active rebalancing calculations
+    /// @param lowerThresholdDiff The difference applied to the lower threshold
+    /// @param upperThresholdDiff The difference applied to the upper threshold
+    /// @param initialCurrentTick The initial current tick value
+    /// @param initialTickLower The initial lower tick value
+    /// @param initialTickUpper The initial upper tick value
+    struct ThresholdParams {
+        int24 lowerThresholdDiff;
+        int24 upperThresholdDiff;
+        int24 initialCurrentTick;
+        int24 initialTickLower;
+        int24 initialTickUpper;
     }
 
     event Executed(ExecutableStrategiesData[] strategyIds);
