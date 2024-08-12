@@ -71,8 +71,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
         details.hasRebaseInactivity = checkRebaseInactivity(data.actionNames);
         if (details.hasRebaseInactivity && actionStatus.length > 0) {
-            (details.rebaseCount,, details.lastUpdateTimeStamp, details.manualSwapsCount) =
-                abi.decode(actionStatus, (uint256, bool, uint256, uint256));
+            (details.rebaseCount,, details.lastUpdateTimeStamp, details.manualSwapsCount,) =
+                abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
         }
 
         ICLTBase.ShiftLiquidityParams memory params;
@@ -125,17 +125,23 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             } else if (data.actionNames[j] == PRICE_PREFERENCE) {
                 params.swapAmount = 0;
             }
+
             (, int24 currentTick,,,,,) = key.pool.slot0();
             params.key = key;
-            params.moduleStatus = details.hasRebaseInactivity
-                ? abi.encode(
-                    false,
+
+            if (details.hasRebaseInactivity) {
+                params.moduleStatus = abi.encode(
                     uint256(++details.rebaseCount),
+                    false,
                     details.lastUpdateTimeStamp,
                     details.manualSwapsCount,
                     currentTick
-                )
-                : actionStatus;
+                );
+            } else {
+                params.moduleStatus = abi.encode(
+                    details.rebaseCount, false, details.lastUpdateTimeStamp, details.manualSwapsCount, currentTick
+                );
+            }
 
             cltBase.shiftLiquidity(params);
         }
@@ -158,14 +164,6 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         if (strategyOwner == address(0)) revert StrategyIdDonotExist(executeParams.strategyID);
         if (strategyOwner != msg.sender) revert InvalidCaller();
 
-        // ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
-        // uint256 actionDataLength = strategyActionsData.rebaseStrategy.length;
-        // for (uint256 i = 0; i < actionDataLength; i++) {
-        //     if (strategyActionsData.rebaseStrategy[i].actionName == ACTIVE_REBALANCE) {
-        //         revert CannotManuallyAdjustActiveRebalance();
-        //     }
-        // }
-
         key.tickLower = executeParams.tickLower;
         key.tickUpper = executeParams.tickUpper;
 
@@ -183,7 +181,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
                     (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(0, 0);
                 } else {
                     (,, uint256 _lastUpdateTimeStamp, uint256 _manualSwapsCount,) =
-                        abi.decode(actionStatus, (bool, uint256, uint256, uint256, int24));
+                        abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
 
                     (lastUpdateTimeStamp, manualSwapsCount) = _checkSwapsInADay(_lastUpdateTimeStamp, _manualSwapsCount);
                 }
@@ -202,9 +200,9 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
         if (actionStatus.length > 0) {
             if (actionStatus.length == 64) {
-                (, rebaseCount) = abi.decode(actionStatus, (bool, uint256));
+                (rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
             } else {
-                (, rebaseCount,,,) = abi.decode(actionStatus, (bool, uint256, uint256, uint256, int24));
+                (rebaseCount,,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
             }
         }
         (, int24 currentTick,,,,,) = key.pool.slot0();
@@ -706,7 +704,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         int24 lastRebalancedTick;
         if (actionStatus.length > 0) {
             require(actionStatus.length != 64, "ErrorGettingPreferenceTicks");
-            (,,,, lastRebalancedTick) = abi.decode(actionStatus, (bool, uint256, uint256, uint256, int24));
+            (,,,, lastRebalancedTick) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
         } else {
             (, lastRebalancedTick,,,,,) = _key.pool.slot0();
         }
@@ -745,18 +743,24 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
     {
         (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) = cltBase.strategies(strategyID);
-        (
-            int24 lowerPreferenceDiff,
-            int24 upperPreferenceDiff,
-            int24 initialCurrentTick,
-            int24 initialTickLower,
-            int24 initialTickUpper
-        ) = abi.decode(actionsData, (int24, int24, int24, int24, int24));
+
+        int24 lowerPreferenceDiff;
+        int24 upperPreferenceDiff;
+        int24 initialCurrentTick;
+        int24 initialTickLower;
+        int24 initialTickUpper;
+
+        if (actionName == PRICE_PREFERENCE) {
+            (lowerPreferenceDiff, upperPreferenceDiff) = abi.decode(actionsData, (int24, int24));
+        } else {
+            (lowerPreferenceDiff, upperPreferenceDiff, initialCurrentTick, initialTickLower, initialTickUpper) =
+                abi.decode(actionsData, (int24, int24, int24, int24, int24));
+        }
 
         (lowerPreferenceTick, upperPreferenceTick) = _getPreferenceTicks(
             key,
             actionStatus,
-            ACTIVE_REBALANCE,
+            actionName,
             IRebaseStrategy.ThresholdParams({
                 lowerThresholdDiff: lowerPreferenceDiff,
                 upperThresholdDiff: upperPreferenceDiff,

@@ -38,8 +38,8 @@ interface IRebaseStrategy {
     /// @param manualSwapsCount The number of manual swaps performed for the strategy.
     /// @param lastUpdateTimeStamp The timestamp of the last update to the strategy.
     struct StrategyProcessingDetails {
-        bool hasRebaseInactivity;
         uint256 rebaseCount;
+        bool hasRebaseInactivity;
         uint256 manualSwapsCount;
         uint256 lastUpdateTimeStamp;
         int24 lastRebalancedTicks;
