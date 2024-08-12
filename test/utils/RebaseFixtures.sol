@@ -451,7 +451,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         public
         returns (bytes32 strategyID, bytes memory data, ICLTBase.PositionActions memory positionActions)
     {
-        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
         ICLTBase.DepositParams memory depositParams;
 
         executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
@@ -463,6 +463,9 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         data = abi.encode(lowerDiff, upperDiff, tick, tickLower, tickUpper);
         rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
         rebaseActions[0].data = data;
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(3);
 
         positionActions.mode = 3;
         positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);

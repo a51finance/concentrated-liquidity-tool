@@ -1933,4 +1933,124 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         assertEq(tl, expectedTl, "TL tick calculation is incorrect");
         assertEq(tu, expectedTu, "TU tick calculation is incorrect");
     }
+
+    function initial() internal returns (ICLTBase.PositionActions memory positionActions) {
+        (, int24 tick,,,,,) = pool.slot0();
+        bytes32 strategyID;
+        bytes memory data;
+
+        (strategyID, data, positionActions) = createActiveRebalancingAndDeposit(
+            address(this),
+            tick,
+            floorTicks(tick - 550, pool.tickSpacing()),
+            floorTicks(tick + 600, pool.tickSpacing()),
+            300,
+            200
+        );
+
+        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 10_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 175_000e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = getStrategyID(address(this), 1);
+        rebaseModule.executeStrategies(strategyIDs);
+
+        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+
+        ICLTBase.Account memory account;
+        bytes memory actionStatus;
+
+        (strategyKey,,, actionStatus,,,,, account) = base.strategies(getStrategyID(address(this), 1));
+        (uint256 rebaseCount,,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
+
+        assertTrue(rebaseCount == 1);
+
+        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
+        (uint256 reserve0,) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
+
+        executeParams.pool = strategyKey.pool;
+        executeParams.strategyID = getStrategyID(address(this), 1);
+        executeParams.tickLower = strategyKey.tickLower;
+        executeParams.tickUpper = strategyKey.tickUpper;
+        executeParams.shouldMint = false;
+        executeParams.zeroForOne = true;
+        executeParams.swapAmount = int256(reserve0 / 8);
+        executeParams.sqrtPriceLimitX96 =
+            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
+
+        rebaseModule.executeStrategy(executeParams);
+
+        (,,, actionStatus,,,,,) = base.strategies(getStrategyID(address(this), 1));
+        (rebaseCount,,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
+
+        assertTrue(rebaseCount == 1);
+
+        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+
+        executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 85_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 85_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
+            getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+
+        (,,, actionStatus,,,,,) = base.strategies(getStrategyID(address(this), 1));
+        (rebaseCount,,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
+
+        assertTrue(rebaseCount == 2);
+        assertTrue(tl < tlp);
+        assertTrue(tlp < t);
+        assertTrue(tu > tup);
+        assertTrue(tup > t);
+    }
+
+    function testGetPreferenceTicksActive5() public {
+        (ICLTBase.PositionActions memory positionActions) = initial();
+        bytes memory data =
+            hex"000000000000000000000000000000000000000000000000000000000000012c00000000000000000000000000000000000000000000000000000000000000c8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdd0000000000000000000000000000000000000000000000000000000000000024e";
+        (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
+            getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        data = abi.encode(100, 100, t, tl, tu);
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = data;
+        positionActions.rebaseStrategy = rebaseActions;
+        base.updateStrategyBase(getStrategyID(address(this), 1), address(this), 0, 0, positionActions);
+
+        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+
+        executeSwap(token1, token0, pool.fee(), owner, 210_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 85_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 150_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = getStrategyID(address(this), 1);
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (tl, tu, tlp, tup, t) =
+            getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+
+        assertTrue(tl < tlp);
+        assertTrue(tlp < t);
+        assertTrue(tu > tup);
+        assertTrue(tup > t);
+    }
 }
