@@ -291,7 +291,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseModule.executeStrategies(strategyIDs);
     }
 
-    function testGetPreferenceTicks(int24 lpd, int24 upd) public {
+    function testGetPreferenceTicksPP(int24 lpd, int24 upd) public {
         vm.assume(lpd > 0 && lpd < 887_272 && upd < 887_272 && upd > 0);
 
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);

@@ -38,7 +38,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     Quoter quote;
 
     ICLTBase.StrategyKey strategyKey;
-     GovernanceFeeHandler feeHandler;
+    GovernanceFeeHandler feeHandler;
     RebaseModule rebaseModule;
     CLTModules cltModules;
     CLTBase base;
@@ -438,5 +438,47 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), liquidity
         );
         return (amount0, amount1);
+    }
+
+    function createActiveRebalancingAndDeposit(
+        address owner,
+        int24 tick,
+        int24 tickLower,
+        int24 tickUpper,
+        int24 lowerDiff,
+        int24 upperDiff
+    )
+        public
+        returns (bytes32 strategyID, bytes memory data, ICLTBase.PositionActions memory positionActions)
+    {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.DepositParams memory depositParams;
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 22e18, 0, 0);
+
+        strategyKey.pool = pool;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
+        data = abi.encode(lowerDiff, upperDiff, tick, tickLower, tickUpper);
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = data;
+
+        positionActions.mode = 3;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        base.createStrategy(strategyKey, positionActions, 0, 0, false, false);
+
+        strategyID = getStrategyID(address(this), 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 100e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = address(this);
+        base.deposit(depositParams);
     }
 }
