@@ -776,7 +776,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         int24 lastUpperDifference;
 
         if (actionStatus.length > 0) {
-            require(actionStatus.length != 64, "ErrorGettingPreferenceTicks");
+            if (actionStatus.length == 64) revert ErrorGettingPreferenceTicks();
 
             (,,,, lastRebalancedTick, lastLowerDifference, lastUpperDifference) =
                 abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24, int24, int24));
