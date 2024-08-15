@@ -300,7 +300,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyId = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        (int24 lowerPreferenceTick, int24 upperPreferenceTick) =
+        (int24 lowerPreferenceTick, int24 upperPreferenceTick,,) =
             rebaseModule.getPreferenceTicks(strategyId, rebaseModule.PRICE_PREFERENCE(), rebaseActions[0].data);
         assertTrue(upperPreferenceTick > lowerPreferenceTick);
     }

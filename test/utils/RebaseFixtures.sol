@@ -418,7 +418,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         tl = key.tickLower;
         tu = key.tickUpper;
 
-        (tlp, tup) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
+        (tlp, tup,,) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
 
         if (shouldLog) {
             console.logInt(tl);
