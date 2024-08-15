@@ -32,11 +32,23 @@ interface IRebaseStrategy {
         bytes32[3] actionNames;
     }
 
+    /// @notice Stores the adjusted differences between the current tick and threshold tick ranges after applying
+    /// rebalancing logic.
+    /// @param adjustedLowerDifference The difference between the current tick and the adjusted lower threshold after
+    /// rebalancing.
+    /// @param adjustedUpperDifference The difference between the current tick and the adjusted upper threshold after
+    /// rebalancing.
+
+    struct AdjustedThresholdData {
+        int24 adjustedLowerDifference;
+        int24 adjustedUpperDifference;
+    }
     /// @notice Structure to hold the processing details of a strategy.
     /// @param hasRebaseInactivity Indicates if the strategy has rebase inactivity.
     /// @param rebaseCount The number of times the strategy has been rebased.
     /// @param manualSwapsCount The number of manual swaps performed for the strategy.
     /// @param lastUpdateTimeStamp The timestamp of the last update to the strategy.
+
     struct StrategyProcessingDetails {
         uint256 rebaseCount;
         bool hasRebaseInactivity;

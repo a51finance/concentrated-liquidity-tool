@@ -64,9 +64,9 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         }
     }
 
-    // Internal function to process a single strategy
     function processStrategy(ExecutableStrategiesData memory data) internal {
-        (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) = cltBase.strategies(data.strategyID);
+        (ICLTBase.StrategyKey memory key,, bytes memory actions, bytes memory actionStatus,,,,,) =
+            cltBase.strategies(data.strategyID);
         IRebaseStrategy.StrategyProcessingDetails memory details;
 
         details.hasRebaseInactivity = checkRebaseInactivity(data.actionNames);
@@ -79,7 +79,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         params.strategyId = data.strategyID;
         params.shouldMint = true;
 
-        executeStrategyActions(data, key, params, details, actionStatus);
+        executeStrategyActions(data, actions, key, params, details, actionStatus);
     }
 
     // Helper function to check for REBASE_INACTIVITY in action names
@@ -92,9 +92,16 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         return false;
     }
 
-    // Function to execute actions for a strategy
+    /// @notice Executes strategy actions based on the provided data and updates the liquidity position accordingly.
+    /// @param data Struct containing data for executable strategies, including action names and mode.
+    /// @param actions Encoded byte array containing position actions.
+    /// @param key Struct containing the current strategy key, including the pool and tick ranges.
+    /// @param params Struct containing parameters required to shift liquidity.
+    /// @param details Struct containing details for strategy processing like count, number of swaps etc.
+    /// @param actionStatus Encoded byte array containing the neccessary data for the strategy.
     function executeStrategyActions(
         ExecutableStrategiesData memory data,
+        bytes memory actions,
         ICLTBase.StrategyKey memory key,
         ICLTBase.ShiftLiquidityParams memory params,
         IRebaseStrategy.StrategyProcessingDetails memory details,
@@ -105,61 +112,103 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         ICLTBase.StrategyKey memory originalKey =
             ICLTBase.StrategyKey({ pool: key.pool, tickLower: key.tickLower, tickUpper: key.tickUpper });
 
+        IRebaseStrategy.AdjustedThresholdData memory thresholdData;
+
         for (uint256 j = 0; j < data.actionNames.length; j++) {
             if (data.actionNames[j] == bytes32(0) || data.actionNames[j] == REBASE_INACTIVITY) {
                 continue;
             }
+
             // Update key values
             (key.tickLower, key.tickUpper) = getTicksForModeWithActions(key, data.mode, data.actionNames[j]);
+
             if (data.actionNames[j] == ACTIVE_REBALANCE) {
-                (int256 amountToSwap, bool zeroForOne) = _getSwapAmount(data.strategyID, originalKey, key);
-
-                (uint160 sqrtPriceX96,,,,,,) = key.pool.slot0();
-                uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (slippage / 2)) / 1e6;
-
-                params.swapAmount = amountToSwap;
-                params.zeroForOne = zeroForOne;
-
-                params.sqrtPriceLimitX96 =
-                    zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact;
+                processActiveRebalance(data, key, originalKey, actions, actionStatus, params, thresholdData);
             } else if (data.actionNames[j] == PRICE_PREFERENCE) {
                 params.swapAmount = 0;
             }
 
-            (, int24 currentTick,,,,,) = key.pool.slot0();
-            params.key = key;
-
-            if (details.hasRebaseInactivity) {
-                params.moduleStatus = abi.encode(
-                    uint256(++details.rebaseCount),
-                    false,
-                    details.lastUpdateTimeStamp,
-                    details.manualSwapsCount,
-                    currentTick
-                );
-            } else {
-                params.moduleStatus = abi.encode(
-                    details.rebaseCount, false, details.lastUpdateTimeStamp, details.manualSwapsCount, currentTick
-                );
-            }
+            finalizeModuleStatus(details, key, params, thresholdData);
 
             cltBase.shiftLiquidity(params);
+        }
+    }
+
+    function processActiveRebalance(
+        ExecutableStrategiesData memory data,
+        ICLTBase.StrategyKey memory key,
+        ICLTBase.StrategyKey memory originalKey,
+        bytes memory actions,
+        bytes memory actionStatus,
+        ICLTBase.ShiftLiquidityParams memory params,
+        IRebaseStrategy.AdjustedThresholdData memory thresholdData
+    )
+        internal
+    {
+        (int256 amountToSwap, bool zeroForOne) = _getSwapAmount(data.strategyID, originalKey, key);
+
+        (uint160 sqrtPriceX96,,,,,,) = key.pool.slot0();
+        uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (slippage / 2)) / 1e6;
+
+        ICLTBase.PositionActions memory modules = abi.decode(actions, (ICLTBase.PositionActions));
+        IRebaseStrategy.ThresholdParams memory thresholdParams;
+        (
+            thresholdParams.lowerThresholdDiff,
+            thresholdParams.upperThresholdDiff,
+            thresholdParams.initialCurrentTick,
+            thresholdParams.initialTickLower,
+            thresholdParams.initialTickUpper
+        ) = abi.decode(modules.rebaseStrategy[0].data, (int24, int24, int24, int24, int24));
+
+        (,, thresholdData.adjustedLowerDifference, thresholdData.adjustedUpperDifference) =
+            _getAdjustedDifference(key, actionStatus, thresholdParams);
+
+        params.swapAmount = amountToSwap;
+        params.zeroForOne = zeroForOne;
+        params.sqrtPriceLimitX96 =
+            zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact;
+    }
+
+    function finalizeModuleStatus(
+        IRebaseStrategy.StrategyProcessingDetails memory details,
+        ICLTBase.StrategyKey memory key,
+        ICLTBase.ShiftLiquidityParams memory params,
+        IRebaseStrategy.AdjustedThresholdData memory thresholdData
+    )
+        internal
+        view
+    {
+        (, int24 currentTick,,,,,) = key.pool.slot0();
+        params.key = key;
+
+        if (details.hasRebaseInactivity) {
+            params.moduleStatus = abi.encode(
+                uint256(++details.rebaseCount),
+                false,
+                details.lastUpdateTimeStamp,
+                details.manualSwapsCount,
+                currentTick,
+                thresholdData.adjustedLowerDifference,
+                thresholdData.adjustedUpperDifference
+            );
+        } else {
+            params.moduleStatus = abi.encode(
+                details.rebaseCount,
+                false,
+                details.lastUpdateTimeStamp,
+                details.manualSwapsCount,
+                currentTick,
+                thresholdData.adjustedLowerDifference,
+                thresholdData.adjustedUpperDifference
+            );
         }
     }
 
     /// @notice Provides functionality for executing and managing strategies manually with customizations.
     /// @dev This function updates strategy parameters, checks for permissions, and triggers liquidity shifts.
     function executeStrategy(ExectuteStrategyParams calldata executeParams) external nonReentrancy {
-        (
-            ICLTBase.StrategyKey memory key,
-            address strategyOwner,
-            bytes memory actionsData,
-            bytes memory actionStatus,
-            ,
-            ,
-            ,
-            ,
-        ) = cltBase.strategies(executeParams.strategyID);
+        (ICLTBase.StrategyKey memory key, address strategyOwner,, bytes memory actionStatus,,,,,) =
+            cltBase.strategies(executeParams.strategyID);
 
         if (strategyOwner == address(0)) revert StrategyIdDonotExist(executeParams.strategyID);
         if (strategyOwner != msg.sender) revert InvalidCaller();
@@ -171,6 +220,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         uint256 rebaseCount;
         uint256 manualSwapsCount;
         uint256 lastUpdateTimeStamp;
+        int24 lastLowerDifference;
+        int24 lastUpperDifference;
 
         if (swapsThreshold != 0 && executeParams.swapAmount > 0) {
             if (actionStatus.length == 0) {
@@ -202,11 +253,20 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             if (actionStatus.length == 64) {
                 (rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
             } else {
-                (rebaseCount,,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
+                (rebaseCount,,,,, lastLowerDifference, lastUpperDifference) =
+                    abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24, int24, int24));
             }
         }
         (, int24 currentTick,,,,,) = key.pool.slot0();
-        params.moduleStatus = abi.encode(rebaseCount, isExited, lastUpdateTimeStamp, manualSwapsCount, currentTick);
+        params.moduleStatus = abi.encode(
+            rebaseCount,
+            isExited,
+            lastUpdateTimeStamp,
+            manualSwapsCount,
+            currentTick,
+            lastLowerDifference,
+            lastUpperDifference
+        );
 
         cltBase.shiftLiquidity(params);
     }
@@ -496,7 +556,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     {
         (int24 lowerThresholDifference, int24 upperThresholDifference) = abi.decode(actionsData, (int24, int24));
 
-        (int24 lowerThresholdTick, int24 upperThresholdTick) = _getPreferenceTicks(
+        (int24 lowerThresholdTick, int24 upperThresholdTick,,) = _getPreferenceTicks(
             key,
             "",
             PRICE_PREFERENCE,
@@ -541,7 +601,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             int24 initialTickUpper
         ) = abi.decode(actionsData, (int24, int24, int24, int24, int24));
 
-        (int24 lowerThresholdTick, int24 upperThresholdTick) = _getPreferenceTicks(
+        (int24 lowerThresholdTick, int24 upperThresholdTick,,) = _getPreferenceTicks(
             key,
             actionStatus,
             ACTIVE_REBALANCE,
@@ -683,47 +743,78 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     )
         internal
         view
-        returns (int24 lowerThresholdTick, int24 upperThresholdTick)
+        returns (
+            int24 lowerThresholdTick,
+            int24 upperThresholdTick,
+            int24 adjustedLowerDifference,
+            int24 adjustedUpperDifference
+        )
     {
-        // Determine initial threshold ticks based on actionName
         if (actionName == PRICE_PREFERENCE) {
-            lowerThresholdTick = _key.tickLower - params.lowerThresholdDiff;
-            upperThresholdTick = _key.tickUpper + params.upperThresholdDiff;
-            return (lowerThresholdTick, upperThresholdTick);
+            return (_key.tickLower - params.lowerThresholdDiff, _key.tickUpper + params.upperThresholdDiff, 0, 0);
         } else {
-            lowerThresholdTick = _key.tickLower + params.lowerThresholdDiff;
-            upperThresholdTick = _key.tickUpper - params.upperThresholdDiff;
+            return _getAdjustedDifference(_key, actionStatus, params);
         }
+    }
 
-        // If initial ticks match key ticks, return the calculated threshold ticks
-        if (params.initialTickLower == _key.tickLower && params.initialTickUpper == _key.tickUpper) {
-            return (lowerThresholdTick, upperThresholdTick);
-        }
-
-        // Decode actionStatus to get lastRebalancedTick
+    function _getAdjustedDifference(
+        ICLTBase.StrategyKey memory _key,
+        bytes memory actionStatus,
+        ThresholdParams memory params
+    )
+        internal
+        view
+        returns (
+            int24 lowerThresholdTick,
+            int24 upperThresholdTick,
+            int24 adjustedLowerDifference,
+            int24 adjustedUpperDifference
+        )
+    {
         int24 lastRebalancedTick;
+        int24 lastLowerDifference;
+        int24 lastUpperDifference;
+
         if (actionStatus.length > 0) {
             require(actionStatus.length != 64, "ErrorGettingPreferenceTicks");
-            (,,,, lastRebalancedTick) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
+
+            (,,,, lastRebalancedTick, lastLowerDifference, lastUpperDifference) =
+                abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24, int24, int24));
         } else {
             (, lastRebalancedTick,,,,,) = _key.pool.slot0();
         }
 
+        // If there's a previous rebalance, adjust the threshold ticks
+        if (lastLowerDifference != 0 && lastUpperDifference != 0) {
+            return (
+                lastLowerDifference > 0 ? _key.tickLower + lastLowerDifference : _key.tickLower - lastLowerDifference,
+                lastUpperDifference > 0 ? _key.tickUpper - lastUpperDifference : _key.tickUpper + lastUpperDifference,
+                lastLowerDifference,
+                lastUpperDifference
+            );
+        }
+
+        // Default adjustment when initial ticks match key ticks
+        if (params.initialTickLower == _key.tickLower && params.initialTickUpper == _key.tickUpper) {
+            return (_key.tickLower + params.lowerThresholdDiff, _key.tickUpper - params.upperThresholdDiff, 0, 0);
+        }
+
         // Calculate adjusted differences
-        int24 adjustedLowerDifference = params.lowerThresholdDiff
+        adjustedLowerDifference = params.lowerThresholdDiff
             - ((params.initialCurrentTick - params.initialTickLower) - (lastRebalancedTick - _key.tickLower));
-        int24 adjustedUpperDifference = params.upperThresholdDiff
+        adjustedUpperDifference = params.upperThresholdDiff
             + ((params.initialTickUpper - params.initialCurrentTick) - (_key.tickUpper - lastRebalancedTick));
 
-        // Update threshold ticks based on adjusted differences
-        lowerThresholdTick = adjustedLowerDifference > 0
-            ? _key.tickLower + adjustedLowerDifference
-            : _key.tickLower - adjustedLowerDifference;
-        upperThresholdTick = adjustedUpperDifference > 0
-            ? _key.tickUpper - adjustedUpperDifference
-            : _key.tickUpper + adjustedUpperDifference;
-
-        return (lowerThresholdTick, upperThresholdTick);
+        return (
+            adjustedLowerDifference > 0
+                ? _key.tickLower + adjustedLowerDifference
+                : _key.tickLower - adjustedLowerDifference,
+            adjustedUpperDifference > 0
+                ? _key.tickUpper - adjustedUpperDifference
+                : _key.tickUpper + adjustedUpperDifference,
+            adjustedLowerDifference,
+            adjustedUpperDifference
+        );
     }
 
     /// @notice Computes the preference ticks for a given strategy and action.
@@ -739,8 +830,13 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         bytes32 actionName,
         bytes memory actionsData
     )
-        external
-        returns (int24 lowerPreferenceTick, int24 upperPreferenceTick)
+        public
+        returns (
+            int24 lowerPreferenceTick,
+            int24 upperPreferenceTick,
+            int24 adjustedLowerDifference,
+            int24 adjustedUpperDifference
+        )
     {
         (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) = cltBase.strategies(strategyID);
 
@@ -757,7 +853,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
                 abi.decode(actionsData, (int24, int24, int24, int24, int24));
         }
 
-        (lowerPreferenceTick, upperPreferenceTick) = _getPreferenceTicks(
+        (lowerPreferenceTick, upperPreferenceTick, adjustedLowerDifference, adjustedUpperDifference) =
+        _getPreferenceTicks(
             key,
             actionStatus,
             actionName,
