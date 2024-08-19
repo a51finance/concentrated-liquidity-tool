@@ -1893,18 +1893,20 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         assertTrue(rebaseCount == 1);
 
-        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, true);
 
         executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
         executeSwap(token0, token1, pool.fee(), owner, 85_000e18, 0, 0);
-        executeSwap(token1, token0, pool.fee(), owner, 85_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 95_000e18, 0, 0);
         _hevm.warp(block.timestamp + 3600);
         _hevm.roll(1 days);
+
+        getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, true);
 
         rebaseModule.executeStrategies(strategyIDs);
 
         (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t) =
-            getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, false);
+            getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, true);
 
         (,,, actionStatus,,,,,) = base.strategies(getStrategyID(address(this), 1));
         (rebaseCount,,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
@@ -2218,5 +2220,81 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         assertTrue(expectedLowerThresholdTick == 299);
         assertTrue(expectedUpperThresholdTick == -1);
+    }
+
+    function test_Execute_Strategy_with_mode_3_Debug() public {
+        ICLTBase.PositionActions memory positionActions;
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 35_000e18, 0, 0);
+
+        (, int24 tick,,,,,) = pool.slot0();
+        bytes32 strategyID;
+        bytes memory data;
+        (strategyID, data, positionActions) = createActiveRebalancingAndDeposit(
+            address(this),
+            tick,
+            floorTicks(tick - 700, pool.tickSpacing()),
+            floorTicks(tick + 300, pool.tickSpacing()),
+            100,
+            280
+        );
+
+        console.log("Before Swapping");
+        getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), data, true);
+
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 300_000e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        console.log("After Swapping");
+        // (int24 tl, int24 tu, int24 tlp, int24 tup,) =
+        getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), data, true);
+
+        // // Expected tick values calculated manually or based on understanding of the algorithm
+        // int24 expectedLowerThresholdTick = -710 + 500;
+        // int24 expectedUpperThresholdTick = 290 - 200;
+        // int24 expectedTl = -710;
+        // int24 expectedTu = 290;
+
+        // // Check if the calculated ticks are co rrect
+        // assertEq(tlp, expectedLowerThresholdTick, "Lower threshold tick calculation is incorrect");
+        // assertEq(tup, expectedUpperThresholdTick, "Upper threshold tick calculation is incorrect");
+        // assertEq(tl, expectedTl, "TLP tick calculation is incorrect");
+        // assertEq(tu, expectedTu, "TUP tick calculation is incorrect");
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+        console.log("After Rebalance");
+        getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), data, true);
+        // (, tick,,,,,) = pool.slot0();
+        // // -410 + (500 - ((-1-(-710)) - (98-(-410)))
+        // expectedLowerThresholdTick = -111;
+        // // 590 + (200 + ((290 - (-1)) - (590 - (98))))
+        // expectedUpperThresholdTick = 589;
+        // expectedTl = floorTicks((-402), pool.tickSpacing());
+        // expectedTu = floorTicks(598, pool.tickSpacing());
+
+        // // Check if the calculated ticks are co rrect
+        // assertEq(tlp, expectedLowerThresholdTick, "Lower threshold tick calculation is incorrect");
+        // assertEq(tup, expectedUpperThresholdTick, "Upper threshold tick calculation is incorrect");
+        // assertEq(tl, expectedTl, "TL tick calculation is incorrect");
+        // assertEq(tu, expectedTu, "TU tick calculation is incorrect");
+
+        // (,,, bytes memory actionStatus,,,,,) = base.strategies(getStrategyID(address(this), 1));
+        // (,,,,, expectedLowerThresholdTick, expectedUpperThresholdTick) =
+        //     abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24, int24, int24));
+
+        // assertTrue(expectedLowerThresholdTick == 299);
+        // assertTrue(expectedUpperThresholdTick == -1);
     }
 }
