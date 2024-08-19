@@ -800,10 +800,13 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         }
 
         // Calculate adjusted differences
-        adjustedLowerDifference = params.lowerThresholdDiff
-            - ((params.initialCurrentTick - params.initialTickLower) - (lastRebalancedTick - _key.tickLower));
-        adjustedUpperDifference = params.upperThresholdDiff
-            + ((params.initialTickUpper - params.initialCurrentTick) - (_key.tickUpper - lastRebalancedTick));
+        int24 lowerDifference =
+            (params.initialCurrentTick - params.initialTickLower) - (lastRebalancedTick - _key.tickLower);
+        int24 upperDifference =
+            (params.initialTickUpper - params.initialCurrentTick) - (_key.tickUpper - lastRebalancedTick);
+
+        adjustedLowerDifference = params.lowerThresholdDiff + (lowerDifference > 0 ? -lowerDifference : lowerDifference);
+        adjustedUpperDifference = params.upperThresholdDiff + (upperDifference > 0 ? -upperDifference : upperDifference);
 
         return (
             adjustedLowerDifference > 0
