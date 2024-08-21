@@ -71,8 +71,12 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
         details.hasRebaseInactivity = checkRebaseInactivity(data.actionNames);
         if (details.hasRebaseInactivity && actionStatus.length > 0) {
-            (details.rebaseCount,, details.lastUpdateTimeStamp, details.manualSwapsCount,) =
-                abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
+            if (actionStatus.length == 64) {
+                (details.rebaseCount,) = abi.decode(actionStatus, (uint256, bool));
+            } else {
+                (details.rebaseCount,, details.lastUpdateTimeStamp, details.manualSwapsCount,) =
+                    abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
+            }
         }
 
         ICLTBase.ShiftLiquidityParams memory params;
@@ -735,6 +739,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     /// @param params The threshold parameters for rebalancing
     /// @return lowerThresholdTick The calculated lower threshold tick
     /// @return upperThresholdTick The calculated upper threshold tick
+    /// @return adjustedLowerDifference The adjusted lower difference.
+    /// @return adjustedUpperDifference The adjusted upper difference.
     function _getPreferenceTicks(
         ICLTBase.StrategyKey memory _key,
         bytes memory actionStatus,
@@ -828,6 +834,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     /// @param actionsData The encoded data containing the lower and upper preference differences.
     /// @return lowerPreferenceTick The calculated lower preference tick.
     /// @return upperPreferenceTick The calculated upper preference tick.
+    /// @return adjustedLowerDifference The adjusted lower difference.
+    /// @return adjustedUpperDifference The adjusted upper difference.
     function getPreferenceTicks(
         bytes32 strategyID,
         bytes32 actionName,
