@@ -139,7 +139,7 @@ contract CLTZappIn is Multicall, AccessControl {
     /// @param deadline The deadline by which the swap must complete
     /// @param swapData The swap data for the OKX proxy
     /// @return tokenAmountOut The amount of the output token received
-    function doZeroExSwap(
+    function doOKXSwap(
         ERC20 tokenIn,
         uint256 tokenAmountIn,
         ERC20 tokenOut,
