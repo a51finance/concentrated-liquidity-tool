@@ -72,8 +72,8 @@ contract DeployALP is Script {
         // new Modes(address(baseContract), address(twapQuoter), _ownerSepolia);
         new RebaseModule(
             0x9a9DdE861b91B965DEAA0ce2D208DBE693e87fCb,
-            address(0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6),
-            address(0xC22E20950aA1f2e91faC75AB7fD8a21eF2C3aB1E)
+            address(0xDFb179526ae303Eea49AC99DD360159C39105828),
+            address(0xAFB17876B2E8B5b5D1585393B6a19930a0AB6398)
         );
 
         vm.stopBroadcast();

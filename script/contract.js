@@ -356,6 +356,56 @@ async function rebalanceStrategy(strategyIds) {
   }
 }
 
+
+const { ethers } = require("ethers");
+
+async function checkBalances(rpcUrl, contractAddress, tokenAddresses) {
+  // Create a provider using the RPC URL
+  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+  // Check the ETH balance
+  try {
+    const ethBalance = await provider.getBalance(contractAddress);
+    console.log(`ETH Balance: ${ethers.utils.formatEther(ethBalance)} ETH`);
+  } catch (error) {
+    console.error("Error fetching ETH balance:", error);
+  }
+
+  // ABI to interact with ERC-20 token contracts
+  const erc20Abi = [
+    "function balanceOf(address account) view returns (uint256)",
+  ];
+
+  // Iterate over each token address and check the balance
+  for (let tokenAddress of tokenAddresses) {
+    // Create a contract instance for the token
+    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+
+    try {
+      // Get the balance of the contract address for the token
+      const balance = await tokenContract.balanceOf(contractAddress);
+
+      // Convert balance from wei to a more readable format (e.g., using ethers.utils.formatUnits)
+      console.log(`Balance of token ${tokenAddress}: ${ethers.utils.formatUnits(balance, 18)} tokens`);
+    } catch (error) {
+      console.error(`Error fetching balance for token ${tokenAddress}:`, error);
+    }
+  }
+}
+// Example usage
+const rpcUrl = "https://virtual.arbitrum.rpc.tenderly.co/1d8acd1c-82cc-4676-aecd-cb09886e848a";
+const contractAddress = "0x74226579ed541ada94582dc4cd6ddd21f6526863";
+const tokenAddresses = [
+  "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+  "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
+  "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f"
+  // Add more token addresses as needed
+];
+
+// Run the function
+checkBalances(rpcUrl, contractAddress, tokenAddresses);
+
+
 // async function init(){
 //   const strategyId = executeCreateStrategy();
 //   approveTokens();
@@ -422,5 +472,5 @@ async function rebalanceStrategy(strategyIds) {
 // withdrawPosition();
 // getPositionData();
 // getTwap();
-getPreferenceTicks("0x73f7e41cf52991a4cd4d6e04eae906fdfeac9b7c76940e77a47924bee10c7651", rebaseActiveRebalance, "0x000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000000000000000000000000064")
+// getPreferenceTicks("0x73f7e41cf52991a4cd4d6e04eae906fdfeac9b7c76940e77a47924bee10c7651", rebaseActiveRebalance, "0x000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000000000000000000000000064")
 // rebalanceStrategy(["0x872c69020c88ca7e7c540c1d53a36f50494f3a41f6a9fc1ca8d83c080b97b6a9"])
