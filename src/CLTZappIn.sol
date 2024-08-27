@@ -22,6 +22,8 @@ contract CLTZappIn is Multicall, AccessControl {
     error InsufficientOutput();
     /// @notice Error thrown when the input amount is invalid
     error InvalidAmountInput();
+    /// @notice Error thrown when invalid tokenId is passed
+    error InvalidTokenId();
 
     /// @notice Event emitted when a ZapIn operation is completed
     /// @param zapper The address of the user who initiated the ZapIn
@@ -104,6 +106,61 @@ contract CLTZappIn is Multicall, AccessControl {
         _refundTokens(token1, msg.sender);
 
         emit ZapInCompleted(msg.sender, tokenId, share, amount0, amount1);
+    }
+
+    /// @notice Performs a ZapIncrease operation by increasing position liquidity into the CLTBase contract
+    /// @param updateParams The update liquidity parameters for the CLTBase contract
+    /// @param token0 The first token to deposit
+    /// @param token1 The second token to deposit
+    /// @param useContractBalance0 Whether to use the contract's balance of token0
+    /// @param useContractBalance1 Whether to use the contract's balance of token1
+    /// @return share The share of the liquidity position
+    /// @return amount0 The amount of token0 deposited
+    /// @return amount1 The amount of token1 deposited
+    function zapIncrease(
+        ICLTBase.UpdatePositionParams memory updateParams,
+        ERC20 token0,
+        ERC20 token1,
+        bool useContractBalance0,
+        bool useContractBalance1
+    )
+        external
+        payable
+        virtual
+        nonReentrancy
+        whenNotPaused
+        returns (uint256 share, uint256 amount0, uint256 amount1)
+    {
+        updateParams.amount0Desired = _getDesiredAmount(token0, updateParams.amount0Desired, useContractBalance0);
+        updateParams.amount1Desired = _getDesiredAmount(token1, updateParams.amount1Desired, useContractBalance1);
+
+        if (updateParams.amount0Desired != 0) {
+            token0.safeApprove(address(CLT_BASE), updateParams.amount0Desired);
+        }
+        if (updateParams.amount1Desired != 0) {
+            token1.safeApprove(address(CLT_BASE), updateParams.amount1Desired);
+        }
+
+        updateParams.amount0Desired = updateParams.amount0Desired;
+        updateParams.amount1Desired = updateParams.amount1Desired;
+        updateParams.amount0Min = updateParams.amount0Min;
+        updateParams.amount1Min = updateParams.amount1Min;
+
+        (share, amount0, amount1) = CLT_BASE.updatePositionLiquidity(updateParams);
+
+        // reset approvals
+        if (updateParams.amount0Desired != 0 && token0.allowance(address(this), address(CLT_BASE)) != 0) {
+            token0.safeApprove(address(CLT_BASE), 0);
+        }
+        if (updateParams.amount1Desired != 0 && token1.allowance(address(this), address(CLT_BASE)) != 0) {
+            token1.safeApprove(address(CLT_BASE), 0);
+        }
+
+        // Refund any excess tokens back to msg.sender
+        _refundTokens(token0, msg.sender);
+        _refundTokens(token1, msg.sender);
+
+        emit ZapInCompleted(msg.sender, updateParams.tokenId, share, amount0, amount1);
     }
 
     /// @notice Determines the desired amount of tokens to be used in the deposit.
