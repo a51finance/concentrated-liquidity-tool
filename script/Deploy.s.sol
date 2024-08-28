@@ -10,6 +10,10 @@ import "../src/GovernanceFeeHandler.sol";
 import "../src/interfaces/IGovernanceFeeHandler.sol";
 import "../src/modules/rebasing/Modes.sol";
 import "../src/modules/rebasing/RebaseModule.sol";
+import "../src/CLTZapIn.sol";
+import "../src/interfaces/ICLTBase.sol";
+import "../src/interfaces/external/IWETH9.sol";
+
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 contract DeployALP is Script {
@@ -33,37 +37,45 @@ contract DeployALP is Script {
     address baseSwapFactory = 0x38015D05f4fEC8AFe15D7cc0386a126574e8077B;
     address baseWeth9 = 0x4200000000000000000000000000000000000006;
 
+    IWETH9 _weth9Arbitrum = IWETH9(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
+
+    address approverArbitrumZapin = 0x70cBb871E8f30Fc8Ce23609E9E0Ea87B6b222F58;
+    address OKXProxyArbitrum = 0xf332761c673b59B21fF6dfa8adA44d78c12dEF09;
+    ICLTBase CLTBaseArbitrum = ICLTBase(0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6);
+
     IUniswapV3Factory _factoryInterface = IUniswapV3Factory(baseSwapFactory);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
         vm.startBroadcast(deployerPrivateKey);
 
-        new CLTHelper();
-        CLTModules cltModules = new CLTModules(_owner);
-        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
+        // new CLTHelper();
+        // CLTModules cltModules = new CLTModules(_owner);
+        // CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
 
-        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
-            lpAutomationFee: 0,
-            strategyCreationFee: 0,
-            protcolFeeOnManagement: 0,
-            protcolFeeOnPerformance: 0
-        });
+        // IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+        //     lpAutomationFee: 0,
+        //     strategyCreationFee: 0,
+        //     protcolFeeOnManagement: 0,
+        //     protcolFeeOnPerformance: 0
+        // });
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
+        // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
-        CLTBase baseContract = new CLTBase(
-            "A51 Liquidity Positions NFT",
-            "ALPhy",
-            _owner,
-            baseWeth9,
-            address(feeHandler),
-            address(cltModules),
-            _factoryInterface
-        );
+        // CLTBase baseContract = new CLTBase(
+        //     "A51 Liquidity Positions NFT",
+        //     "ALPhy",
+        //     _owner,
+        //     baseWeth9,
+        //     address(feeHandler),
+        //     address(cltModules),
+        //     _factoryInterface
+        // );
 
-        new Modes(address(baseContract), address(twapQuoter), _owner);
-        new RebaseModule(_owner, address(baseContract), address(twapQuoter));
+        // new Modes(address(baseContract), address(twapQuoter), _owner);
+        // new RebaseModule(_owner, address(baseContract), address(twapQuoter));
+
+        new CLTZapIn(OKXProxyArbitrum, CLTBaseArbitrum, approverArbitrumZapin, _weth9Arbitrum, _owner);
 
         vm.stopBroadcast();
     }

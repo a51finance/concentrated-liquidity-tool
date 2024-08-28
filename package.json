@@ -44,6 +44,7 @@
     "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
     "verify": "hardhat verify --network",
     "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",
+    "deploy-alp-arb": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://arbitrum.rpc.subquery.network/public --broadcast --verify -vvvv",
     "deploy-alp-base": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://base.llamarpc.com --broadcast --verify -vvvv",
     "deploy-alp-scroll": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://scroll-mainnet.public.blastapi.io --broadcast --verify -vvvv",
     "deploy-alp-bnb": "forge script script/Deploy.s.sol:DeployALP --rpc-url https://bnb-bscnews.rpc.blxrbdn.com/ --broadcast --verify -vvvv",

@@ -2,7 +2,7 @@
 pragma solidity =0.8.15;
 
 import "forge-std/Test.sol";
-import "../src/CLTZappIn.sol";
+import "../src/CLTZapIn.sol";
 import "../src/interfaces/ICLTBase.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
@@ -21,18 +21,19 @@ contract A51ZappInTest is Test {
     IWETH9 constant weth = IWETH9(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     address cltBase = 0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6;
     address tokenApprover = 0x70cBb871E8f30Fc8Ce23609E9E0Ea87B6b222F58;
-    CLTZappIn zapIn; // = CLTZappIn(0x74226579ED541adA94582DC4cD6DDd21f6526863);
+    CLTZapIn zapIn; // = CLTZappIn(0x74226579ED541adA94582DC4cD6DDd21f6526863);
     IUniswapV3Pool constant uniswapPool = IUniswapV3Pool(0xbE3aD6a5669Dc0B8b12FeBC03608860C31E2eef6);
     IUniswapV3Pool constant uniswapPool2 = IUniswapV3Pool(0xC6962004f452bE9203591991D15f6b388e09E8D0); //ETH-USDC
     bytes32 strategyID = 0x4fa677272f9c7c30913c6c388ffc13912b19e21592867194c2f69e022d1760c3;
     bytes32 strategyID2 = 0x574712806f505493ea90acd4a2073b4daccde2a392dc97fa363ad477d0ea841d; //ETH-USDC
 
     function setUp() public {
-        zapIn = new CLTZappIn({
+        zapIn = new CLTZapIn({
             okxProxy: 0xf332761c673b59B21fF6dfa8adA44d78c12dEF09,
             cltBase: ICLTBase(cltBase),
             tokenApprover: tokenApprover,
-            weth: weth
+            weth: weth,
+            owner: address(this)
         });
         // console.log("ZapIn Address", address(zapIn));
     }

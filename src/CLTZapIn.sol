@@ -9,7 +9,11 @@ import { IWETH9 } from "./interfaces/external/IWETH9.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 
-contract CLTZappIn is Multicall, AccessControl {
+/// @title A51 Finance Autonomous Liquidity Provision ZapIn Contract
+/// @author undefined_0x
+/// @notice This contract is part of the A51 Finance platform, focusing on providing liquidity provision using single
+/// and whitelisted assets
+contract CLTZapIn is Multicall, AccessControl {
     using SafeTransferLib for ERC20;
 
     /// @notice Error thrown when the same token is used for both input and output
@@ -49,7 +53,15 @@ contract CLTZappIn is Multicall, AccessControl {
     /// @param okxProxy The address of the OKX proxy contract
     /// @param cltBase The address of the CLTBase contract
     /// @param tokenApprover The address of the token approver contract
-    constructor(address okxProxy, ICLTBase cltBase, address tokenApprover, IWETH9 weth) AccessControl(msg.sender) {
+    constructor(
+        address okxProxy,
+        ICLTBase cltBase,
+        address tokenApprover,
+        IWETH9 weth,
+        address owner
+    )
+        AccessControl(owner)
+    {
         OKX_PROXY = okxProxy;
         CLT_BASE = cltBase;
         TOKEN_APPROVER = tokenApprover;
@@ -253,7 +265,7 @@ contract CLTZappIn is Multicall, AccessControl {
     /// @notice Wraps the user's ETH input into WETH
     /// @dev Should be used as part of a multicall to convert the user's ETH input into WETH
     /// so that it can be swapped into other tokens.
-    function wrapEthInput() external payable {
+    function wrapEthInput() external payable nonReentrancy whenNotPaused {
         WETH.deposit{ value: msg.value }();
     }
 
