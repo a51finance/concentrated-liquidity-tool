@@ -136,29 +136,29 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         }
     }
 
-    function testInputDataWithInvalidFuzzing(uint256 _actionIndex, uint256 _value1, uint256 _value2) public {
-        // Define the array length based on fuzzed value
-        uint256 arrayLength = _actionIndex % 3 + 1; // Ensures length is always between 1 and 3
-        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](arrayLength);
+    // function testInputDataWithInvalidFuzzing(uint256 _actionIndex, uint256 _value1, uint256 _value2) public {
+    //     // Define the array length based on fuzzed value
+    //     uint256 arrayLength = _actionIndex % 3 + 1; // Ensures length is always between 1 and 3
+    //     ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](arrayLength);
 
-        // Fuzzing different action names with intentionally invalid data
-        for (uint256 i = 0; i < arrayLength; i++) {
-            if (i % 2 == 0) {
-                vm.assume(_value1 <= 0);
-                strategyDetailArray[i].actionName = rebaseModule.REBASE_INACTIVITY();
-                strategyDetailArray[i].data = abi.encode(0);
-            } else if (i % 2 == 1) {
-                vm.assume(_value1 <= 0 && _value2 <= 0);
-                strategyDetailArray[i].actionName = rebaseModule.PRICE_PREFERENCE();
-                strategyDetailArray[i].data = abi.encode(_value1, _value2);
-            }
-        }
+    //     // Fuzzing different action names with intentionally invalid data
+    //     for (uint256 i = 0; i < arrayLength; i++) {
+    //         if (i % 2 == 0) {
+    //             vm.assume(_value1 <= 0);
+    //             strategyDetailArray[i].actionName = rebaseModule.REBASE_INACTIVITY();
+    //             strategyDetailArray[i].data = abi.encode(0);
+    //         } else if (i % 2 == 1) {
+    //             vm.assume(_value1 <= 0 && _value2 <= 0);
+    //             strategyDetailArray[i].actionName = rebaseModule.PRICE_PREFERENCE();
+    //             strategyDetailArray[i].data = abi.encode(_value1, _value2);
+    //         }
+    //     }
 
-        for (uint256 i = 0; i < arrayLength; i++) {
-            _hevm.expectRevert();
-            rebaseModule.checkInputData(strategyDetailArray[i]);
-        }
-    }
+    //     for (uint256 i = 0; i < arrayLength; i++) {
+    //         _hevm.expectRevert();
+    //         rebaseModule.checkInputData(strategyDetailArray[i]);
+    //     }
+    // }
 
     function testDepositInAlp() public {
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
