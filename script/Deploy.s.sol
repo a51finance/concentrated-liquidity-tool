@@ -22,7 +22,7 @@ contract DeployALP is Script {
     address _weth9 = 0x0Dc808adcE2099A9F62AA87D9670745AbA741746;
 
     address baseFactory = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
-    address _weth9Base = 0x4200000000000000000000000000000000000006;
+    // address _weth9Base = 0x4200000000000000000000000000000000000006;
 
     address bnbFactory = 0xdB1d10011AD0Ff90774D0C6Bb92e5C5c8b4461F7;
     address _weth9bnb = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
@@ -38,10 +38,14 @@ contract DeployALP is Script {
     address baseWeth9 = 0x4200000000000000000000000000000000000006;
 
     IWETH9 _weth9Arbitrum = IWETH9(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
-
     address approverArbitrumZapin = 0x70cBb871E8f30Fc8Ce23609E9E0Ea87B6b222F58;
     address OKXProxyArbitrum = 0xf332761c673b59B21fF6dfa8adA44d78c12dEF09;
     ICLTBase CLTBaseArbitrum = ICLTBase(0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6);
+
+    IWETH9 _weth9Base = IWETH9(0x4200000000000000000000000000000000000006);
+    address approverBaseZapin = 0x57df6092665eb6058DE53939612413ff4B09114E;
+    address OKXProxyBase = 0x6b2C0c7be2048Daa9b5527982C29f48062B34D58;
+    ICLTBase CLTBaseBase = ICLTBase(0xDFb179526ae303Eea49AC99DD360159C39105828);
 
     IUniswapV3Factory _factoryInterface = IUniswapV3Factory(baseSwapFactory);
 
@@ -75,7 +79,7 @@ contract DeployALP is Script {
         // new Modes(address(baseContract), address(twapQuoter), _owner);
         // new RebaseModule(_owner, address(baseContract), address(twapQuoter));
 
-        new CLTZapIn(OKXProxyArbitrum, CLTBaseArbitrum, approverArbitrumZapin, _weth9Arbitrum, _owner);
+        new CLTZapIn(OKXProxyBase, CLTBaseBase, approverBaseZapin, _weth9Base, _owner);
 
         vm.stopBroadcast();
     }
