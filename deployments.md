@@ -1,6 +1,6 @@
 # Smart Contract Deployments
 
-This document provides a comprehensive list of smart contract deployments across various chains, categorized by their
+This document provides a comprehensive list of A51 Finance smart contracts deployments across various chains, categorized by their
 respective DEX versions and underlying technologies.
 
 ---
