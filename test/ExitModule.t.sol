@@ -26,7 +26,49 @@ contract ExitModuleTest is Test, ExitFixtures {
         ICLTBase.PositionActions memory positionActions;
         ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
         exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
-        exitActions[0].data = abi.encode(strategyKey.tickUpper + 300);
+        exitActions[0].data = abi.encode(strategyKey.tickLower - 700, strategyKey.tickUpper + 300);
+
+        positionActions.mode = 2;
+        positionActions.exitStrategy = exitActions;
+        positionActions.rebaseStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(1500, owner, true, positionActions);
+    }
+
+    function testFail_CreateExitStrategyInvalidData() public {
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = abi.encode(strategyKey.tickLower + 700, strategyKey.tickUpper + 300);
+
+        positionActions.mode = 2;
+        positionActions.exitStrategy = exitActions;
+        positionActions.rebaseStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(1500, owner, true, positionActions);
+    }
+
+    function testFail_CreateExitStrategyInvalidData2() public {
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = abi.encode(strategyKey.tickLower + 1, strategyKey.tickLower + 1);
+
+        positionActions.mode = 2;
+        positionActions.exitStrategy = exitActions;
+        positionActions.rebaseStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(1500, owner, true, positionActions);
+    }
+
+    function testFail_CreateExitStrategyInvalidData3() public {
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = "";
 
         positionActions.mode = 2;
         positionActions.exitStrategy = exitActions;

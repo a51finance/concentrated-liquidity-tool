@@ -14,14 +14,8 @@ interface IExitStrategy {
     error StrategyIdCannotBeZero();
     error DuplicateStrategyId(bytes32);
     error StrategyIdDonotExist(bytes32);
-    error BothTicksCannotBeZero();
-    error RebaseStrategyDataCannotBeZero();
-    error OnlyRebaseInactivityCannotBeSelected();
-    error RebaseInactivityCannotBeZero();
-    error SwapsThresholdExceeded();
-    error SlippageThresholdExceeded();
-    error ErrorGettingPreferenceTicks();
-    error CannotManuallyAdjustActiveRebalance();
+    error InvalidExitPreference();
+    error ExitStrategyDataCannotBeZero();
 
     /// @param strategyId The strategy's key is a hash of a preimage composed by the owner & token ID
     /// @param mode ModuleId: one of four basic modes 1: left, 2: Right, 3: Both, 4: Static
