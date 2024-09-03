@@ -31,6 +31,17 @@ contract ExitModule is AccessControl, IExitStrategy {
         checkStrategiesArray(strategyIDs);
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
         uint256 queueLength = _queue.length;
+        for (uint256 i = 0; i < queueLength; i++) {
+            ICLTBase.ShiftLiquidityParams memory params;
+            (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) =
+                cltBase.strategies(_queue[i].strategyID);
+
+            params.strategyId = _queue[i].strategyID;
+            params.key = key;
+            params.shouldMint = false;
+            params.swapAmount = 0;
+            params.moduleStatus = actionStatus;
+        }
     }
 
     /// @notice Checks and processes strategies based on their validity.
@@ -59,8 +70,7 @@ contract ExitModule is AccessControl, IExitStrategy {
     /// @param strategyId The Data of the strategy to retrieve.
     /// @return ExecutableStrategiesData representing the retrieved strategy.
     function getStrategyData(bytes32 strategyId) internal returns (ExecutableStrategiesData memory) {
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData, bytes memory actionStatus,,,,,) =
-            cltBase.strategies(strategyId);
+        (ICLTBase.StrategyKey memory key,, bytes memory actionsData,,,,,,) = cltBase.strategies(strategyId);
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
         uint256 actionDataLength = strategyActionsData.exitStrategy.length;
@@ -70,7 +80,7 @@ contract ExitModule is AccessControl, IExitStrategy {
         for (uint256 i = 0; i < actionDataLength; i++) {
             ICLTBase.StrategyPayload memory exitAction = strategyActionsData.exitStrategy[i];
 
-            if (shouldAddToQueue(exitAction, key, actionStatus, strategyActionsData.mode)) {
+            if (shouldAddToQueue(exitAction, key)) {
                 executableStrategiesData.actionNames[count++] = exitAction.actionName;
             }
         }
@@ -91,17 +101,16 @@ contract ExitModule is AccessControl, IExitStrategy {
     /// @return bool indicating whether the strategy should be added to the queue.
     function shouldAddToQueue(
         ICLTBase.StrategyPayload memory exitAction,
-        ICLTBase.StrategyKey memory key,
-        bytes memory actionStatus,
-        uint256 mode
+        ICLTBase.StrategyKey memory key
     )
         internal
         view
         returns (bool)
     {
         if (exitAction.actionName == EXIT_PREFERENCE) {
-            return _checkExitPreferenceStrategies(key, actionStatus, exitAction.data, mode);
+            return _checkExitPreferenceStrategies(key, exitAction.data);
         }
+        return false;
     }
 
     /// @notice Checks if rebase preference strategies are satisfied for the given key and action data.
@@ -110,21 +119,18 @@ contract ExitModule is AccessControl, IExitStrategy {
     /// @return true if the conditions are met, false otherwise.
     function _checkExitPreferenceStrategies(
         ICLTBase.StrategyKey memory key,
-        bytes memory actionsData,
-        uint256 mode
+        bytes memory actionsData
     )
         internal
         view
         returns (bool)
     {
-        (int24 exitTick) = abi.decode(actionsData, (int24));
+        (int24 lowerExitPreference, int24 upperExitPreference) = abi.decode(actionsData, (int24, int24));
 
         int24 tick = twapQuoter.getTwap(key.pool);
 
-        if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower || mode == 3) {
-            if (tick < lowerThresholdTick || tick > upperThresholdTick) {
-                return true;
-            }
+        if (tick < lowerExitPreference || tick > upperExitPreference) {
+            return true;
         }
 
         return false;
@@ -159,9 +165,13 @@ contract ExitModule is AccessControl, IExitStrategy {
     function checkInputData(ICLTBase.StrategyPayload memory actionsData) external pure returns (bool) {
         bool hasExitPreference = actionsData.actionName == EXIT_PREFERENCE;
         if (hasExitPreference && isNonZero(actionsData.data)) {
+            (int24 lowerExitPreference, int24 upperExitPreference) = abi.decode(actionsData.data, (int24, int24));
+            if (lowerExitPreference == upperExitPreference || lowerExitPreference > upperExitPreference) {
+                revert InvalidExitPreference();
+            }
             return true;
         }
-        return false;
+        revert ExitStrategyDataCannotBeZero();
     }
 
     /// @notice Checks the bytes value is non zero or not.
