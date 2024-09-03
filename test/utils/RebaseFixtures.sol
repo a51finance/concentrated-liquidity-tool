@@ -264,6 +264,23 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
     }
 
+    function createStrategyActionsExit(
+        int24 difference,
+        address recepient,
+        bool isCompunded,
+        ICLTBase.PositionActions memory positionActions
+    )
+        public
+    {
+        initStrategy(difference);
+        positionActions.mode = positionActions.mode;
+        positionActions.exitStrategy = positionActions.exitStrategy;
+        positionActions.rebaseStrategy = positionActions.rebaseStrategy;
+        positionActions.liquidityDistribution = positionActions.liquidityDistribution;
+        _hevm.prank(recepient);
+        base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
+    }
+
     function createStrategyAndDeposit(
         ICLTBase.StrategyPayload[] memory rebaseActions,
         int24 difference,

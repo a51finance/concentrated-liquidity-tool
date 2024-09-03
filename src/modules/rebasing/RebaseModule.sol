@@ -474,8 +474,21 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     /// @param strategyId The Data of the strategy to retrieve.
     /// @return ExecutableStrategiesData representing the retrieved strategy.
     function getStrategyData(bytes32 strategyId) internal returns (ExecutableStrategiesData memory) {
-        (ICLTBase.StrategyKey memory key,, bytes memory actionsData, bytes memory actionStatus,,,,,) =
-            cltBase.strategies(strategyId);
+        (
+            ICLTBase.StrategyKey memory key,
+            ,
+            bytes memory actionsData,
+            bytes memory actionStatus,
+            ,
+            ,
+            ,
+            ,
+            ICLTBase.Account memory account
+        ) = cltBase.strategies(strategyId);
+
+        if (account.uniswapLiquidity == 0) {
+            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
+        }
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
 

@@ -1081,11 +1081,8 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         // since Active Rebalance is provided first in the array therefore contract prioritzes it.
         (tl, tu, tlp, tup,) = getAllTicks(strategyID, rebaseActions[0].actionName, rebaseActions[0].data, false);
-        assertTrue(tl < t);
-        assertTrue(tu > t);
-        assertTrue(tu > tl);
-        assertTrue(tu > tup);
-        assertTrue(tl < tlp);
+        assertTrue(t > tu);
+        assertTrue(t > tup);
     }
 
     function test_Execute_Strategy_with_hodl_partial_ofr() public {
