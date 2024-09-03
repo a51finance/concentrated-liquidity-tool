@@ -27,6 +27,135 @@ contract ExitModule is AccessControl, IExitStrategy {
         cltBase = ICLTBase(payable(_baseContractAddress));
     }
 
+    function executeExit(bytes32[] calldata strategyIDs) external {
+        checkStrategiesArray(strategyIDs);
+        ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
+        uint256 queueLength = _queue.length;
+    }
+
+    /// @notice Checks and processes strategies based on their validity.
+    /// @dev Returns an array of valid strategies.
+    /// @param strategyIDs Array of strategy IDs to check and process.
+    /// @return ExecutableStrategiesData[] array containing valid strategies.
+    function checkAndProcessStrategies(bytes32[] memory strategyIDs)
+        internal
+        returns (ExecutableStrategiesData[] memory)
+    {
+        ExecutableStrategiesData[] memory _queue = new ExecutableStrategiesData[](strategyIDs.length);
+        uint256 validEntries = 0;
+        uint256 strategyIdsLength = strategyIDs.length;
+
+        for (uint256 i = 0; i < strategyIdsLength; i++) {
+            ExecutableStrategiesData memory data = getStrategyData(strategyIDs[i]);
+            if (data.strategyID != bytes32(0) && data.mode != 0) {
+                _queue[validEntries++] = data;
+            }
+        }
+
+        return _queue;
+    }
+
+    /// @notice Retrieves strategy data based on strategy ID.
+    /// @param strategyId The Data of the strategy to retrieve.
+    /// @return ExecutableStrategiesData representing the retrieved strategy.
+    function getStrategyData(bytes32 strategyId) internal returns (ExecutableStrategiesData memory) {
+        (ICLTBase.StrategyKey memory key,, bytes memory actionsData, bytes memory actionStatus,,,,,) =
+            cltBase.strategies(strategyId);
+
+        ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
+        uint256 actionDataLength = strategyActionsData.exitStrategy.length;
+        ExecutableStrategiesData memory executableStrategiesData;
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < actionDataLength; i++) {
+            ICLTBase.StrategyPayload memory exitAction = strategyActionsData.exitStrategy[i];
+
+            if (shouldAddToQueue(exitAction, key, actionStatus, strategyActionsData.mode)) {
+                executableStrategiesData.actionNames[count++] = exitAction.actionName;
+            }
+        }
+
+        if (count == 0) {
+            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0)]);
+        }
+
+        executableStrategiesData.mode = strategyActionsData.mode;
+        executableStrategiesData.strategyID = strategyId;
+        return executableStrategiesData;
+    }
+
+    /// @notice Determines if a strategy should be added to the queue.
+    /// @dev Checks the preference and other strategy details.
+    /// @param exitAction  Data related to strategy actions.
+    /// @param key Strategy key.
+    /// @return bool indicating whether the strategy should be added to the queue.
+    function shouldAddToQueue(
+        ICLTBase.StrategyPayload memory exitAction,
+        ICLTBase.StrategyKey memory key,
+        bytes memory actionStatus,
+        uint256 mode
+    )
+        internal
+        view
+        returns (bool)
+    {
+        if (exitAction.actionName == EXIT_PREFERENCE) {
+            return _checkExitPreferenceStrategies(key, actionStatus, exitAction.data, mode);
+        }
+    }
+
+    /// @notice Checks if rebase preference strategies are satisfied for the given key and action data.
+    /// @param key The strategy key to be checked.
+    /// @param actionsData The actions data that includes the rebase strategy data.
+    /// @return true if the conditions are met, false otherwise.
+    function _checkExitPreferenceStrategies(
+        ICLTBase.StrategyKey memory key,
+        bytes memory actionsData,
+        uint256 mode
+    )
+        internal
+        view
+        returns (bool)
+    {
+        (int24 exitTick) = abi.decode(actionsData, (int24));
+
+        int24 tick = twapQuoter.getTwap(key.pool);
+
+        if (mode == 2 && tick > key.tickUpper || mode == 1 && tick < key.tickLower || mode == 3) {
+            if (tick < lowerThresholdTick || tick > upperThresholdTick) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// @notice Checks the strategies array for validity.
+    /// @param data An array of strategy IDs.
+    /// @return true if the strategies array is valid.
+    function checkStrategiesArray(bytes32[] memory data) public returns (bool) {
+        if (data.length == 0) {
+            revert StrategyIdsCannotBeEmpty();
+        }
+        // check 0 strategyId
+        uint256 dataLength = data.length;
+        for (uint256 i = 0; i < dataLength; i++) {
+            (, address strategyOwner,,,,,,,) = cltBase.strategies(data[i]);
+            if (data[i] == bytes32(0) || strategyOwner == address(0)) {
+                revert InvalidStrategyId(data[i]);
+            }
+
+            // check duplicacy
+            for (uint256 j = i + 1; j < data.length; j++) {
+                if (data[i] == data[j]) {
+                    revert DuplicateStrategyId(data[i]);
+                }
+            }
+        }
+
+        return true;
+    }
+
     function checkInputData(ICLTBase.StrategyPayload memory actionsData) external pure returns (bool) {
         bool hasExitPreference = actionsData.actionName == EXIT_PREFERENCE;
         if (hasExitPreference && isNonZero(actionsData.data)) {
