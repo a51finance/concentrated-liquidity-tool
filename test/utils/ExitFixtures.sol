@@ -207,6 +207,8 @@ contract ExitFixtures is UniswapDeployer, Utilities {
 
         base.toggleOperator(address(rebaseModule));
 
+        base.toggleOperator(address(exitModule));
+
         base.toggleOperator(address(modes));
 
         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModule));
@@ -258,69 +260,62 @@ contract ExitFixtures is UniswapDeployer, Utilities {
         base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
     }
 
-    // function createBasicStrategy(int24 difference, address recepient, bool isCompunded, uint256 mode) public {
-    //     initStrategy(difference);
-    //     ICLTBase.PositionActions memory positionActions;
+    function createStrategyAndDeposit(
+        ICLTBase.StrategyPayload[] memory exitActions,
+        ICLTBase.StrategyPayload[] memory rebaseActions,
+        int24 difference,
+        address recepient,
+        uint256 positionId,
+        uint256 mode,
+        bool isCompounded
+    )
+        public
+        returns (bytes32 strategyID)
+    {
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
 
-    //     positionActions.mode = mode;
-    //     positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
-    //     positionActions.rebaseStrategy = new ICLTBase.StrategyPayload[](0);
-    //     positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+        positionActions.mode = mode;
+        positionActions.exitStrategy = exitActions;
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
 
-    //     _hevm.prank(recepient);
-    //     base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
-    // }
+        createStrategyActions(difference, recepient, isCompounded, positionActions);
 
-    // function createStrategyActionsExit(
-    //     int24 difference,
-    //     address recepient,
-    //     bool isCompunded,
-    //     ICLTBase.PositionActions memory positionActions
-    // )
-    //     public
-    // {
-    //     initStrategy(difference);
-    //     positionActions.mode = positionActions.mode;
-    //     positionActions.exitStrategy = positionActions.exitStrategy;
-    //     positionActions.rebaseStrategy = positionActions.rebaseStrategy;
-    //     positionActions.liquidityDistribution = positionActions.liquidityDistribution;
-    //     _hevm.prank(recepient);
-    //     base.createStrategy(strategyKey, positionActions, 0, 0, isCompunded, false);
-    // }
+        strategyID = getStrategyID(recepient, positionId);
 
-    // function createStrategyAndDeposit(
-    //     ICLTBase.StrategyPayload[] memory rebaseActions,
-    //     int24 difference,
-    //     address recepient,
-    //     uint256 positionId,
-    //     uint256 mode,
-    //     bool isCompounded
-    // )
-    //     public
-    //     returns (bytes32 strategyID)
-    // {
-    //     ICLTBase.PositionActions memory positionActions;
-    //     ICLTBase.DepositParams memory depositParams;
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 100e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = recepient;
 
-    //     positionActions.mode = mode;
-    //     positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
-    //     positionActions.rebaseStrategy = rebaseActions;
-    //     positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+        _hevm.prank(recepient);
+        base.deposit(depositParams);
+    }
 
-    //     createStrategyActions(difference, recepient, isCompounded, positionActions);
+    function getAllTicks(
+        bytes32 strategyID,
+        bytes memory actionsData,
+        bool shouldLog
+    )
+        public
+        view
+        returns (int24 tlp, int24 tup, int24 t)
+    {
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID);
 
-    //     strategyID = getStrategyID(recepient, positionId);
+        t = cltTwap.getTwap(key.pool);
 
-    //     depositParams.strategyId = strategyID;
-    //     depositParams.amount0Desired = 100e18;
-    //     depositParams.amount1Desired = 100e18;
-    //     depositParams.amount0Min = 0;
-    //     depositParams.amount1Min = 0;
-    //     depositParams.recipient = recepient;
+        (tlp, tup) = abi.decode(actionsData, (int24, int24));
 
-    //     _hevm.prank(recepient);
-    //     base.deposit(depositParams);
-    // }
+        if (shouldLog) {
+            console.logInt(tlp);
+            console.logInt(tup);
+            console.logInt(t);
+        }
+    }
 
     // function createStrategyAndDepositWithAmount(
     //     ICLTBase.StrategyPayload[] memory rebaseActions,
@@ -425,33 +420,6 @@ contract ExitFixtures is UniswapDeployer, Utilities {
     //     token0.approve(address(base), type(uint256).max);
     //     _hevm.prank(user);
     //     token1.approve(address(base), type(uint256).max);
-    // }
-
-    // function getAllTicks(
-    //     bytes32 strategyID,
-    //     bytes32 actionName,
-    //     bytes memory actionsData,
-    //     bool shouldLog
-    // )
-    //     public
-    //     returns (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t)
-    // {
-    //     (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID);
-
-    //     (, t,,,,,) = pool.slot0();
-
-    //     tl = key.tickLower;
-    //     tu = key.tickUpper;
-
-    //     (tlp, tup,,) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
-
-    //     if (shouldLog) {
-    //         console.logInt(tl);
-    //         console.logInt(tlp);
-    //         console.logInt(t);
-    //         console.logInt(tup);
-    //         console.logInt(tu);
-    //     }
     // }
 
     // function getAmounts(int24 tickLower, int24 tickUpper, uint256 amount0) public returns (uint256, uint256) {

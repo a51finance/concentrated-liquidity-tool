@@ -41,6 +41,8 @@ contract ExitModule is AccessControl, IExitStrategy {
             params.shouldMint = false;
             params.swapAmount = 0;
             params.moduleStatus = actionStatus;
+
+            cltBase.shiftLiquidity(params);
         }
     }
 
