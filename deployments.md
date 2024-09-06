@@ -1,7 +1,7 @@
 # Smart Contract Deployments
 
-This document provides a comprehensive list of A51 Finance smart contracts deployments across various chains, categorized by their
-respective DEX versions and underlying technologies.
+This document provides a comprehensive list of A51 Finance smart contracts deployments across various chains, categorized
+by their respective DEX versions and underlying technologies.
 
 ---
 
@@ -174,3 +174,14 @@ respective DEX versions and underlying technologies.
 - **Modes:** `0x69317029384c3305fC04670c68a2b434e2D8C44C`
 - **RebaseModule:** `0x599cBbCE726a2d6a849364aB1A5b7ae1573Af0bC`
 - **RebaseModuleAR:** `0xbc1548ff60913cb9b568489ec07dfc92135aeb85`
+
+## ALP (Aerodrom Finance - Uniswap v3) on Base Mainnet
+
+- **CLTBase:** `0xd258558E1627A46332F42DAD2409444413aDE028`
+- **CLTHelper:** `0x6e7e838E20ED6657Aaf1166f9B7a845565956F51`
+- **CLTModules:** `0xD4798F142FDb87738eF4eBE82Bd56Eccde19A88C`
+- **CLTTwapQuoter:** `0x794a5773b27e01463B51adba38Bf2Cb2d10245Dc`
+- **CLTZapIn:** `0xBd7887e11A9356957680A34955a135cf465e7052`
+- **GovernanceFeeHandler:** `0xB6046bCC14FFB129936C26d183E33fB5C5090Ae6`
+- **Modes:** `0x3c3037Ba788F73F9F0C8127A92893a468BfDDfdA`
+- **RebaseModuleAR:** `0x551438085d15cc6bbC30231a565656d2F7B6AAc2`
