@@ -486,9 +486,9 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             ICLTBase.Account memory account
         ) = cltBase.strategies(strategyId);
 
-        // if (account.uniswapLiquidity == 0) {
-        //     return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
-        // }
+        if (account.uniswapLiquidity == 0) {
+            return ExecutableStrategiesData(bytes32(0), uint256(0), [bytes32(0), bytes32(0), bytes32(0)]);
+        }
 
         ICLTBase.PositionActions memory strategyActionsData = abi.decode(actionsData, (ICLTBase.PositionActions));
 
