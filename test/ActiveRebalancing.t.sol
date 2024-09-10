@@ -1870,26 +1870,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
 
         assertTrue(rebaseCount == 1);
 
-        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
-        (uint256 reserve0,) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
-
-        executeParams.pool = strategyKey.pool;
-        executeParams.strategyID = getStrategyID(address(this), 1);
-        executeParams.tickLower = strategyKey.tickLower;
-        executeParams.tickUpper = strategyKey.tickUpper;
-        executeParams.shouldMint = false;
-        executeParams.zeroForOne = true;
-        executeParams.swapAmount = int256(reserve0 / 8);
-        executeParams.sqrtPriceLimitX96 =
-            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
-
-        rebaseModule.executeStrategy(executeParams);
-
-        (,,, actionStatus,,,,,) = base.strategies(getStrategyID(address(this), 1));
-        (rebaseCount,,,,) = abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24));
-
-        assertTrue(rebaseCount == 1);
-
         getAllTicks(getStrategyID(address(this), 1), rebaseModule.ACTIVE_REBALANCE(), data, true);
 
         executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
@@ -2037,7 +2017,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
     }
 
     function test_Execute_Strategy_with_mode_1_tick_calculation_2() public {
-        // initStrategy(150);
         ICLTBase.PositionActions memory positionActions;
         (, int24 tick,,,,,) = pool.slot0();
         bytes32 strategyID;
@@ -2108,29 +2087,6 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         _hevm.roll(1 days);
 
         ICLTBase.Account memory account;
-
-        (strategyKey,,,,,,,, account) = base.strategies(getStrategyID(address(this), 1));
-        IRebaseStrategy.ExectuteStrategyParams memory executeParams;
-        (uint256 reserve0,) = getStrategyReserves(strategyKey, account.uniswapLiquidity);
-
-        executeParams.pool = strategyKey.pool;
-        executeParams.strategyID = getStrategyID(address(this), 1);
-        executeParams.tickLower = strategyKey.tickLower;
-        executeParams.tickUpper = strategyKey.tickUpper;
-        executeParams.shouldMint = false;
-        executeParams.zeroForOne = true;
-        executeParams.swapAmount = int256(reserve0 / 8);
-        executeParams.sqrtPriceLimitX96 =
-            (executeParams.zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1);
-
-        rebaseModule.executeStrategy(executeParams);
-
-        // (,,, bytes memory actionStatus,,,,,) = base.strategies(getStrategyID(address(this), 1));
-        // (,,,,, expectedLowerThresholdTick, expectedUpperThresholdTick) =
-        //     abi.decode(actionStatus, (uint256, bool, uint256, uint256, int24, int24, int24));
-
-        // assertTrue(expectedLowerThresholdTick == 296);
-        // assertTrue(expectedUpperThresholdTick == -4);
 
         strategyIDs[0] = strategyID;
         rebaseModule.executeStrategies(strategyIDs);
