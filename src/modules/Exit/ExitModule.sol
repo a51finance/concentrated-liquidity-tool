@@ -32,6 +32,10 @@ contract ExitModule is AccessControl, IExitStrategy {
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
         uint256 queueLength = _queue.length;
         for (uint256 i = 0; i < queueLength; i++) {
+            if (_queue[i].strategyID == bytes32(0)) {
+                continue;
+            }
+
             ICLTBase.ShiftLiquidityParams memory params;
             (ICLTBase.StrategyKey memory key,,, bytes memory actionStatus,,,,,) =
                 cltBase.strategies(_queue[i].strategyID);
@@ -81,7 +85,6 @@ contract ExitModule is AccessControl, IExitStrategy {
 
         for (uint256 i = 0; i < actionDataLength; i++) {
             ICLTBase.StrategyPayload memory exitAction = strategyActionsData.exitStrategy[i];
-
             if (shouldAddToQueue(exitAction, key)) {
                 executableStrategiesData.actionNames[count++] = exitAction.actionName;
             }

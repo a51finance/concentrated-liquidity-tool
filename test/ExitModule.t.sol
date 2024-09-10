@@ -197,7 +197,103 @@ contract ExitModuleTest is Test, ExitFixtures {
         rebaseModule.executeStrategies(strategyIDs);
 
         (,,,,,,,, account) = base.strategies(strategyID);
+        assertTrue(account.uniswapLiquidity == 0);
+        assertTrue(account.totalShares > 0);
+    }
+
+    function test_ExecuteExitStrategy_Upper_remint() public {
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(10, 30);
+
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = abi.encode(strategyKey.tickLower - 700, strategyKey.tickUpper + 300);
+
+        bytes32 strategyID = createStrategyAndDeposit(exitActions, rebaseActions, 100, address(this), 1, 3, true);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        exitModule.executeExit(strategyIDs);
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        assertTrue(account.uniswapLiquidity == 0);
+        assertTrue(account.totalShares > 0);
+
+        // should not rebalance it
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,,,,,,, account) = base.strategies(strategyID);
+        assertTrue(account.uniswapLiquidity == 0);
+        assertTrue(account.totalShares > 0);
+    }
+
+    function test_ExecuteExitStrategy_withRebasePricePreference() public {
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(10, 30);
+
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = abi.encode(strategyKey.tickLower - 700, strategyKey.tickUpper + 300);
+
+        bytes32 strategyID = createStrategyAndDeposit(exitActions, rebaseActions, 100, address(this), 1, 3, true);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 20_000e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        // should not eixt
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        exitModule.executeExit(strategyIDs);
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
         assertTrue(account.uniswapLiquidity > 0);
         assertTrue(account.totalShares > 0);
+
+        // should rebalance it
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,,,,,,, account) = base.strategies(strategyID);
+        (int24 tlp, int24 tup,,) =
+            rebaseModule.getPreferenceTicks(strategyID, rebaseModule.PRICE_PREFERENCE(), abi.encode(10, 30));
+
+        (,,,,,,,, account) = base.strategies(strategyID);
+        assertTrue(account.uniswapLiquidity > 0, "Uniswap liqudity cannot be zero");
+        assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
+        assertTrue(tlp != 10, "Incorrect Price ranges");
+        assertTrue(tup != 30, "Incorrect Price ranges");
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        // should eixt now
+        strategyIDs[0] = strategyID;
+        exitModule.executeExit(strategyIDs);
+        (,,,,,,,, account) = base.strategies(strategyID);
+        assertTrue(account.uniswapLiquidity == 0, "Uniswap liqudity cannot be greater than zero");
+        assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
     }
 }
