@@ -296,4 +296,66 @@ contract ExitModuleTest is Test, ExitFixtures {
         assertTrue(account.uniswapLiquidity == 0, "Uniswap liqudity cannot be greater than zero");
         assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
     }
+
+    function test_ExecuteExitStrategy_withRebaseActiveRebalance() public {
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        (, int24 tick,,,,,) = pool.slot0();
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(500, 300, tick, strategyKey.tickLower, strategyKey.tickUpper);
+
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = abi.encode(strategyKey.tickLower - 700, strategyKey.tickUpper + 300);
+
+        bytes32 strategyID = createStrategyAndDeposit(exitActions, rebaseActions, 1000, address(this), 1, 3, true);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 152_500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        assertTrue(strategyKey.tickLower == -1010, "Incorrect Price ranges");
+        assertTrue(strategyKey.tickUpper == 990, "Incorrect Price ranges");
+
+        console.log("Twap");
+        console.logInt(cltTwap.getTwap(pool));
+
+        // should  exit
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        exitModule.executeExit(strategyIDs);
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        assertTrue(account.uniswapLiquidity == 0);
+        assertTrue(account.totalShares > 0);
+
+        // should not rebalance it
+        rebaseModule.executeStrategies(strategyIDs);
+        getAllTicksR(strategyID, rebaseModule.ACTIVE_REBALANCE(), rebaseActions[0].data, true);
+        (strategyKey,,,,,,,, account) = base.strategies(strategyID);
+
+        assertTrue(account.uniswapLiquidity == 0, "Uniswap liqudity should be zero");
+        assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
+        assertTrue(strategyKey.tickLower == -1010, "Incorrect Price ranges");
+        assertTrue(strategyKey.tickUpper == 990, "Incorrect Price ranges");
+
+        // executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        // executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        // executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        // executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
+
+        // _hevm.warp(block.timestamp + 3600);
+        // _hevm.roll(1 days);
+
+        // // should eixt now
+        // strategyIDs[0] = strategyID;
+        // exitModule.executeExit(strategyIDs);
+        // (,,,,,,,, account) = base.strategies(strategyID);
+        // assertTrue(account.uniswapLiquidity == 0, "Uniswap liqudity cannot be greater than zero");
+        // assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
+    }
 }

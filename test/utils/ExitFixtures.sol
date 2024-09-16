@@ -317,6 +317,33 @@ contract ExitFixtures is UniswapDeployer, Utilities {
         }
     }
 
+    function getAllTicksR(
+        bytes32 strategyID,
+        bytes32 actionName,
+        bytes memory actionsData,
+        bool shouldLog
+    )
+        public
+        returns (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t)
+    {
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID);
+
+        (, t,,,,,) = pool.slot0();
+
+        tl = key.tickLower;
+        tu = key.tickUpper;
+
+        (tlp, tup,,) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
+
+        if (shouldLog) {
+            console.logInt(tl);
+            console.logInt(tlp);
+            console.logInt(t);
+            console.logInt(tup);
+            console.logInt(tu);
+        }
+    }
+
     // function createStrategyAndDepositWithAmount(
     //     ICLTBase.StrategyPayload[] memory rebaseActions,
     //     int24 difference,
