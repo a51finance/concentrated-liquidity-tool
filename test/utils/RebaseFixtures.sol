@@ -196,7 +196,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         token1.approve(address(base), type(uint256).max);
 
         modes = new Modes(address(base), address(cltTwap), recepient);
-        rebaseModule = new RebaseModule(recepient, address(base), address(cltTwap));
+        rebaseModule = new RebaseModule(recepient, address(base), address(cltTwap), address(quote));
 
         _hevm.prank(recepient);
         rebaseModule.toggleOperator(recepient);
@@ -417,8 +417,10 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         tl = key.tickLower;
         tu = key.tickUpper;
+        int24 adl;
+        int24 adu;
 
-        (tlp, tup,,) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
+        (tlp, tup, adl, adu) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
 
         if (shouldLog) {
             console.logInt(tl);
@@ -426,6 +428,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
             console.logInt(t);
             console.logInt(tup);
             console.logInt(tu);
+            console.logInt(adl);
+            console.logInt(adu);
         }
     }
 
@@ -476,9 +480,11 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
         strategyID = getStrategyID(address(this), 1);
 
+        (uint256 am0, uint256 am1) = getAmounts(strategyKey.tickLower, strategyKey.tickUpper, 10_000e18);
+
         depositParams.strategyId = strategyID;
-        depositParams.amount0Desired = 100e18;
-        depositParams.amount1Desired = 100e18;
+        depositParams.amount0Desired = 10_000e18;
+        depositParams.amount1Desired = 10_000e18;
         depositParams.amount0Min = 0;
         depositParams.amount1Min = 0;
         depositParams.recipient = address(this);

@@ -2297,4 +2297,74 @@ contract ActiveRebalancingTest is Test, RebaseFixtures {
         // assertTrue(expectedLowerThresholdTick == 299);
         // assertTrue(expectedUpperThresholdTick == -1);
     }
+
+    function test_quoterInActiveRebalancing() public {
+        (, int24 tick,,,,,) = pool.slot0();
+
+        int24 tickLower = floorTicks(tick - 550, pool.tickSpacing());
+        int24 tickUpper = floorTicks(tick + 600, pool.tickSpacing());
+
+        (bytes32 strategyID, bytes memory data, ICLTBase.PositionActions memory positionActions) =
+            createActiveRebalancingAndDeposit(address(this), tick, tickLower, tickUpper, 300, 200);
+
+        // getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), data, true);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 10_000e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 375_000e18, 0, 0);
+
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), data, true);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = getStrategyID(address(this), 1);
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+        console.log("Balance Leftovers", account.balance0);
+        console.log("Balance Leftovers", account.balance1);
+    }
+
+    // function test_quoterInActiveRebalancing2() public {
+    //     (, int24 tick,,,,,) = pool.slot0();
+
+    //     int24 tickLower = floorTicks(tick - 550, pool.tickSpacing());
+    //     int24 tickUpper = floorTicks(tick + 600, pool.tickSpacing());
+
+    //     (bytes32 strategyID, bytes memory data, ICLTBase.PositionActions memory positionActions) =
+    //         createActiveRebalancingAndDeposit(address(this), tick, tickLower, tickUpper, 300, 200);
+
+    //     (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+    //     console.log("Balance Leftovers Before", account.balance0);
+    //     console.log("Balance Leftovers Before", account.balance1);
+
+    //     // getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), data, true);
+
+    //     executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+    //     executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+    //     executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+    //     executeSwap(token1, token0, pool.fee(), owner, 15_000e18, 0, 0);
+    //     executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+    //     executeSwap(token1, token0, pool.fee(), owner, 10_000e18, 0, 0);
+    //     executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
+
+    //     _hevm.warp(block.timestamp + 3600);
+    //     _hevm.roll(1 days);
+
+    //     getAllTicks(strategyID, rebaseModule.ACTIVE_REBALANCE(), data, true);
+
+    //     bytes32[] memory strategyIDs = new bytes32[](1);
+    //     strategyIDs[0] = getStrategyID(address(this), 1);
+    //     rebaseModule.executeStrategies(strategyIDs);
+
+    //     (,,,,,,,, account) = base.strategies(strategyID);
+    //     console.log("Balance Leftovers After", account.balance0);
+    //     console.log("Balance Leftovers After", account.balance1);
+    // }
 }

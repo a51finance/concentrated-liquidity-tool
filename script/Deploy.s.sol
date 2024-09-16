@@ -72,7 +72,7 @@ contract DeployALP is Script {
         );
 
         new Modes(address(baseContract), address(twapQuoter), _owner);
-        new RebaseModule(_owner, address(baseContract), address(twapQuoter));
+        // new RebaseModule(_owner, address(baseContract), address(twapQuoter));
 
         vm.stopBroadcast();
     }

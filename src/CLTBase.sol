@@ -20,6 +20,8 @@ import { ERC721 } from "@solmate/tokens/ERC721.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import { console } from "forge-std/console.sol";
+
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
@@ -378,6 +380,9 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         uint128 liquidityDelta;
         uint256 amount0Added;
         uint256 amount1Added;
+
+        console.log("Amount0", vars.balance0);
+        console.log("Amount1", vars.balance1);
 
         if (params.shouldMint) {
             (liquidityDelta, amount0Added, amount1Added) =

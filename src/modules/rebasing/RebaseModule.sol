@@ -4,6 +4,7 @@ pragma solidity =0.8.15;
 import { PositionKey } from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { IQuoter } from "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
 
 import { AccessControl } from "../../base/AccessControl.sol";
 import { ModeTicksCalculation } from "../../base/ModeTicksCalculation.sol";
@@ -12,8 +13,11 @@ import { ActiveTicksCalculation } from "../../base/ActiveTicksCalculation.sol";
 import { ICLTBase } from "../../interfaces/ICLTBase.sol";
 import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
 import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
-
+import { ICLTPayments } from "../../interfaces/ICLTPayments.sol";
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { PoolActions } from "../../libraries/PoolActions.sol";
+
+import { console } from "forge-std/console.sol";
 
 /// @title A51 Finance Autonomous Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
@@ -26,6 +30,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
     /// @notice The address of twap quoter
     ICLTTwapQuoter public twapQuoter;
+
+    IQuoter public quoter;
 
     /// @notice slippage percentage
     uint160 slippage = 1e5;
@@ -46,9 +52,17 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     /// @notice Constructs the RebaseModule with the provided parameters.
     /// @param _governance Address of the owner.
     /// @param _baseContractAddress Address of the base contract.
-    constructor(address _governance, address _baseContractAddress, address _twapQuoter) AccessControl(_governance) {
+    constructor(
+        address _governance,
+        address _baseContractAddress,
+        address _twapQuoter,
+        address _quoter
+    )
+        AccessControl(_governance)
+    {
         twapQuoter = ICLTTwapQuoter(_twapQuoter);
         cltBase = ICLTBase(payable(_baseContractAddress));
+        quoter = IQuoter(_quoter);
     }
 
     /// @notice Executes given strategies via bot.
@@ -149,8 +163,9 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
     )
         internal
     {
-        (int256 amountToSwap, bool zeroForOne) = _getSwapAmount(data.strategyID, originalKey, key);
-
+        int256 amountToSwap;
+        bool zeroForOne;
+        (amountToSwap, zeroForOne, key) = _getSwapAmount(data.strategyID, originalKey, key);
         (uint160 sqrtPriceX96,,,,,,) = key.pool.slot0();
         uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (slippage / 2)) / 1e6;
 
@@ -294,7 +309,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         ICLTBase.StrategyKey memory newKey
     )
         internal
-        returns (int256 amountSpecified, bool zeroForOne)
+        returns (int256 amountSpecified, bool zeroForOne, ICLTBase.StrategyKey memory)
     {
         IRebaseStrategy.SwapAmountsParams memory swapParams;
 
@@ -321,13 +336,24 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         swapParams.amount0Desired += account.balance0;
         swapParams.amount1Desired += account.balance1;
 
+        (uint160 sqrtPriceX96,,,,,,) = newKey.pool.slot0();
+        uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (slippage / 2)) / 1e6;
+        uint256 amountOut;
+
         if ((swapParams.amount0Desired == 0 || swapParams.amount1Desired == 0)) {
             zeroForOne = swapParams.amount0Desired > 0 ? true : false;
 
             amountSpecified = zeroForOne
                 ? int256(FullMath.mulDiv(swapParams.amount0Desired, swapsPecentage, 100))
                 : int256(FullMath.mulDiv(swapParams.amount1Desired, swapsPecentage, 100));
-            return (amountSpecified, zeroForOne);
+
+            (amountOut) = quoter.quoteExactInputSingle(
+                zeroForOne ? newKey.pool.token0() : newKey.pool.token1(),
+                !zeroForOne ? newKey.pool.token0() : newKey.pool.token1(),
+                newKey.pool.fee(),
+                uint256(amountSpecified),
+                zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact
+            );
         } else {
             uint128 newliquidity =
                 PoolActions.getLiquidityForAmounts(newKey, swapParams.amount0Desired, swapParams.amount1Desired);
@@ -338,10 +364,40 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
                 swapParams.amount0Desired, swapParams.amount1Desired, swapParams.newAmount0, swapParams.newAmount1
             );
 
+            console.log("Before", swapParams.amount0Desired);
+            console.log("Before", swapParams.amount1Desired);
+
             amountSpecified = zeroForOne
                 ? int256(FullMath.mulDiv(swapParams.amount0Desired - swapParams.newAmount0, swapsPecentage, 100))
                 : int256(FullMath.mulDiv(swapParams.amount1Desired - swapParams.newAmount1, swapsPecentage, 100));
+
+            (amountOut) = quoter.quoteExactInputSingle(
+                zeroForOne ? newKey.pool.token0() : newKey.pool.token1(),
+                !zeroForOne ? newKey.pool.token0() : newKey.pool.token1(),
+                newKey.pool.fee(),
+                uint256(amountSpecified),
+                zeroForOne ? sqrtPriceX96 - exactSqrtPriceImpact : sqrtPriceX96 + exactSqrtPriceImpact
+            );
         }
+
+        if (zeroForOne) {
+            swapParams.amount0Desired = swapParams.amount0Desired - uint256(amountSpecified);
+            swapParams.amount1Desired = swapParams.amount1Desired + uint256(amountOut);
+        } else {
+            swapParams.amount0Desired = swapParams.amount0Desired + uint256(amountOut);
+            swapParams.amount1Desired = swapParams.amount1Desired - uint256(amountSpecified);
+        }
+
+        console.log("After", swapParams.amount0Desired);
+        console.log("After", swapParams.amount1Desired);
+
+        (newKey.tickLower, newKey.tickUpper) =
+            getPositionTicks(newKey, swapParams.amount0Desired, swapParams.amount1Desired);
+
+        console.logInt(newKey.tickLower);
+        console.logInt(newKey.tickUpper);
+
+        return (amountSpecified, zeroForOne, newKey);
     }
 
     /// @dev Determines the direction of the swap based on the desired and available amounts of token0 and token1.
