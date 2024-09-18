@@ -342,20 +342,113 @@ contract ExitModuleTest is Test, ExitFixtures {
         assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
         assertTrue(strategyKey.tickLower == -1010, "Incorrect Price ranges");
         assertTrue(strategyKey.tickUpper == 990, "Incorrect Price ranges");
+    }
 
-        // executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
-        // executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
-        // executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
-        // executeSwap(token1, token0, pool.fee(), owner, 200_000e18, 0, 0);
+    function test_ExecuteExitStrategy_withRebaseActiveRebalanceThenExit() public {
+        initStrategy(1000);
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
 
-        // _hevm.warp(block.timestamp + 3600);
-        // _hevm.roll(1 days);
+        (, int24 tick,,,,,) = pool.slot0();
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(500, 300, tick, strategyKey.tickLower, strategyKey.tickUpper);
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = abi.encode(strategyKey.tickLower - 700, strategyKey.tickUpper - 300);
 
-        // // should eixt now
-        // strategyIDs[0] = strategyID;
-        // exitModule.executeExit(strategyIDs);
-        // (,,,,,,,, account) = base.strategies(strategyID);
-        // assertTrue(account.uniswapLiquidity == 0, "Uniswap liqudity cannot be greater than zero");
-        // assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
+        assertTrue(strategyKey.tickLower == -1010, "Incorrect Price ranges");
+        assertTrue(strategyKey.tickUpper == 990, "Incorrect Price ranges");
+
+        bytes32 strategyID = createStrategyAndDeposit(exitActions, rebaseActions, 1000, address(this), 1, 3, true);
+
+        (,,, bytes memory actionStatus,,,,,) = base.strategies(strategyID);
+        console.logBytes(actionStatus);
+
+        executeSwap(token1, token0, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 100e18, 0, 0);
+        executeSwap(token0, token1, pool.fee(), owner, 400e18, 0, 0);
+        executeSwap(token1, token0, pool.fee(), owner, 400_500e18, 0, 0);
+        _hevm.warp(block.timestamp + 3600);
+        _hevm.roll(1 days);
+
+        assertTrue(strategyKey.tickLower == -1010, "Incorrect Price ranges");
+        assertTrue(strategyKey.tickUpper == 990, "Incorrect Price ranges");
+
+        // should  rebalance
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+        rebaseModule.executeStrategies(strategyIDs);
+        ICLTBase.Account memory account;
+        (strategyKey,,,,,,,, account) = base.strategies(strategyID);
+
+        assertTrue(account.uniswapLiquidity > 0, "Uniswap liqudity shouldnot be zero");
+        assertTrue(account.totalShares > 0, "Liquidity shares cannot be zero");
+        assertTrue(strategyKey.tickLower != -1010, "Incorrect Price ranges");
+        assertTrue(strategyKey.tickUpper != 990, "Incorrect Price ranges");
+    }
+
+    function test_ExecuteExitStrategy_with_changing_rebase_strategies() public {
+        ICLTBase.StrategyPayload[] memory exitActions = new ICLTBase.StrategyPayload[](1);
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        (, int24 tick,,,,,) = pool.slot0();
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(500, 300, tick, strategyKey.tickLower, strategyKey.tickUpper);
+
+        exitActions[0].actionName = exitModule.EXIT_PREFERENCE();
+        exitActions[0].data = abi.encode(strategyKey.tickLower - 700, strategyKey.tickUpper + 300);
+
+        bytes32 strategyID = createStrategyAndDeposit(exitActions, rebaseActions, 1000, address(this), 1, 3, true);
+
+        assertTrue(-1710 == floorTicks(strategyKey.tickLower - 700, pool.tickSpacing()), "Invalid lower exit price");
+        assertEq(1290, floorTicks(strategyKey.tickUpper + 300, pool.tickSpacing()), "Invalid upper exit price");
+
+        assertTrue(-1010 == strategyKey.tickLower, "Invalid lower price");
+        assertTrue(990 == strategyKey.tickUpper, "Invalid upper price");
+
+        assertEq(-510, strategyKey.tickLower + 500, "Invalid lower inner price");
+        assertEq(690, strategyKey.tickUpper - 300, "Invalid upper inner price");
+
+        // updating exit preferences
+        ICLTBase.PositionActions memory positionActions;
+        positionActions.mode = 3;
+        positionActions.exitStrategy = exitActions;
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        exitActions[0].data = abi.encode(strategyKey.tickLower - 500, strategyKey.tickUpper + 600);
+        base.updateStrategyBase(strategyID, address(this), 0, 0, positionActions);
+
+        (strategyKey,,,,,,,,) = base.strategies(strategyID);
+
+        assertTrue(-1510 == floorTicks(strategyKey.tickLower - 500, pool.tickSpacing()), "Invalid lower exit price");
+        assertEq(1590, floorTicks(strategyKey.tickUpper + 600, pool.tickSpacing()), "Invalid upper exit price");
+
+        assertTrue(-1010 == strategyKey.tickLower, "Invalid lower price");
+        assertTrue(990 == strategyKey.tickUpper, "Invalid upper price");
+
+        assertEq(-510, strategyKey.tickLower + 500, "Invalid lower inner price");
+        assertEq(690, strategyKey.tickUpper - 300, "Invalid upper inner price");
+
+        // updating active to trailing
+        positionActions.mode = 3;
+        positionActions.exitStrategy = exitActions;
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        rebaseActions[0].actionName = rebaseModule.PRICE_PREFERENCE();
+        rebaseActions[0].data = abi.encode(500, 30);
+
+        base.updateStrategyBase(strategyID, address(this), 0, 0, positionActions);
+
+        (strategyKey,,,,,,,,) = base.strategies(strategyID);
+
+        assertTrue(-1510 == floorTicks(strategyKey.tickLower - 500, pool.tickSpacing()), "Invalid lower exit price");
+        assertEq(1590, floorTicks(strategyKey.tickUpper + 600, pool.tickSpacing()), "Invalid upper exit price");
+
+        assertTrue(-1010 == strategyKey.tickLower, "Invalid lower price");
+        assertTrue(990 == strategyKey.tickUpper, "Invalid upper price");
+
+        assertEq(-1510, strategyKey.tickLower - 500, "Invalid lower inner price");
+        assertEq(1020, strategyKey.tickUpper + 30, "Invalid upper inner price");
     }
 }
