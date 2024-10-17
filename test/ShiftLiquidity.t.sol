@@ -68,6 +68,120 @@ contract ShiftLiquidityTest is Test, Fixtures {
         base.toggleOperator(msg.sender);
     }
 
+    function testAR() public {
+        base.toggleOperator(address(rebaseModule));
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
+
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = abi.encode(100, 100);
+
+        positionActions = ICLTBase.PositionActions({
+            mode: 3,
+            exitStrategy: new ICLTBase.StrategyPayload[](0), // not available till now
+            rebaseStrategy: rebaseActions,
+            liquidityDistribution: new ICLTBase.StrategyPayload[](0) // not available till now
+         });
+
+        base.createStrategy(key, positionActions, 0, 0, true, false);
+
+        bytes32 strategyID = getStrategyID(address(this), 3);
+        uint256 depositAmount = 10 ether;
+
+        ICLTBase.DepositParams memory params = ICLTBase.DepositParams({
+            strategyId: strategyID,
+            amount0Desired: depositAmount,
+            amount1Desired: depositAmount,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: msg.sender
+        });
+
+        base.deposit(params);
+
+        (,,,,,,,, ICLTBase.Account memory account) = base.strategies(strategyID);
+
+        console.log("res -> ", account.balance0, account.balance1, account.uniswapLiquidity);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        (uint128 liquidity,,) = base.getStrategyReserves(strategyID);
+        (uint256 reserves0, uint256 reserves1) = getStrategyReserves(key, liquidity);
+
+        console.log("after swap reserves -> ", reserves0, reserves1);
+
+        bytes32[] memory strategyIDs = new bytes32[](1);
+        strategyIDs[0] = strategyID;
+
+        vm.warp(block.timestamp + 3600);
+        vm.roll(1 days);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        (liquidity,,) = base.getStrategyReserves(strategyID);
+        (reserves0, reserves1) = getStrategyReserves(key, liquidity);
+
+        console.log("after rebase reserves -> ", reserves0, reserves1);
+        console.log("after rebase balances-> ", account.balance0, account.balance1);
+
+        // (, int24 p,,,,,) = pool.slot0();
+
+        // console.logInt(key.tickLower);
+        // console.logInt(key.tickUpper);
+        // console.logInt(p);
+
+        // swap backward
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token1),
+                tokenOut: address(token0),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 1e30,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        vm.warp(block.timestamp + 3600);
+        vm.roll(1 days);
+
+        (liquidity,,) = base.getStrategyReserves(strategyID);
+        (reserves0, reserves1) = getStrategyReserves(key, liquidity);
+
+        console.log("after 2nd swap reserves -> ", reserves0, reserves1);
+
+        rebaseModule.executeStrategies(strategyIDs);
+
+        (key,,,,,,,, account) = base.strategies(strategyID);
+
+        (liquidity,,) = base.getStrategyReserves(strategyID);
+        (reserves0, reserves1) = getStrategyReserves(key, liquidity);
+
+        console.log("after rebase reserves -> ", reserves0, reserves1);
+        console.log("after rebase balances-> ", account.balance0, account.balance1);
+
+        // (, p,,,,,) = pool.slot0();
+
+        // console.logInt(key.tickLower);
+        // console.logInt(key.tickUpper);
+        // console.logInt(p);
+    }
+
     function test_shiftLiquidity_shouldRevertInvalidState() public {
         router.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({

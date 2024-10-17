@@ -122,6 +122,7 @@ contract Fixtures is UniswapDeployer {
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
         cltModules.setNewModule(keccak256("LIQUIDITY_DISTRIBUTION"), keccak256("PRICE_RANGE"));
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("ACTIVE_REBALANCE"));
 
         cltModules.setModuleAddress(keccak256("REBASE_STRATEGY"), address(rebaseModule));
     }
