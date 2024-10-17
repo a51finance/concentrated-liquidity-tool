@@ -33,6 +33,8 @@ contract DeployALP is Script {
     address baseSwapFactory = 0x38015D05f4fEC8AFe15D7cc0386a126574e8077B;
     address baseWeth9 = 0x4200000000000000000000000000000000000006;
 
+    address cltbaseArbitrum = 0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6;
+
     // Holesky testnet
     address _ownerSepolia = 0x9De199457b5F6e4690eac92c399A0Cd31B901Dc3;
     address _weth9Sepolia = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14;
@@ -41,34 +43,38 @@ contract DeployALP is Script {
     IUniswapV3Factory _factoryInterface = IUniswapV3Factory(_sepoliaFactory);
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_2");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
         vm.startBroadcast(deployerPrivateKey);
 
         // new CLTHelper();
-        CLTModules cltModules = new CLTModules(_ownerSepolia);
-        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_ownerSepolia);
+        // CLTModules cltModules = new CLTModules(_ownerSepolia);
+        // CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_ownerSepolia);
 
-        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
-            lpAutomationFee: 0,
-            strategyCreationFee: 0,
-            protcolFeeOnManagement: 0,
-            protcolFeeOnPerformance: 0
-        });
+        // IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+        //     lpAutomationFee: 0,
+        //     strategyCreationFee: 0,
+        //     protcolFeeOnManagement: 0,
+        //     protcolFeeOnPerformance: 0
+        // });
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_ownerSepolia, feeParams, feeParams);
+        // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_ownerSepolia, feeParams, feeParams);
 
-        CLTBase baseContract = new CLTBase(
-            "A51 Liquidity Positions NFT",
-            "ALPhy",
-            _ownerSepolia,
-            _weth9Sepolia,
-            address(feeHandler),
-            address(cltModules),
-            _factoryInterface
+        // CLTBase baseContract = new CLTBase(
+        //     "A51 Liquidity Positions NFT",
+        //     "ALPhy",
+        //     _ownerSepolia,
+        //     _weth9Sepolia,
+        //     address(feeHandler),
+        //     address(cltModules),
+        //     _factoryInterface
+        // );
+
+        // new Modes(address(baseContract), address(twapQuoter), _ownerSepolia);
+        new RebaseModule(
+            0x9a9DdE861b91B965DEAA0ce2D208DBE693e87fCb,
+            address(0x3e0AA2e17FE3E5e319f388C794FdBC3c64Ef9da6),
+            address(0xC22E20950aA1f2e91faC75AB7fD8a21eF2C3aB1E)
         );
-
-        new Modes(address(baseContract), address(twapQuoter), _ownerSepolia);
-        new RebaseModule(_ownerSepolia, address(baseContract), address(twapQuoter));
 
         vm.stopBroadcast();
     }
