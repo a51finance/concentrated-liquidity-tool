@@ -14,12 +14,13 @@ import { ICLTTwapQuoter } from "../../interfaces/ICLTTwapQuoter.sol";
 import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 
 import { PoolActions } from "../../libraries/PoolActions.sol";
-
+import "forge-std/console.sol";
 /// @title A51 Finance Autonomous Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice This contract is part of the A51 Finance platform, focusing on automated liquidity provision and rebalancing
 /// strategies. The RebaseModule contract is responsible for validating and verifying the strategies before executing
 /// them through CLTBase.
+
 contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessControl, IRebaseStrategy {
     /// @notice The address of base contract
     ICLTBase public immutable cltBase;
@@ -235,6 +236,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
         swapParams.amount0Desired += account.balance0;
         swapParams.amount1Desired += account.balance1;
+        console.log("swapParams.amountDesired -> ", swapParams.amount0Desired, swapParams.amount1Desired);
 
         if ((swapParams.amount0Desired == 0 || swapParams.amount1Desired == 0)) {
             zeroForOne = swapParams.amount0Desired > 0 ? true : false;
@@ -248,7 +250,7 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
                 PoolActions.getLiquidityForAmounts(newKey, swapParams.amount0Desired, swapParams.amount1Desired);
 
             (swapParams.newAmount0, swapParams.newAmount1) = PoolActions.getAmountsForLiquidity(newKey, newliquidity);
-
+            console.log("swapParams.newAmount -> ", swapParams.newAmount0, swapParams.newAmount1);
             zeroForOne = getZeroForOne(
                 swapParams.amount0Desired, swapParams.amount1Desired, swapParams.newAmount0, swapParams.newAmount1
             );
