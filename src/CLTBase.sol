@@ -34,10 +34,10 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
     uint256 private _strategyId = 1;
 
-    /// @notice The address of modes managment of strategy
+    /// @inheritdoc ICLTBase
     address public immutable cltModules;
 
-    /// @notice The address of fee managment of strategy
+    /// @inheritdoc ICLTBase
     address public immutable feeHandler;
 
     /// @inheritdoc ICLTBase
@@ -519,11 +519,7 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         emit StrategyFee(strategyId, earned0, earned1);
     }
 
-    /// @notice Returns the liquidity and fee earned by A51 strategy.
-    /// @param strategyId Hash of strategy ID
-    /// @return liquidity The currently liquidity available to the pool by strategy
-    /// @return fee0 The computed amount of token0 owed to the strategy as of the global update
-    /// @return fee1 The computed amount of token1 owed to the strategy as of the global update
+    /// @inheritdoc ICLTBase
     function getStrategyReserves(bytes32 strategyId) external returns (uint128 liquidity, uint256 fee0, uint256 fee1) {
         StrategyData storage strategy = strategies[strategyId];
 
