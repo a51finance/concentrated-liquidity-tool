@@ -34,6 +34,7 @@ import { IAlgebraPool } from "@cryptoalgebra/integral-core/contracts/interfaces/
 import { IAlgebraFactory } from "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol";
 
 import { BasePluginV1Factory } from "@cryptoalgebra/plugin/contracts/BasePluginV1Factory.sol";
+import { console } from "forge-std/console.sol";
 
 contract RebaseFixtures is UniswapDeployer, Utilities {
     NonfungiblePositionManager positionManager;
@@ -48,6 +49,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
     CLTBase base;
     Modes modes;
     CLTTwapQuoter cltTwap;
+    GovernanceFeeHandler feeHandler;
 
     ERC20Mock token0;
     ERC20Mock token1;
@@ -105,8 +107,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         mintParams.tickLower = (-600_000 / pool.tickSpacing()) * pool.tickSpacing();
         mintParams.tickUpper = (600_000 / pool.tickSpacing()) * pool.tickSpacing();
         mintParams.recipient = recepient;
-        mintParams.amount0Desired = 1000e18;
-        mintParams.amount1Desired = 1000e18;
+        mintParams.amount0Desired = 10_000_000e18;
+        mintParams.amount1Desired = 10_000_000e18;
         mintParams.amount0Min = 0;
         mintParams.amount1Min = 0;
         mintParams.deadline = 2_000_000_000;
@@ -183,7 +185,7 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         cltTwap = new CLTTwapQuoter(address(this));
         cltModules = new CLTModules(address(this));
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
+        feeHandler = new GovernanceFeeHandler(feeParams, feeParams);
 
         base = new CLTBase(
             "ALP Base", "ALP", address(this), address(weth), address(feeHandler), address(cltModules), factory
@@ -211,6 +213,8 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         _hevm.prank(recepient);
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("PRICE_PREFERENCE"));
         _hevm.prank(recepient);
+        cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("ACTIVE_REBALANCE"));
+        _hevm.prank(recepient);
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("REBASE_INACTIVITY"));
         _hevm.prank(recepient);
         cltModules.setNewModule(keccak256("REBASE_STRATEGY"), keccak256("TIME_PREFERENCE"));
@@ -229,6 +233,33 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
 
     function getStrategyID(address user, uint256 strategyCount) internal pure returns (bytes32 strategyID) {
         strategyID = keccak256(abi.encode(user, strategyCount));
+    }
+
+    function getAllTicks(
+        bytes32 strategyID,
+        bytes32 actionName,
+        bytes memory actionsData,
+        bool shouldLog
+    )
+        public
+        returns (int24 tl, int24 tu, int24 tlp, int24 tup, int24 t)
+    {
+        (ICLTBase.StrategyKey memory key,,,,,,,,) = base.strategies(strategyID);
+
+        (, t,,,,) = pool.globalState();
+
+        tl = key.tickLower;
+        tu = key.tickUpper;
+
+        (tlp, tup,,) = rebaseModule.getPreferenceTicks(strategyID, actionName, actionsData);
+
+        if (shouldLog) {
+            console.logInt(tl);
+            console.logInt(tlp);
+            console.logInt(t);
+            console.logInt(tup);
+            console.logInt(tu);
+        }
     }
 
     function createStrategyActions(
@@ -361,5 +392,97 @@ contract RebaseFixtures is UniswapDeployer, Utilities {
         token0.approve(address(base), type(uint256).max);
         _hevm.prank(user);
         token1.approve(address(base), type(uint256).max);
+    }
+
+    function getAmounts(int24 tickLower, int24 tickUpper, uint256 amount0) public returns (uint256, uint256) {
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmount0(
+            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), amount0
+        );
+
+        uint256 amount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            TickMath.getSqrtRatioAtTick(tickLower), TickMath.getSqrtRatioAtTick(tickUpper), liquidity
+        );
+        return (amount0, amount1);
+    }
+
+    function createActiveRebalancingAndDeposit(
+        address owner,
+        int24 tick,
+        int24 tickLower,
+        int24 tickUpper,
+        int24 lowerDiff,
+        int24 upperDiff
+    )
+        public
+        returns (bytes32 strategyID, bytes memory data, ICLTBase.PositionActions memory positionActions)
+    {
+        ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](2);
+        ICLTBase.DepositParams memory depositParams;
+
+        executeSwap(token1, token0, owner, 100e18, 0, 0);
+        executeSwap(token0, token1, owner, 22e18, 0, 0);
+
+        strategyKey.pool = pool;
+        strategyKey.tickLower = tickLower;
+        strategyKey.tickUpper = tickUpper;
+        data = abi.encode(lowerDiff, upperDiff, tick, tickLower, tickUpper);
+        rebaseActions[0].actionName = rebaseModule.ACTIVE_REBALANCE();
+        rebaseActions[0].data = data;
+
+        rebaseActions[1].actionName = rebaseModule.REBASE_INACTIVITY();
+        rebaseActions[1].data = abi.encode(3);
+
+        positionActions.mode = 3;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        base.createStrategy(strategyKey, positionActions, 0, 0, false, false);
+
+        strategyID = getStrategyID(address(this), 1);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = 100e18;
+        depositParams.amount1Desired = 100e18;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = address(this);
+        base.deposit(depositParams);
+    }
+
+    function createStrategyAndDepositWithAmount(
+        ICLTBase.StrategyPayload[] memory rebaseActions,
+        int24 difference,
+        address recepient,
+        uint256 positionId,
+        uint256 mode,
+        bool isCompounded,
+        uint256 amount0,
+        uint256 amount1
+    )
+        public
+        returns (bytes32 strategyID)
+    {
+        ICLTBase.PositionActions memory positionActions;
+        ICLTBase.DepositParams memory depositParams;
+
+        positionActions.mode = mode;
+        positionActions.exitStrategy = new ICLTBase.StrategyPayload[](0);
+        positionActions.rebaseStrategy = rebaseActions;
+        positionActions.liquidityDistribution = new ICLTBase.StrategyPayload[](0);
+
+        createStrategyActions(difference, recepient, isCompounded, positionActions);
+
+        strategyID = getStrategyID(recepient, positionId);
+
+        depositParams.strategyId = strategyID;
+        depositParams.amount0Desired = amount0;
+        depositParams.amount1Desired = amount1;
+        depositParams.amount0Min = 0;
+        depositParams.amount1Min = 0;
+        depositParams.recipient = recepient;
+
+        _hevm.prank(recepient);
+        base.deposit(depositParams);
     }
 }
