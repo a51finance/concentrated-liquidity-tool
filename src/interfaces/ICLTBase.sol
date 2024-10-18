@@ -129,6 +129,10 @@ interface ICLTBase {
     /// @param fee1 Amount of fees1 collected by strategy
     event StrategyFee(bytes32 indexed strategyId, uint256 fee0, uint256 fee1);
 
+    /// @notice Emitted when a protocol fee is collected for strategy creation via the base
+    /// @param fee Amount of native fee accrued by protocol
+    event ProtocolFeeNative(uint256 fee);
+
     /// @notice Emitted when liquidity is increased for a position NFT
     /// @param tokenId The ID of the token for which liquidity was increased
     /// @param share The amount by which liquidity for the NFT position was increased

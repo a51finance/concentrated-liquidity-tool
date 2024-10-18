@@ -118,6 +118,8 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
 
         if (strategyCreationFeeAmount > 0) {
             TransferHelper.safeTransferETH(owner, strategyCreationFeeAmount);
+
+            emit ProtocolFeeNative(strategyCreationFeeAmount);
         }
 
         refundETH();

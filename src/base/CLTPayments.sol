@@ -20,6 +20,11 @@ abstract contract CLTPayments is ICLTPayments {
         WETH9 = _WETH9;
     }
 
+    /// @notice Emitted when protocol fee is collected
+    /// @param fee0 Amount of fee0 accrued by protocol
+    /// @param fee1 Amount of fee1 accrued by protocol
+    event ProtocolFee(uint256 fee0, uint256 fee1);
+
     receive() external payable { }
 
     fallback() external payable { }
@@ -121,10 +126,13 @@ abstract contract CLTPayments is ICLTPayments {
         returns (uint256 fee0, uint256 fee1)
     {
         if (percentage > 0) {
+            uint256 protcolShare0;
+            uint256 protcolShare1;
+
             if (amount0 > 0) {
                 fee0 = (amount0 * percentage) / Constants.WAD;
 
-                uint256 protcolShare0 = (fee0 * protcolPercentage) / Constants.WAD;
+                protcolShare0 = (fee0 * protcolPercentage) / Constants.WAD;
 
                 TransferHelper.safeTransfer(key.pool.token0(), strategyOwner, fee0 - protcolShare0);
                 if (protcolShare0 > 0) TransferHelper.safeTransfer(key.pool.token0(), governance, protcolShare0);
@@ -133,11 +141,13 @@ abstract contract CLTPayments is ICLTPayments {
             if (amount1 > 0) {
                 fee1 = (amount1 * percentage) / Constants.WAD;
 
-                uint256 protcolShare1 = (fee1 * protcolPercentage) / Constants.WAD;
+                protcolShare1 = (fee1 * protcolPercentage) / Constants.WAD;
 
                 TransferHelper.safeTransfer(key.pool.token1(), strategyOwner, fee1 - protcolShare1);
                 if (protcolShare1 > 0) TransferHelper.safeTransfer(key.pool.token1(), governance, protcolShare1);
             }
+
+            if (protcolShare0 > 0 || protcolShare1 > 0) emit ProtocolFee(protcolShare0, protcolShare1);
         }
     }
 
