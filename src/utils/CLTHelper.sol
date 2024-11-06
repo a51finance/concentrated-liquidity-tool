@@ -4,7 +4,9 @@ pragma solidity =0.8.20;
 import "@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol";
 import "@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol";
 import "@cryptoalgebra/integral-periphery/contracts/libraries/LiquidityAmounts.sol";
+
 import "../interfaces/ICLTBase.sol";
+import "../libraries/LiquidityShares.sol";
 
 contract CLTHelper {
     function decodePositionActions(bytes memory actions) external pure returns (ICLTBase.PositionActions memory) {
@@ -45,5 +47,37 @@ contract CLTHelper {
             (reserves0, reserves1) =
                 LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, liquidityAmount);
         }
+    }
+
+    function previewDeposit(
+        ICLTBase cltBase,
+        bytes32 strategyId,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    )
+        external
+        returns (uint256 shares, uint256 amount0, uint256 amount1)
+    {
+        (ICLTBase.StrategyKey memory key,,,, bool isCompound,,,, ICLTBase.Account memory account) =
+            cltBase.strategies(strategyId);
+
+        // update reserves & strategy fee
+        (uint128 liquidity, uint256 fee0, uint256 fee1) = cltBase.getStrategyReserves(strategyId);
+        (uint256 reserve0, uint256 reserve1) = PoolActions.getAmountsForLiquidity(key, liquidity);
+
+        if (isCompound) {
+            reserve0 += fee0;
+            reserve1 += fee1;
+        }
+
+        // includes unused balance
+        reserve0 += account.balance0;
+        reserve1 += account.balance1;
+
+        // If total supply > 0, strategy can't be empty
+        assert(account.totalShares == 0 || reserve0 != 0 || reserve1 != 0);
+
+        (shares, amount0, amount1) =
+            LiquidityShares.calculateShare(amount0Desired, amount1Desired, reserve0, reserve1, account.totalShares);
     }
 }
