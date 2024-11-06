@@ -89,7 +89,7 @@ contract ZappInTest is Test {
 
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(
-            zapIn.executeSwap.selector,
+            zapIn.doOKXSwap.selector,
             address(token1),
             amount1Desired,
             address(token0),
