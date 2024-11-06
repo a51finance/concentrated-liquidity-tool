@@ -41,7 +41,7 @@ contract CLTZapIn is Multicall, AccessControl {
     address public immutable ODOS_ROUTER_V2;
 
     /// @notice CLTBase contract for managing Uniswap v3 liquidity
-    ICLTBase private immutable CLT_BASE;
+    ICLTBase public immutable CLT_BASE;
 
     /// @notice The Wrapped Ethereum contract
     IWETH9 public immutable WETH;
@@ -195,7 +195,7 @@ contract CLTZapIn is Multicall, AccessControl {
     /// @param deadline The deadline by which the swap must complete
     /// @param swapData The swap data for the OKX proxy
     /// @return tokenAmountOut The amount of the output token received
-    function executeSwap(
+    function doOKXSwap(
         ERC20 tokenIn,
         uint256 tokenAmountIn,
         ERC20 tokenOut,
