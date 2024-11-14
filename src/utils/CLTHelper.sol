@@ -80,4 +80,67 @@ contract CLTHelper {
         (shares, amount0, amount1) =
             LiquidityShares.calculateShare(amount0Desired, amount1Desired, reserve0, reserve1, account.totalShares);
     }
+
+    function previewWithdraw(
+        ICLTBase cltBase,
+        uint256 tokenId,
+        uint256 liquidity
+    )
+        external
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (bytes32 strategyId, uint256 liquidityShare,,,,) = cltBase.positions(tokenId);
+
+        // update strategy fee
+        cltBase.getStrategyReserves(strategyId);
+
+        // fetch updated fee
+        (
+            ICLTBase.StrategyKey memory key,
+            ,
+            ,
+            ,
+            bool isCompound,
+            ,
+            uint256 managementFee,
+            uint256 performanceFee,
+            ICLTBase.Account memory account
+        ) = cltBase.strategies(strategyId);
+
+        if (account.uniswapLiquidity > 0) {
+            (amount0, amount1,,) = PoolActions.burnLiquidity(
+                key, uint128(FullMath.mulDiv(account.uniswapLiquidity, liquidity, account.totalShares))
+            );
+        }
+
+        uint256 fee0;
+        uint256 fee1;
+
+        if (!isCompound) {
+            (fee0, fee1) = IBase(address(cltBase)).getUserfee(tokenId);
+        } else {
+            (fee0, fee1) = (
+                FullMath.mulDiv(account.fee0, liquidityShare, account.totalShares),
+                FullMath.mulDiv(account.fee1, liquidityShare, account.totalShares)
+            );
+        }
+
+        if (performanceFee > 0) {
+            fee0 -= FullMath.mulDiv(fee0, performanceFee, 1e18);
+            fee1 -= FullMath.mulDiv(fee1, performanceFee, 1e18);
+        }
+
+        if (managementFee > 0) {
+            amount0 -= FullMath.mulDiv(amount0, managementFee, 1e18);
+            amount1 -= FullMath.mulDiv(amount1, managementFee, 1e18);
+        }
+
+        // should calculate correct amounts for both compounders & non-compounders
+        amount0 += FullMath.mulDiv(account.balance0, liquidity, account.totalShares) + fee0;
+        amount1 += FullMath.mulDiv(account.balance1, liquidity, account.totalShares) + fee1;
+    }
+}
+
+interface IBase {
+    function getUserfee(uint256 tokenId) external returns (uint256 fee0, uint256 fee1);
 }
