@@ -80,11 +80,15 @@ contract ZappInTest is Test {
     }
 
     function test__multicallSwap__zappIn() public {
-        uint256 totalAmount1 = 3000 * 1e6;
+        uint256 totalAmount1 = 6800 * 1e6;
         uint256 amount1Desired = totalAmount1 / 2;
 
-        deal(address(token1), address(zapIn), totalAmount1);
+        address user = 0x3463255E4A3e54c6b74910F4CfBAD03458371f0d;
 
+        deal(address(token1), user, totalAmount1);
+        payable(user).transfer(100 ether);
+
+        vm.startPrank(user);
         approveToken(totalAmount1, token1, address(zapIn));
 
         bytes[] memory calls = new bytes[](2);
@@ -96,31 +100,28 @@ contract ZappInTest is Test {
             0,
             address(zapIn),
             address(zapIn),
-            true,
+            false,
             block.timestamp + 1 days,
-            hex"84a7f3dd0101000156c85a254DD12eE8D9C04049a4ab62769Ce982100b7b45caa7149ab8000000000001d988097fb8612cc24eec14542bc03424c656005f0459682f0000000000040faddd9100015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000004019b57dca972db5d8866c630554acdbdfe58b2659c0000000301020300060100010200020400000001ff000000000000000000000000000000468cc91df6f669cae6cdce766995bd7874052fbcd988097fb8612cc24eec14542bc03424c656005f00000000000000000000000000000000000000000000000000000000000000"
+            hex"84a7f3dd0101000156c85a254DD12eE8D9C04049a4ab62769Ce982100c0116beafb2310b60000000000001d988097fb8612cc24eec14542bc03424c656005f04caa7e2000000000142000000000000000000000000000000000000060413658ffa00015615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f0000000004019b57dca972db5d8866c630554acdbdfe58b2659c0000000301020300060101010200ff000000000000000000000000000000000000000000468cc91df6f669cae6cdce766995bd7874052fbcd988097fb8612cc24eec14542bc03424c656005f00000000000000000000000000000000000000000000000000000000000000"
         );
 
         calls[1] = abi.encodeWithSelector(
             zapIn.zapIn.selector,
             ICLTBase.DepositParams({
                 strategyId: strategyID2,
-                amount0Desired: 5 ether,
+                amount0Desired: token0.balanceOf(address(zapIn)),
                 amount1Desired: amount1Desired, // amount1 to be fetched by ratio
                 amount0Min: 0,
                 amount1Min: 0,
-                recipient: address(this)
+                recipient: user
             }),
             token0,
             token1,
             true,
-            true
+            false
         );
 
-        console.logBytes(calls[0]);
-        console.logBytes(calls[1]);
-
-        bytes[] memory results = zapIn.multicall{ value: 5 ether }(calls);
+        bytes[] memory results = zapIn.multicall{ value: 1 ether }(calls);
 
         (uint256 shares,,,) = abi.decode(results[1], (uint256, uint128, uint256, uint256));
 
