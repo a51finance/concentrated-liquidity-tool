@@ -42,37 +42,37 @@ contract DeployALP is Script {
     address _weth9Sepolia = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14;
     address _sepoliaFactory = 0x0227628f3F023bb0B980b67D528571c95c6DaC1c;
 
-    IUniswapV3Factory _factoryInterface = IUniswapV3Factory(aerodromFactory);
+    IUniswapV3Factory _factoryInterface = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_MAIN");
         vm.startBroadcast(deployerPrivateKey);
 
         // new CLTHelper();
-        CLTModules cltModules = new CLTModules(_owner);
-        CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
+        // CLTModules cltModules = new CLTModules(_owner);
+        // CLTTwapQuoter twapQuoter = new CLTTwapQuoter(_owner);
 
-        IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
-            lpAutomationFee: 0,
-            strategyCreationFee: 0,
-            protcolFeeOnManagement: 0,
-            protcolFeeOnPerformance: 0
-        });
+        // IGovernanceFeeHandler.ProtocolFeeRegistry memory feeParams = IGovernanceFeeHandler.ProtocolFeeRegistry({
+        //     lpAutomationFee: 0,
+        //     strategyCreationFee: 0,
+        //     protcolFeeOnManagement: 0,
+        //     protcolFeeOnPerformance: 0
+        // });
 
-        GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
+        // GovernanceFeeHandler feeHandler = new GovernanceFeeHandler(_owner, feeParams, feeParams);
 
-        CLTBase baseContract = new CLTBase(
-            "A51 Liquidity Positions NFT",
-            "ALPhy",
-            _owner,
-            _weth9Base,
-            address(feeHandler),
-            address(cltModules),
-            _factoryInterface
-        );
+        // CLTBase baseContract = new CLTBase(
+        //     "A51 Liquidity Positions NFT",
+        //     "ALPhy",
+        //     _ownerSepolia,
+        //    address( 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1),
+        //     address(0x44Ae07568378d2159ED41D0f060a3d6baefBEb97),
+        //     address(0xC203e40Fb4D742a0559705E33C9C2Af41Af2b4dc),
+        //     _factoryInterface
+        // );
 
-        new Modes(address(baseContract), address(twapQuoter), _owner);
-        new RebaseModule(_owner, address(baseContract), address(twapQuoter));
+        new Modes(address(0x7DBa7A781B2b4B630257B2Afc6C9330DCE7DC7Ef), address(0x7DBa7A781B2b4B630257B2Afc6C9330DCE7DC7Ef), _ownerSepolia);
+        new RebaseModule(_ownerSepolia, address(0x7DBa7A781B2b4B630257B2Afc6C9330DCE7DC7Ef), address(0x7DBa7A781B2b4B630257B2Afc6C9330DCE7DC7Ef));
 
         vm.stopBroadcast();
     }

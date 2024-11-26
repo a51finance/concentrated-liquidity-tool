@@ -16,10 +16,14 @@
   solc = "0.8.15"
   src = "src"
   test = "test"
-#  libraries = [
-#  "./src/libraries/PoolActions.sol:PoolActions:0xFFD9acf25F2D930BE88D486D588ecBa7a418DE0B"
-# ]
-
+  libraries = [
+  "src/libraries/LiquidityShares.sol:LiquidityShares:0xA1d8180F4482359CEb7Eb7437FCf4a2616830F81",
+  "src/libraries/PoolActions.sol:PoolActions:0xffd9acf25f2d930be88d486d588ecba7a418de0b",
+  "src/libraries/Position.sol:Position:0x634062496b8ecc63d597401d81d11d5d24eedd55",
+  "src/libraries/StrategyFeeShares.sol:StrategyFeeShares:0x2935a23f015ce177d6cc6bacce189a2e0039a227",
+  "src/libraries/TransferHelper.sol:TransferHelper:0x948a4df3e32dd43208b111b27c592f90c41ab322",
+  "src/libraries/UserPositions.sol:UserPositions:0x7794a94ff4c4c6840cbf92b793092730a068a0e2"
+]
 
 
 [profile.ci]
@@ -28,7 +32,7 @@
 
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
-  # unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 42161, url = "${TENDERLY_VIRTUAL_TESTNET_RPC_URL}/verify/etherscan" }
+  unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 42161, url = "${TENDERLY_VIRTUAL_TESTNET_RPC_URL}/verify/etherscan" }
 
 
 
