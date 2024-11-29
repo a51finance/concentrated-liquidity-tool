@@ -7,6 +7,9 @@ interface ICLTTwapQuoter {
     error InvalidInput();
     error MaxTwapDeviationExceeded();
 
+    event PoolTwapUpdated(uint32 twapDuration);
+    event StandardTwapUpdated(uint32 twapDuration);
+
     /// @param twapDuration Period of time that we observe for price slippage
     /// @param maxTwapDeviation Maximum deviation of time waited avarage price in ticks
     struct PoolStrategy {
