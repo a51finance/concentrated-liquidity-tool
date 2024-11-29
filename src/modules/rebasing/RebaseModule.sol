@@ -15,12 +15,20 @@ import { IRebaseStrategy } from "../../interfaces/modules/IRebaseStrategy.sol";
 
 import { PoolActions } from "../../libraries/PoolActions.sol";
 
+import { AutomationCompatibleInterface } from "../../interfaces/external/AutomationCompatibleInterface.sol";
+
 /// @title A51 Finance Autonomous Liquidity Provision Rebase Module Contract
 /// @author undefined_0x
 /// @notice This contract is part of the A51 Finance platform, focusing on automated liquidity provision and rebalancing
 /// strategies. The RebaseModule contract is responsible for validating and verifying the strategies before executing
 /// them through CLTBase.
-contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessControl, IRebaseStrategy {
+contract RebaseModule is
+    ModeTicksCalculation,
+    ActiveTicksCalculation,
+    AccessControl,
+    IRebaseStrategy,
+    AutomationCompatibleInterface
+{
     /// @notice The address of base contract
     ICLTBase public immutable cltBase;
 
@@ -35,6 +43,8 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
 
     /// @notice Percentage for swaps in active rebalancing
     uint8 public swapsPecentage = 50;
+
+    bytes32[] public registeredStrategyIDs;
 
     // 0xca2ac00817703c8a34fa4f786a4f8f1f1eb57801f5369ebb12f510342c03f53b
     bytes32 public constant PRICE_PREFERENCE = keccak256("PRICE_PREFERENCE");
@@ -51,11 +61,38 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         cltBase = ICLTBase(payable(_baseContractAddress));
     }
 
+    // @bug fix out of range strategy ids whitlisting in array
+    function checkUpkeep(bytes calldata /* checkData */ )
+        external
+        returns (bool upkeepNeeded, bytes memory performData)
+    {
+        bytes32[] memory totalStrategies = registeredStrategyIDs;
+        checkStrategiesArray(totalStrategies);
+        ExecutableStrategiesData[] memory queue = checkAndProcessStrategies(totalStrategies);
+
+        totalStrategies = new bytes32[](queue.length);
+
+        for (uint256 i = 0; i < queue.length; i++) {
+            totalStrategies[i] = queue[i].strategyID;
+        }
+
+        totalStrategies = filterNonZeroBytes(totalStrategies);
+
+        if (totalStrategies.length > 0) {
+            upkeepNeeded = true;
+            performData = abi.encode(totalStrategies);
+        }
+    }
+
+    function performUpkeep(bytes calldata performData) external {
+        bytes32[] memory executableStrategies = abi.decode(performData, (bytes32[]));
+        executeStrategies(executableStrategies);
+    }
+
     /// @notice Executes given strategies via bot.
     /// @dev Can be called by any one.
     /// @param strategyIDs Array of strategy IDs to be executed.
-
-    function executeStrategies(bytes32[] calldata strategyIDs) external nonReentrancy {
+    function executeStrategies(bytes32[] memory strategyIDs) public nonReentrancy {
         checkStrategiesArray(strategyIDs);
         ExecutableStrategiesData[] memory _queue = checkAndProcessStrategies(strategyIDs);
         uint256 queueLength = _queue.length;
@@ -879,6 +916,16 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
         );
     }
 
+    function getStrategiesCount() external view returns (uint256) {
+        return registeredStrategyIDs.length;
+    }
+
+    function updateStrategyList(bytes32[] calldata strategyIDs) external onlyOperator {
+        for (uint256 i = 0; i < strategyIDs.length; i++) {
+            registeredStrategyIDs.push(strategyIDs[i]);
+        }
+    }
+
     /// @notice Updates the address twapQuoter.
     /// @param _twapQuoter The new address of twapQuoter
     function updateTwapQuoter(address _twapQuoter) external onlyOwner {
@@ -903,5 +950,29 @@ contract RebaseModule is ModeTicksCalculation, ActiveTicksCalculation, AccessCon
             revert SlippageThresholdExceeded();
         }
         slippage = _newSlippage;
+    }
+
+    function filterNonZeroBytes(bytes32[] memory input) public pure returns (bytes32[] memory) {
+        // Count the number of non-zero bytes
+        uint256 count = 0;
+        for (uint256 i = 0; i < input.length; i++) {
+            if (input[i] != 0) {
+                count++;
+            }
+        }
+
+        // Create a new array with the size of non-zero bytes
+        bytes32[] memory result = new bytes32[](count);
+
+        // Populate the result array with non-zero bytes
+        uint256 index = 0;
+        for (uint256 i = 0; i < input.length; i++) {
+            if (input[i] != 0) {
+                result[index] = input[i];
+                index++;
+            }
+        }
+
+        return result;
     }
 }
