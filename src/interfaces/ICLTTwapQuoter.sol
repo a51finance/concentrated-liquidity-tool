@@ -24,5 +24,5 @@ interface ICLTTwapQuoter {
     function getTwap(IUniswapV3Pool pool) external view returns (int24 twap);
 
     /// @notice Returns twap duration & max twap deviation for each pool
-    function poolStrategy(address pool) external returns (uint32 twapDuration, int24 maxTwapDeviation);
+    function poolStrategy(address pool) external view returns (uint32 twapDuration, int24 maxTwapDeviation);
 }
