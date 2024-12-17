@@ -143,7 +143,7 @@ by their respective DEX versions and underlying technologies.
 
 - **CLTHelper:** `0x965356eb2c208ce4130e267342ca720042cce7b2`
 - **CLTModules:** `0x9c225a02426e3229c073a6132e083561e95000b5`
-- **CLTTwapQuoter:** `0x0f7ee2b5451bfba623314f8c94bbd965b3e8ab56`
+- **CLTTwapQuoter:** `0xF9375C14Bb18Abe7303A9D9CafE49D4F55619Afb`
 - **GovernanceFeeHandler:** `0x525c80e91efe9222de3eae86af69a480fbced416`
 - **CLTBase:** `0x525c80e91efe9222de3eae86af69a480fbced416`
 - **Modes:** `0xe626411bb9fa3e5c0d31e03996ac2e335cd315e4`
