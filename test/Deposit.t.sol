@@ -42,6 +42,56 @@ contract DepositTest is Test, Fixtures {
         token1.approve(address(base), UINT256_MAX);
     }
 
+    function test_ldf() public {
+        initPoolAndAddLiquidity();
+        initRouter();
+
+        ICLTBase.PositionActions memory actions = createStrategyActions(2, 3, 0, 3, 0, 0);
+        base.createStrategy(key, actions, 0, 0, true, false);
+
+        base.initializeTicksAndWeights(pool, 20, 2);
+
+        base.deposit(
+            ICLTBase.DepositParams({
+                strategyId: getStrategyID(address(this), 2),
+                amount0Desired: 5 ether,
+                amount1Desired: 5 ether,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: msg.sender
+            })
+        );
+
+        (ICLTBase.StrategyKey memory poolKey,,,,,,,, ICLTBase.Account memory account) =
+            base.strategies(getStrategyID(address(this), 2));
+
+        assertEq(account.balance0, 0);
+        assertEq(account.balance1, 0);
+
+        router.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: address(token0),
+                tokenOut: address(token1),
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp + 1 days,
+                amountIn: 3 ether,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        // (, int24 tick,,,,,) = poolKey.pool.slot0();
+
+        // (uint256 reserves0, uint256 reserves1) = getStrategyReserves(poolKey, account.uniswapLiquidity);
+
+        // console.logInt(tick);
+        // console.log("reserves -> ", reserves0, reserves1);
+
+        // console.log("ss", address(token0), address(token1));
+        base.redistributeLiquidity(getStrategyID(address(this), 2), 500, 2);
+    }
+
     function test_deposit_succeedsWithCorrectShare() public {
         bytes32 strategyID = getStrategyID(address(this), 1);
         uint256 depositAmount = 1 ether;

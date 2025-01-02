@@ -319,4 +319,12 @@ library PoolActions {
             ? (amount0Recieved - amount0, amount1Recieved + amount1)
             : (amount0Recieved + amount0, amount1Recieved - amount1);
     }
+
+    /// @dev Rounds tick down towards negative infinity so that it's a multiple
+    /// of `tickSpacing`.
+    function floor(int24 tick, int24 tickSpacing) internal pure returns (int24) {
+        int24 compressed = tick / tickSpacing;
+        if (tick < 0 && tick % tickSpacing != 0) compressed--;
+        return compressed * tickSpacing;
+    }
 }

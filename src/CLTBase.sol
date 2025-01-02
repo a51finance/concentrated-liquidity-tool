@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.15;
 
-import { ICLTBase } from "./interfaces/ICLTBase.sol";
+import { ICLTBase, IUniswapV3Pool } from "./interfaces/ICLTBase.sol";
 import { ICLTModules } from "./interfaces/ICLTModules.sol";
 import { IGovernanceFeeHandler } from "./interfaces/IGovernanceFeeHandler.sol";
 
@@ -20,6 +20,12 @@ import { ERC721 } from "@solmate/tokens/ERC721.sol";
 import { FullMath } from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import { IERC20Minimal } from "@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol";
+
+import { LDFLibrary } from "./libraries/LDFLibrary.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "forge-std/console.sol";
+
 /// @title A51 Finance Autonomus Liquidity Provision Base Contract
 /// @author 0xMudassir
 /// @notice The A51 ALP Base facilitates the liquidity strategies on concentrated AMM with dynamic adjustments based on
@@ -28,6 +34,9 @@ import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswa
 contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     using Position for StrategyData;
     using UserPositions for UserPositions.Data;
+
+    using LDFLibrary for uint256[];
+    using LDFLibrary for int24[];
 
     uint256 private _sharesId = 1;
 
@@ -49,6 +58,14 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
     /// @dev The uncollected fee earned by individual position is first collected by global account and then distributed
     /// among the strategies having same ticks as of global account ticks according to the strategy fee growth & share
     mapping(bytes32 => StrategyFeeShares.GlobalAccount) private strategyGlobalFees;
+
+    uint256[] public ldfWeights; // Weights for each tick
+    int24[] public tickIndices; // List of ticks
+    uint256 public totalWeight;
+
+    event A(int24 tl, int24 tu, uint256 am0, uint256 am1);
+    event B(int24 tl, int24 tu, uint256 am0, uint256 am1);
+    event C(int24 tl, int24 tu, uint256 am0, uint256 am1);
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         _authorization(tokenId);
@@ -120,6 +137,16 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         refundETH();
 
         emit StrategyCreated(strategyID);
+    }
+
+    // Initialize ticks and weights
+    function initializeTicksAndWeights(IUniswapV3Pool pool, int24 tickSpread, uint8 distributionType) external {
+        require(tickIndices.length == 0, "Already initialized");
+
+        (, int24 tick,,,,,) = pool.slot0();
+
+        (tickIndices, ldfWeights, totalWeight) =
+            LDFLibrary.computeLDFWeights(tick, tickSpread, distributionType, pool.tickSpacing());
     }
 
     /// @inheritdoc ICLTBase
@@ -395,6 +422,147 @@ contract CLTBase is ICLTBase, AccessControl, CLTPayments, ERC721 {
         );
 
         emit LiquidityShifted(params.strategyId, params.shouldMint, params.zeroForOne, params.swapAmount);
+    }
+
+    function redistributeLiquidity(bytes32 strategyId, int24 tickSpread, uint8 distributionType) external {
+        StrategyData storage strategy = strategies[strategyId];
+        StrategyFeeShares.GlobalAccount storage global = _updateGlobals(strategy, strategyId);
+
+        Account memory vars;
+
+        (vars.balance0, vars.balance1,,) = PoolActions.burnLiquidity(strategy.key, strategy.account.uniswapLiquidity);
+
+        vars.balance0 += strategy.account.fee0 + strategy.account.balance0;
+        vars.balance1 += strategy.account.fee1 + strategy.account.balance1;
+
+        // Step 2: Compute target asset ratio using CAF
+        (uint256 targetAmount0, uint256 targetAmount1) =
+            computeTargetRatio(strategy.key.pool, vars.balance0 + vars.balance1);
+
+        console.log("target -> ", targetAmount0, targetAmount1);
+
+        (, int24 centralTick,,,,,) = strategy.key.pool.slot0();
+
+        // // Step 3: Perform swaps to rebalance asset ratios
+        (int256 amount0Swapped, int256 amount1Swapped, bool zeroForOne) =
+            rebalanceUsingICAF(strategy.key.pool, vars.balance0, vars.balance1, targetAmount0, targetAmount1);
+
+        (vars.balance0, vars.balance1) = PoolActions.amountsDirection(
+            zeroForOne,
+            vars.balance0,
+            vars.balance1,
+            uint256(amount0Swapped < 0 ? -amount0Swapped : amount0Swapped),
+            uint256(amount1Swapped < 0 ? -amount1Swapped : amount1Swapped)
+        );
+
+        // Step 4: Compute new weights and ticks
+        (tickIndices, ldfWeights, totalWeight) =
+            LDFLibrary.computeLDFWeights(centralTick, tickSpread, distributionType, strategy.key.pool.tickSpacing());
+
+        // uint256 liquidityAmount0;
+        // uint256 liquidityAmount1;
+        int24 tickLower;
+        int24 tickUpper;
+
+        console.log("after swap ", vars.balance0, vars.balance1);
+
+        console.log("length 0> ", tickIndices.length, ldfWeights.length);
+
+        // Step 5: Re-add liquidity based on updated balances and weights
+        for (uint256 i = 0; i < tickIndices.length; i++) {
+            // liquidityAmount0 = (ldfWeights[i] * vars.balance0) / 1e18;
+            // liquidityAmount1 = (ldfWeights[i] * vars.balance1) / 1e18;
+
+            tickLower = PoolActions.floor(tickIndices[i], 10);
+            tickUpper = PoolActions.floor((i < tickIndices.length - 1) ? tickIndices[i + 1] : tickLower + 10, 10);
+
+            console.log(
+                "reserves -> ",
+                ldfWeights[i],
+                (ldfWeights[i] * vars.balance0) / 1e18,
+                (ldfWeights[i] * vars.balance1) / 1e18
+            );
+
+            console.logInt(tickLower);
+            console.logInt(tickUpper);
+
+            (, targetAmount0, targetAmount1) = PoolActions.mintLiquidity(
+                ICLTBase.StrategyKey({ pool: strategy.key.pool, tickLower: tickLower, tickUpper: tickUpper }),
+                (ldfWeights[i] * vars.balance0) / 1e18,
+                (ldfWeights[i] * vars.balance1) / 1e18
+            );
+
+            emit A(tickLower, tickUpper, targetAmount0, targetAmount1);
+        }
+
+        console.log(
+            "before last position balance -> ",
+            IERC20Minimal(0x2e234DAe75C793f67A35089C9d99245E1C58470b).balanceOf(address(this)),
+            IERC20Minimal(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f).balanceOf(address(this))
+        );
+
+        tickLower = centralTick - tickSpread - (tickSpread * 2); // Left end of carpet range
+        tickUpper = centralTick + tickSpread + (tickSpread * 2); // Right end of carpet range
+
+        (, targetAmount0, targetAmount1) = PoolActions.mintLiquidity(
+            ICLTBase.StrategyKey({
+                pool: strategy.key.pool,
+                tickLower: PoolActions.floor(tickLower, 10),
+                tickUpper: PoolActions.floor(tickUpper, 10)
+            }),
+            IERC20Minimal(0x2e234DAe75C793f67A35089C9d99245E1C58470b).balanceOf(address(this)),
+            IERC20Minimal(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f).balanceOf(address(this))
+        );
+
+        console.log(
+            "after last position balance -> ",
+            IERC20Minimal(0x2e234DAe75C793f67A35089C9d99245E1C58470b).balanceOf(address(this)),
+            IERC20Minimal(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f).balanceOf(address(this))
+        );
+    }
+
+    function computeTargetRatio(
+        IUniswapV3Pool pool,
+        uint256 totalBalance
+    )
+        internal
+        view
+        returns (uint256 targetAmount0, uint256 targetAmount1)
+    {
+        uint256 cumulativeWeight0 =
+            tickIndices.caf(ldfWeights, tickIndices[0], tickIndices[tickIndices.length - 1], pool.tickSpacing());
+
+        targetAmount0 = (cumulativeWeight0 * totalBalance) / (cumulativeWeight0 + cumulativeWeight0);
+        targetAmount1 = totalBalance - targetAmount0;
+    }
+
+    function rebalanceUsingICAF(
+        IUniswapV3Pool pool,
+        uint256 currentBalance0,
+        uint256 currentBalance1,
+        uint256 targetAmount0,
+        uint256 targetAmount1
+    )
+        internal
+        returns (int256 amount0Swapped, int256 amount1Swapped, bool zeroForOne)
+    {
+        if (currentBalance0 > targetAmount0) {
+            uint256 excessToken0 = currentBalance0 - targetAmount0;
+            int24 targetTick = tickIndices.icaf(ldfWeights, targetAmount0 / totalWeight);
+
+            zeroForOne = true;
+
+            (amount0Swapped, amount1Swapped) =
+                PoolActions.swapToken(pool, zeroForOne, int256(excessToken0), TickMath.MIN_SQRT_RATIO + 1);
+        } else if (currentBalance1 > targetAmount1) {
+            uint256 excessToken1 = currentBalance1 - targetAmount1;
+            int24 targetTick = tickIndices.icaf(ldfWeights, targetAmount1 / totalWeight);
+
+            zeroForOne = false;
+
+            (amount0Swapped, amount1Swapped) =
+                PoolActions.swapToken(pool, zeroForOne, int256(excessToken1), TickMath.MAX_SQRT_RATIO - 1);
+        }
     }
 
     /// @notice updates the info of strategy
