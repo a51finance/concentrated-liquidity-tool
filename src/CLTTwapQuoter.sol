@@ -17,6 +17,8 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Owned {
 
     constructor(address _owner) Owned(_owner) {
         twapDuration = 3600;
+
+        emit StandardTwapUpdated(twapDuration);
     }
 
     function checkDeviation(IUniswapV3Pool pool) external view override {
@@ -67,8 +69,16 @@ contract CLTTwapQuoter is ICLTTwapQuoter, Owned {
         (sqrtPriceX96, tick,,,,,) = pool.slot0();
     }
 
-    function setStandardTwapDuration(uint32 _twapDuration) external onlyOwner {
-        if (_twapDuration == 0) revert InvalidInput();
-        twapDuration = _twapDuration;
+    function setStandardTwapDuration(uint32 twap) external onlyOwner {
+        if (twap == 0) revert InvalidInput();
+        twapDuration = twap;
+
+        emit StandardTwapUpdated(twap);
+    }
+
+    function setTwapForPool(address pool, uint32 twap) external onlyOwner {
+        poolStrategy[pool].twapDuration = twap;
+
+        emit PoolTwapUpdated(twap);
     }
 }

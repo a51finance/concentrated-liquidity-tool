@@ -23,7 +23,7 @@ contract ManualOverrideTest is Test, RebaseFixtures {
     function setUp() public {
         users = createUsers(5);
         owner = address(this);
-        initBase(owner);
+        initBase(owner, 1000e18, 1000e18);
     }
 
     // Happy path

@@ -16,6 +16,10 @@
   solc = "0.8.15"
   src = "src"
   test = "test"
+#  libraries = [
+#  "./src/libraries/PoolActions.sol:PoolActions:0xFFD9acf25F2D930BE88D486D588ecBa7a418DE0B"
+# ]
+
 
 
 [profile.ci]
@@ -24,9 +28,9 @@
 
 [etherscan]
   mainnet = { key = "${ETHERSCAN_API_KEY}" }
-  goerli = { key = "${ETHERSCAN_API_KEY}" }
+  # unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 42161, url = "${TENDERLY_VIRTUAL_TESTNET_RPC_URL}/verify/etherscan" }
 
-  
+
 
 [fmt]
   bracket_spacing = true
@@ -50,3 +54,4 @@
   polygon = "https://polygon-mainnet.g.alchemy.com/v2/T8_vfNBfbLZb4C5gAqBBLBMGa3YT8R8O"
   sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
   mainnetFork = "https://rpc.tenderly.co/fork/697ee629-31eb-47e2-82ee-1356af0f48b0"
+  manta = "https://pacific-rpc.manta.network/http"

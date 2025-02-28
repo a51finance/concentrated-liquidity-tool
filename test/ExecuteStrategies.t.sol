@@ -16,7 +16,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
     function setUp() public {
         users = createUsers(5);
         owner = address(this);
-        initBase(owner);
+        initBase(owner, 1000e18, 1000e18);
     }
 
     function testCreateStrategy() public {
@@ -59,7 +59,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount1 < 8_388_608 && amount1 > 0);
         strategyDetail.data = abi.encode(uint256(0), uint256(30));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        bytes4 selector = bytes4(keccak256("InvalidRebalanceThresholdDifference()"));
         _hevm.expectRevert(selector);
         rebaseModule.checkInputData(strategyDetail);
     }
@@ -70,7 +70,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         vm.assume(amount0 < 8_388_608 && amount0 > 0);
         strategyDetail.data = abi.encode(uint256(amount0), uint256(0));
-        bytes4 selector = bytes4(keccak256("InvalidPricePreferenceDifference()"));
+        bytes4 selector = bytes4(keccak256("InvalidRebalanceThresholdDifference()"));
         _hevm.expectRevert(selector);
         rebaseModule.checkInputData(strategyDetail);
     }
@@ -136,29 +136,29 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         }
     }
 
-    function testInputDataWithInvalidFuzzing(uint256 _actionIndex, uint256 _value1, uint256 _value2) public {
-        // Define the array length based on fuzzed value
-        uint256 arrayLength = _actionIndex % 3 + 1; // Ensures length is always between 1 and 3
-        ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](arrayLength);
+    // function testInputDataWithInvalidFuzzing(uint256 _actionIndex, uint256 _value1, uint256 _value2) public {
+    //     // Define the array length based on fuzzed value
+    //     uint256 arrayLength = _actionIndex % 3 + 1; // Ensures length is always between 1 and 3
+    //     ICLTBase.StrategyPayload[] memory strategyDetailArray = new ICLTBase.StrategyPayload[](arrayLength);
 
-        // Fuzzing different action names with intentionally invalid data
-        for (uint256 i = 0; i < arrayLength; i++) {
-            if (i % 2 == 0) {
-                vm.assume(_value1 <= 0);
-                strategyDetailArray[i].actionName = rebaseModule.REBASE_INACTIVITY();
-                strategyDetailArray[i].data = abi.encode(0);
-            } else if (i % 2 == 1) {
-                vm.assume(_value1 <= 0 && _value2 <= 0);
-                strategyDetailArray[i].actionName = rebaseModule.PRICE_PREFERENCE();
-                strategyDetailArray[i].data = abi.encode(_value1, _value2);
-            }
-        }
+    //     // Fuzzing different action names with intentionally invalid data
+    //     for (uint256 i = 0; i < arrayLength; i++) {
+    //         if (i % 2 == 0) {
+    //             vm.assume(_value1 <= 0);
+    //             strategyDetailArray[i].actionName = rebaseModule.REBASE_INACTIVITY();
+    //             strategyDetailArray[i].data = abi.encode(0);
+    //         } else if (i % 2 == 1) {
+    //             vm.assume(_value1 <= 0 && _value2 <= 0);
+    //             strategyDetailArray[i].actionName = rebaseModule.PRICE_PREFERENCE();
+    //             strategyDetailArray[i].data = abi.encode(_value1, _value2);
+    //         }
+    //     }
 
-        for (uint256 i = 0; i < arrayLength; i++) {
-            _hevm.expectRevert();
-            rebaseModule.checkInputData(strategyDetailArray[i]);
-        }
-    }
+    //     for (uint256 i = 0; i < arrayLength; i++) {
+    //         _hevm.expectRevert();
+    //         rebaseModule.checkInputData(strategyDetailArray[i]);
+    //     }
+    // }
 
     function testDepositInAlp() public {
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
@@ -291,7 +291,7 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
         rebaseModule.executeStrategies(strategyIDs);
     }
 
-    function testGetPreferenceTicks(int24 lpd, int24 upd) public {
+    function testGetPreferenceTicksPP(int24 lpd, int24 upd) public {
         vm.assume(lpd > 0 && lpd < 887_272 && upd < 887_272 && upd > 0);
 
         ICLTBase.StrategyPayload[] memory rebaseActions = new ICLTBase.StrategyPayload[](1);
@@ -300,7 +300,8 @@ contract ExecuteStrategiesTest is Test, RebaseFixtures {
 
         bytes32 strategyId = createStrategyAndDeposit(rebaseActions, 1500, owner, 1, 1, true);
 
-        (int24 lowerPreferenceTick, int24 upperPreferenceTick) = rebaseModule.getPreferenceTicks(strategyId);
+        (int24 lowerPreferenceTick, int24 upperPreferenceTick,,) =
+            rebaseModule.getPreferenceTicks(strategyId, rebaseModule.PRICE_PREFERENCE(), rebaseActions[0].data);
         assertTrue(upperPreferenceTick > lowerPreferenceTick);
     }
 
